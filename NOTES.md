@@ -410,3 +410,28 @@ test.
 The balance strip had the same shape and was fixed alongside it: the unit label
 and the streak pill are both `Flexible` now, and the strip has a minimum height
 rather than a fixed one.
+
+## Three fixes from looking at the running app
+
+**1. `mainAxisAlignment: spaceBetween` was a self-inflicted regression.** Added
+while fixing the Dynamic Type overflow, it spreads *every* child apart, not
+just the last one, so the dot, the number and "min left" drifted away from each
+other. The left cluster is now one `Expanded` Row with `mainAxisSize.min`, so
+its internal spacing is fixed and only the gap before the streak pill absorbs
+leftover width. Overflow safety is unchanged.
+
+**2. The glow was a blurred rectangle inside a clipping Stack**, so its soft
+edge became a hard one and it read as a green box rather than a halo. It is now
+a `RadialGradient`, which falls off in every direction by construction, cannot
+be clipped into a box shape, and does not need its own composited layer on
+every frame. The Stack also sets `clipBehavior: Clip.none`, because the halo is
+deliberately larger than the strip.
+
+**3. Graphite was cut.** Seen next to Aurora it was the same theme with a
+different neutral. A theme picker earns its place by making the app feel
+different, not by adding a row. Two themes now: Aurora (default, dark, mint)
+and Blush (warm, pink, the listing theme). That also removes a third of the
+golden set and a third of the contrast surface to maintain.
+
+None of these were visible in a passing test suite. All three came from looking
+at a picture.

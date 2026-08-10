@@ -61,8 +61,11 @@ final _chipScale = find.descendant(
 
 void main() {
   group('six token sets', () {
-    test('three themes, each authored light and dark', () {
-      expect(allSets, hasLength(6));
+    test('two themes, each authored light and dark', () {
+      // Graphite was cut at review: it was Aurora with a different neutral,
+      // and a theme picker earns its place by making the app feel different.
+      expect(allSets, hasLength(4));
+      expect(TallyTheme.values, hasLength(2));
       for (final theme in TallyTheme.values) {
         expect(TallyTokens.of(theme, Brightness.dark).brightness,
             Brightness.dark);

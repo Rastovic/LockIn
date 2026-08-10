@@ -1,5 +1,3 @@
-import 'dart:ui';
-
 import 'package:flutter/material.dart';
 
 import '../theme/state_colors.dart';
@@ -67,46 +65,59 @@ class BalanceStrip extends StatelessWidget {
           // here clipped the streak pill long before that.
           constraints: const BoxConstraints(minHeight: 56),
           child: Stack(
+            alignment: Alignment.centerLeft,
+            // The glow is wider and taller than the strip on purpose, so it
+            // has to be allowed out. Clipped, its soft edge becomes a hard one
+            // and the halo reads as a green rectangle.
+            clipBehavior: Clip.none,
             children: [
-              // The glow: a soft blurred field behind the number, taking the
-              // hue of the current state. This is the signature of the app, so
-              // it is drawn rather than described.
+              // Centred on the number rather than starting at the edge: it is
+              // the number's halo, and an offset one reads as a smear across
+              // the top of the screen.
               Positioned(
-                left: 4,
-                top: -18,
-                child: StateGlow(color: color, width: 170, height: 74),
+                left: -70,
+                child: StateGlow(color: color, width: 240, height: 120),
               ),
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 18),
                 child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Container(
-                      width: 9,
-                      height: 9,
-                      decoration: BoxDecoration(
-                        color: color,
-                        shape: BoxShape.circle,
+                    // The left cluster stays tight. Grouping it means the
+                    // spacing between the dot, the number and the unit is
+                    // fixed, and only the gap before the pill absorbs the
+                    // leftover width.
+                    Expanded(
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Container(
+                            width: 9,
+                            height: 9,
+                            decoration: BoxDecoration(
+                              color: color,
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+                          const SizedBox(width: 7),
+                          Text(
+                            formatMinutes(spendableSeconds),
+                            style: text.displayMedium?.copyWith(color: color),
+                          ),
+                          const SizedBox(width: 5),
+                          // Yields first when space runs short: it is the
+                          // least informative thing in the row.
+                          Flexible(
+                            child: Text(
+                              label,
+                              style: text.labelMedium,
+                              overflow: TextOverflow.ellipsis,
+                              maxLines: 1,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
-                    const SizedBox(width: 8),
-                    Text(
-                      formatMinutes(spendableSeconds),
-                      style: text.displayMedium?.copyWith(color: color),
-                    ),
-                    const SizedBox(width: 6),
-                    // The unit label yields first: it is the least informative
-                    // thing in the row, and the number and the streak both
-                    // carry meaning the user came for.
-                    Flexible(
-                      child: Text(
-                        label,
-                        style: text.labelMedium,
-                        overflow: TextOverflow.ellipsis,
-                        maxLines: 1,
-                      ),
-                    ),
-                    const SizedBox(width: 8),
+                    const SizedBox(width: 10),
                     Flexible(
                       child: _StreakPill(
                         streak: solvencyStreak,
@@ -124,37 +135,44 @@ class BalanceStrip extends StatelessWidget {
   }
 }
 
-/// The blurred state-coloured field behind a number.
+/// The soft state-coloured halo behind the balance.
 ///
-/// Uses an [ImageFiltered] blur rather than a stack of translucent circles: one
-/// composited layer instead of several, which matters on the cheap phones this
-/// audience actually owns.
+/// A radial gradient rather than a blurred rectangle. A blur needs its own
+/// composited layer on every frame, and the moment anything clips it the soft
+/// edge becomes a hard one - which is exactly what happened when it sat inside
+/// a Stack. A gradient falls off in every direction by construction, costs
+/// nothing to composite, and cannot be clipped into a box shape.
 class StateGlow extends StatelessWidget {
   const StateGlow({
     required this.color,
     required this.width,
     required this.height,
-    this.opacity = 0.5,
-    this.blur = 26,
+    this.opacity = 0.34,
     super.key,
   });
 
   final Color color;
   final double width;
   final double height;
+
+  /// Peak alpha at the centre. Low on purpose: this is a tint that tells you
+  /// the state before you read the number, not a light source.
   final double opacity;
-  final double blur;
 
   @override
   Widget build(BuildContext context) => IgnorePointer(
-        child: ImageFiltered(
-          imageFilter: ImageFilter.blur(sigmaX: blur, sigmaY: blur),
-          child: Container(
-            width: width,
-            height: height,
-            decoration: BoxDecoration(
-              color: color.withValues(alpha: opacity),
-              borderRadius: BorderRadius.circular(height),
+        child: Container(
+          width: width,
+          height: height,
+          decoration: BoxDecoration(
+            gradient: RadialGradient(
+              radius: 0.5,
+              colors: [
+                color.withValues(alpha: opacity),
+                color.withValues(alpha: opacity * 0.45),
+                color.withValues(alpha: 0),
+              ],
+              stops: const [0.0, 0.45, 1.0],
             ),
           ),
         ),

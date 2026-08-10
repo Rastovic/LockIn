@@ -2,26 +2,27 @@ import 'package:flutter/material.dart';
 
 import 'state_colors.dart';
 
-/// Tally's three themes.
+/// Tally's two themes.
 ///
 /// Each is authored in **both** light and dark, so the system switch never
-/// fights the user's choice. Six token sets in total, and that is the real cost
-/// of shipping themes.
+/// fights the user's choice. Four token sets in total.
+///
+/// **Two, not three.** The plan originally specified a third, Graphite, as a
+/// cool light theme. Seen side by side it was Aurora with a different neutral,
+/// which is not a choice worth offering: a theme picker earns its place by
+/// making the app feel different, not by adding a row. Cutting it also removes
+/// a third of the golden set and a third of the contrast surface.
 enum TallyTheme {
-  /// Default. Near-black ground, mint solvent.
+  /// Default. Near-black ground, mint solvent. The identity.
   aurora,
 
-  /// Light and pink. **The theme the store listing is shot in**, because dark
+  /// Warm and pink. **The theme the store listing is shot in**, because dark
   /// screenshots disappear against a light store page.
-  blush,
-
-  /// Light and cool.
-  graphite;
+  blush;
 
   String get label => switch (this) {
         TallyTheme.aurora => 'Aurora',
         TallyTheme.blush => 'Blush',
-        TallyTheme.graphite => 'Graphite',
       };
 }
 
@@ -98,7 +99,7 @@ final class TallyTokens extends ThemeExtension<TallyTokens> {
     return t < 0.5 ? this : other;
   }
 
-  /// The six authored sets: three themes, each in light and dark.
+  /// The four authored sets: two themes, each in light and dark.
   ///
   /// Every state colour here has been measured against the ground it sits on.
   /// The light themes darken their state colours rather than reusing the dark
@@ -108,7 +109,6 @@ final class TallyTokens extends ThemeExtension<TallyTokens> {
     return switch (theme) {
       TallyTheme.aurora => dark ? _auroraDark : _auroraLight,
       TallyTheme.blush => dark ? _blushDark : _blushLight,
-      TallyTheme.graphite => dark ? _graphiteDark : _graphiteLight,
     };
   }
 
@@ -185,40 +185,6 @@ final class TallyTokens extends ThemeExtension<TallyTokens> {
       low: Color(0xFF8A5605),
       borrowing: Color(0xFFB81E1E),
       savings: Color(0xFF6741C4),
-    ),
-  );
-
-  static const _graphiteDark = TallyTokens(
-    theme: TallyTheme.graphite,
-    brightness: Brightness.dark,
-    bg: Color(0xFF10151C),
-    surface: Color(0x12FFFFFF),
-    surfaceStrong: Color(0x1CFFFFFF),
-    ink: Color(0xFFEEF2F7),
-    inkMuted: Color(0xFF98A4B4),
-    inkFaint: Color(0xFF6A7686),
-    states: StateColors(
-      solvent: Color(0xFF3FD9A0),
-      low: Color(0xFFF5BC52),
-      borrowing: Color(0xFFFF6480),
-      savings: Color(0xFF9A94FF),
-    ),
-  );
-
-  static const _graphiteLight = TallyTokens(
-    theme: TallyTheme.graphite,
-    brightness: Brightness.light,
-    bg: Color(0xFFF4F6F9),
-    surface: Color(0x0F1E2A3C),
-    surfaceStrong: Color(0x1A1E2A3C),
-    ink: Color(0xFF131A24),
-    inkMuted: Color(0xFF4E5A67),
-    inkFaint: Color(0xFF808C9C),
-    states: StateColors(
-      solvent: Color(0xFF08805A),
-      low: Color(0xFF7E5205),
-      borrowing: Color(0xFFB01C39),
-      savings: Color(0xFF443CB8),
     ),
   );
 }
