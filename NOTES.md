@@ -110,3 +110,40 @@ correcting; nothing in code implements the minutes version.
 checkbox to the balance because there is no vocabulary for one. That is cheaper
 to maintain than a test asserting a negative, though `today_planner_test.dart`
 asserts it too.
+
+## The suggestion picker must not use String.hashCode
+
+The day's suggestion is derived from `(dayKey, installId)` rather than stored,
+so it survives a reinstall-from-backup and matches between the app and its
+widget without a shared table. That only works if the hash is stable.
+
+Dart makes no promise that `String.hashCode` is stable across runs, platforms
+or SDK versions. Using it would mean the suggestion silently changing on an app
+update, or the widget and the app disagreeing about what today's suggestion is,
+a bug that would be very hard to see and very easy to ship. `stableHash` is
+FNV-1a over UTF-16 code units, masked to 32 bits, and it is the seed for
+everything that must look random and stay put.
+
+## Sticker unlocks are monotonic, and that is load-bearing
+
+Every unlock rule is a `>=` against a historical maximum or a latching boolean,
+never a test of current state. So a user who reaches a 30-day solvency streak
+and then breaks it keeps `solvent_30`. Taking a sticker away would be the
+cruellest possible reading of an app whose whole stance is that nothing is ever
+blocked and nothing punishes.
+
+`stickers_test.dart` asserts monotonicity directly, and also asserts that a
+fully-maxed context unlocks all 60: an unreachable rule would mean an asset
+drawn for nobody.
+
+## macOS TCC blocked ~/Documents mid-session (2026-08-10)
+
+Access to `~/Documents`, `~/Desktop` and `~/Downloads` vanished mid-build with
+`Operation not permitted`, from both the shell and the editor tools, while
+`$HOME` and `~/git` stayed fine. Those three are exactly the TCC-protected
+folders, so it was a privacy grant rather than file permissions.
+
+Fixed by granting the host terminal (iTerm) access under System Settings ->
+Privacy & Security -> Files & Folders. Nothing was lost: the files were already
+written and the suite was green before the block. Worth knowing if it recurs,
+because the failure looks like disk corruption and is not.
