@@ -29,6 +29,7 @@ final class TallyBackup {
     'plan_entries',
     'watched_apps',
     'day_ledger',
+    'spend_spans',
     'day_spend',
     'treats',
     'savings_transfers',
@@ -43,6 +44,9 @@ final class TallyBackup {
   static const deviceLocalTables = ['usage_checkpoints'];
 
   /// Derived tables, exported only so an import can check itself.
+  ///
+  /// [SpendSpans] and [Sessions] are the raw inputs these are computed from,
+  /// which is what makes verify-by-recomputation possible after a restore.
   static const derivedTables = ['day_ledger', 'day_spend'];
 
   List<TableInfo<Table, dynamic>> get _tables => [

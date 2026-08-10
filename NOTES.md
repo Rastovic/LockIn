@@ -209,3 +209,37 @@ statement of what period was about to be replaced. It now accepts both names.
 Worth remembering as a pattern - the unit tests agreed with each other because
 they shared my wrong assumption. Only the round-trip against a real schema
 disagreed.
+
+## Spend must be stored as spans, not as a per-day total
+
+Found by the first test that ran the engine against real stored rows, and it is
+a genuine schema-design bug rather than a test artifact.
+
+`day_spend` originally held one row per app per day, holding a total. Feeding
+that back into the engine loses **when** the spend happened, and the ledger is
+order-sensitive: grace fires once per zero-crossing, so the same 55 minutes
+spent before or after a 40 minute session close at different balances - 20
+versus 15, with grace consumed in one case and untouched in the other.
+
+A per-day total silently places every minute at the day's open. That would have
+made "recompute from a checkpoint always gives the same balance" false in a way
+no unit test on the engine alone could catch, because the engine was correct
+throughout.
+
+Now `spend_spans` holds merged billable spans with real timestamps and is the
+recompute input; `day_spend` is a derived read-model rebuilt from it, kept only
+so the Statement's per-app breakdown is one indexed read rather than a scan.
+`ledger_repository_test.dart` pins both answers so the distinction cannot be
+optimised away later.
+
+## Three more name collisions worth knowing
+
+- drift generates a data class per table, so `Treats` yields `Treat`, which
+  collides with the engine's domain type. Every table with a domain twin now
+  carries `@DataClassName('...Row')`. A persistence row is not a domain object
+  and should not have been sharing a name anyway.
+- drift exports `VerificationResult`. `vitals_archive`'s type is now
+  `ImportVerification`, which is more specific regardless.
+- drift exports `isNull` and `isNotNull` as query builders, which shadow the
+  matchers in every test importing both. Test files use
+  `import 'package:drift/drift.dart' hide isNull, isNotNull;`.

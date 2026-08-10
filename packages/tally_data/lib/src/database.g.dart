@@ -3,7 +3,7 @@
 part of 'database.dart';
 
 // ignore_for_file: type=lint
-class $TasksTable extends Tasks with TableInfo<$TasksTable, Task> {
+class $TasksTable extends Tasks with TableInfo<$TasksTable, TaskRow> {
   @override
   final GeneratedDatabase attachedDatabase;
   final String? _alias;
@@ -181,7 +181,7 @@ class $TasksTable extends Tasks with TableInfo<$TasksTable, Task> {
   static const String $name = 'tasks';
   @override
   VerificationContext validateIntegrity(
-    Insertable<Task> instance, {
+    Insertable<TaskRow> instance, {
     bool isInserting = false,
   }) {
     final context = VerificationContext();
@@ -288,9 +288,9 @@ class $TasksTable extends Tasks with TableInfo<$TasksTable, Task> {
   @override
   Set<GeneratedColumn> get $primaryKey => {id};
   @override
-  Task map(Map<String, dynamic> data, {String? tablePrefix}) {
+  TaskRow map(Map<String, dynamic> data, {String? tablePrefix}) {
     final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
-    return Task(
+    return TaskRow(
       id: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}id'],
@@ -352,7 +352,7 @@ class $TasksTable extends Tasks with TableInfo<$TasksTable, Task> {
   }
 }
 
-class Task extends DataClass implements Insertable<Task> {
+class TaskRow extends DataClass implements Insertable<TaskRow> {
   /// UUID v7. **Never an autoincrement integer.**
   ///
   /// Two devices both minting `id = 47` cannot be merged, and merge is the
@@ -387,7 +387,7 @@ class Task extends DataClass implements Insertable<Task> {
   final int createdAt;
   final int? lastCompletedAt;
   final int? archivedAt;
-  const Task({
+  const TaskRow({
     required this.id,
     required this.updatedAt,
     this.deletedAt,
@@ -463,12 +463,12 @@ class Task extends DataClass implements Insertable<Task> {
     );
   }
 
-  factory Task.fromJson(
+  factory TaskRow.fromJson(
     Map<String, dynamic> json, {
     ValueSerializer? serializer,
   }) {
     serializer ??= driftRuntimeOptions.defaultSerializer;
-    return Task(
+    return TaskRow(
       id: serializer.fromJson<String>(json['id']),
       updatedAt: serializer.fromJson<int>(json['updatedAt']),
       deletedAt: serializer.fromJson<int?>(json['deletedAt']),
@@ -504,7 +504,7 @@ class Task extends DataClass implements Insertable<Task> {
     };
   }
 
-  Task copyWith({
+  TaskRow copyWith({
     String? id,
     int? updatedAt,
     Value<int?> deletedAt = const Value.absent(),
@@ -518,7 +518,7 @@ class Task extends DataClass implements Insertable<Task> {
     int? createdAt,
     Value<int?> lastCompletedAt = const Value.absent(),
     Value<int?> archivedAt = const Value.absent(),
-  }) => Task(
+  }) => TaskRow(
     id: id ?? this.id,
     updatedAt: updatedAt ?? this.updatedAt,
     deletedAt: deletedAt.present ? deletedAt.value : this.deletedAt,
@@ -537,8 +537,8 @@ class Task extends DataClass implements Insertable<Task> {
         : this.lastCompletedAt,
     archivedAt: archivedAt.present ? archivedAt.value : this.archivedAt,
   );
-  Task copyWithCompanion(TasksCompanion data) {
-    return Task(
+  TaskRow copyWithCompanion(TasksCompanion data) {
+    return TaskRow(
       id: data.id.present ? data.id.value : this.id,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
       deletedAt: data.deletedAt.present ? data.deletedAt.value : this.deletedAt,
@@ -565,7 +565,7 @@ class Task extends DataClass implements Insertable<Task> {
 
   @override
   String toString() {
-    return (StringBuffer('Task(')
+    return (StringBuffer('TaskRow(')
           ..write('id: $id, ')
           ..write('updatedAt: $updatedAt, ')
           ..write('deletedAt: $deletedAt, ')
@@ -602,7 +602,7 @@ class Task extends DataClass implements Insertable<Task> {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      (other is Task &&
+      (other is TaskRow &&
           other.id == this.id &&
           other.updatedAt == this.updatedAt &&
           other.deletedAt == this.deletedAt &&
@@ -618,7 +618,7 @@ class Task extends DataClass implements Insertable<Task> {
           other.archivedAt == this.archivedAt);
 }
 
-class TasksCompanion extends UpdateCompanion<Task> {
+class TasksCompanion extends UpdateCompanion<TaskRow> {
   final Value<String> id;
   final Value<int> updatedAt;
   final Value<int?> deletedAt;
@@ -670,7 +670,7 @@ class TasksCompanion extends UpdateCompanion<Task> {
        kind = Value(kind),
        title = Value(title),
        createdAt = Value(createdAt);
-  static Insertable<Task> custom({
+  static Insertable<TaskRow> custom({
     Expression<String>? id,
     Expression<int>? updatedAt,
     Expression<int>? deletedAt,
@@ -1351,7 +1351,8 @@ class ProjectsCompanion extends UpdateCompanion<Project> {
   }
 }
 
-class $SessionsTable extends Sessions with TableInfo<$SessionsTable, Session> {
+class $SessionsTable extends Sessions
+    with TableInfo<$SessionsTable, SessionRow> {
   @override
   final GeneratedDatabase attachedDatabase;
   final String? _alias;
@@ -1496,7 +1497,7 @@ class $SessionsTable extends Sessions with TableInfo<$SessionsTable, Session> {
   static const String $name = 'sessions';
   @override
   VerificationContext validateIntegrity(
-    Insertable<Session> instance, {
+    Insertable<SessionRow> instance, {
     bool isInserting = false,
   }) {
     final context = VerificationContext();
@@ -1584,9 +1585,9 @@ class $SessionsTable extends Sessions with TableInfo<$SessionsTable, Session> {
   @override
   Set<GeneratedColumn> get $primaryKey => {id};
   @override
-  Session map(Map<String, dynamic> data, {String? tablePrefix}) {
+  SessionRow map(Map<String, dynamic> data, {String? tablePrefix}) {
     final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
-    return Session(
+    return SessionRow(
       id: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}id'],
@@ -1636,7 +1637,7 @@ class $SessionsTable extends Sessions with TableInfo<$SessionsTable, Session> {
   }
 }
 
-class Session extends DataClass implements Insertable<Session> {
+class SessionRow extends DataClass implements Insertable<SessionRow> {
   /// UUID v7. **Never an autoincrement integer.**
   ///
   /// Two devices both minting `id = 47` cannot be merged, and merge is the
@@ -1673,7 +1674,7 @@ class Session extends DataClass implements Insertable<Session> {
 
   /// Screen stayed off for the whole block, so the block pays 1.5x.
   final bool phoneDownVerified;
-  const Session({
+  const SessionRow({
     required this.id,
     required this.updatedAt,
     this.deletedAt,
@@ -1724,12 +1725,12 @@ class Session extends DataClass implements Insertable<Session> {
     );
   }
 
-  factory Session.fromJson(
+  factory SessionRow.fromJson(
     Map<String, dynamic> json, {
     ValueSerializer? serializer,
   }) {
     serializer ??= driftRuntimeOptions.defaultSerializer;
-    return Session(
+    return SessionRow(
       id: serializer.fromJson<String>(json['id']),
       updatedAt: serializer.fromJson<int>(json['updatedAt']),
       deletedAt: serializer.fromJson<int?>(json['deletedAt']),
@@ -1759,7 +1760,7 @@ class Session extends DataClass implements Insertable<Session> {
     };
   }
 
-  Session copyWith({
+  SessionRow copyWith({
     String? id,
     int? updatedAt,
     Value<int?> deletedAt = const Value.absent(),
@@ -1770,7 +1771,7 @@ class Session extends DataClass implements Insertable<Session> {
     int? startedAt,
     int? endedAt,
     bool? phoneDownVerified,
-  }) => Session(
+  }) => SessionRow(
     id: id ?? this.id,
     updatedAt: updatedAt ?? this.updatedAt,
     deletedAt: deletedAt.present ? deletedAt.value : this.deletedAt,
@@ -1782,8 +1783,8 @@ class Session extends DataClass implements Insertable<Session> {
     endedAt: endedAt ?? this.endedAt,
     phoneDownVerified: phoneDownVerified ?? this.phoneDownVerified,
   );
-  Session copyWithCompanion(SessionsCompanion data) {
-    return Session(
+  SessionRow copyWithCompanion(SessionsCompanion data) {
+    return SessionRow(
       id: data.id.present ? data.id.value : this.id,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
       deletedAt: data.deletedAt.present ? data.deletedAt.value : this.deletedAt,
@@ -1803,7 +1804,7 @@ class Session extends DataClass implements Insertable<Session> {
 
   @override
   String toString() {
-    return (StringBuffer('Session(')
+    return (StringBuffer('SessionRow(')
           ..write('id: $id, ')
           ..write('updatedAt: $updatedAt, ')
           ..write('deletedAt: $deletedAt, ')
@@ -1834,7 +1835,7 @@ class Session extends DataClass implements Insertable<Session> {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      (other is Session &&
+      (other is SessionRow &&
           other.id == this.id &&
           other.updatedAt == this.updatedAt &&
           other.deletedAt == this.deletedAt &&
@@ -1847,7 +1848,7 @@ class Session extends DataClass implements Insertable<Session> {
           other.phoneDownVerified == this.phoneDownVerified);
 }
 
-class SessionsCompanion extends UpdateCompanion<Session> {
+class SessionsCompanion extends UpdateCompanion<SessionRow> {
   final Value<String> id;
   final Value<int> updatedAt;
   final Value<int?> deletedAt;
@@ -1891,7 +1892,7 @@ class SessionsCompanion extends UpdateCompanion<Session> {
        tzOffsetMinutes = Value(tzOffsetMinutes),
        startedAt = Value(startedAt),
        endedAt = Value(endedAt);
-  static Insertable<Session> custom({
+  static Insertable<SessionRow> custom({
     Expression<String>? id,
     Expression<int>? updatedAt,
     Expression<int>? deletedAt,
@@ -2006,7 +2007,7 @@ class SessionsCompanion extends UpdateCompanion<Session> {
 }
 
 class $PlanEntriesTable extends PlanEntries
-    with TableInfo<$PlanEntriesTable, PlanEntry> {
+    with TableInfo<$PlanEntriesTable, PlanEntryRow> {
   @override
   final GeneratedDatabase attachedDatabase;
   final String? _alias;
@@ -2143,7 +2144,7 @@ class $PlanEntriesTable extends PlanEntries
   static const String $name = 'plan_entries';
   @override
   VerificationContext validateIntegrity(
-    Insertable<PlanEntry> instance, {
+    Insertable<PlanEntryRow> instance, {
     bool isInserting = false,
   }) {
     final context = VerificationContext();
@@ -2230,9 +2231,9 @@ class $PlanEntriesTable extends PlanEntries
   @override
   Set<GeneratedColumn> get $primaryKey => {id};
   @override
-  PlanEntry map(Map<String, dynamic> data, {String? tablePrefix}) {
+  PlanEntryRow map(Map<String, dynamic> data, {String? tablePrefix}) {
     final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
-    return PlanEntry(
+    return PlanEntryRow(
       id: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}id'],
@@ -2282,7 +2283,7 @@ class $PlanEntriesTable extends PlanEntries
   }
 }
 
-class PlanEntry extends DataClass implements Insertable<PlanEntry> {
+class PlanEntryRow extends DataClass implements Insertable<PlanEntryRow> {
   /// UUID v7. **Never an autoincrement integer.**
   ///
   /// Two devices both minting `id = 47` cannot be merged, and merge is the
@@ -2323,7 +2324,7 @@ class PlanEntry extends DataClass implements Insertable<PlanEntry> {
   /// day actually came from is one query and is genuinely interesting.
   final String source;
   final int? doneAt;
-  const PlanEntry({
+  const PlanEntryRow({
     required this.id,
     required this.updatedAt,
     this.deletedAt,
@@ -2374,12 +2375,12 @@ class PlanEntry extends DataClass implements Insertable<PlanEntry> {
     );
   }
 
-  factory PlanEntry.fromJson(
+  factory PlanEntryRow.fromJson(
     Map<String, dynamic> json, {
     ValueSerializer? serializer,
   }) {
     serializer ??= driftRuntimeOptions.defaultSerializer;
-    return PlanEntry(
+    return PlanEntryRow(
       id: serializer.fromJson<String>(json['id']),
       updatedAt: serializer.fromJson<int>(json['updatedAt']),
       deletedAt: serializer.fromJson<int?>(json['deletedAt']),
@@ -2409,7 +2410,7 @@ class PlanEntry extends DataClass implements Insertable<PlanEntry> {
     };
   }
 
-  PlanEntry copyWith({
+  PlanEntryRow copyWith({
     String? id,
     int? updatedAt,
     Value<int?> deletedAt = const Value.absent(),
@@ -2420,7 +2421,7 @@ class PlanEntry extends DataClass implements Insertable<PlanEntry> {
     int? sortOrder,
     String? source,
     Value<int?> doneAt = const Value.absent(),
-  }) => PlanEntry(
+  }) => PlanEntryRow(
     id: id ?? this.id,
     updatedAt: updatedAt ?? this.updatedAt,
     deletedAt: deletedAt.present ? deletedAt.value : this.deletedAt,
@@ -2432,8 +2433,8 @@ class PlanEntry extends DataClass implements Insertable<PlanEntry> {
     source: source ?? this.source,
     doneAt: doneAt.present ? doneAt.value : this.doneAt,
   );
-  PlanEntry copyWithCompanion(PlanEntriesCompanion data) {
-    return PlanEntry(
+  PlanEntryRow copyWithCompanion(PlanEntriesCompanion data) {
+    return PlanEntryRow(
       id: data.id.present ? data.id.value : this.id,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
       deletedAt: data.deletedAt.present ? data.deletedAt.value : this.deletedAt,
@@ -2451,7 +2452,7 @@ class PlanEntry extends DataClass implements Insertable<PlanEntry> {
 
   @override
   String toString() {
-    return (StringBuffer('PlanEntry(')
+    return (StringBuffer('PlanEntryRow(')
           ..write('id: $id, ')
           ..write('updatedAt: $updatedAt, ')
           ..write('deletedAt: $deletedAt, ')
@@ -2482,7 +2483,7 @@ class PlanEntry extends DataClass implements Insertable<PlanEntry> {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      (other is PlanEntry &&
+      (other is PlanEntryRow &&
           other.id == this.id &&
           other.updatedAt == this.updatedAt &&
           other.deletedAt == this.deletedAt &&
@@ -2495,7 +2496,7 @@ class PlanEntry extends DataClass implements Insertable<PlanEntry> {
           other.doneAt == this.doneAt);
 }
 
-class PlanEntriesCompanion extends UpdateCompanion<PlanEntry> {
+class PlanEntriesCompanion extends UpdateCompanion<PlanEntryRow> {
   final Value<String> id;
   final Value<int> updatedAt;
   final Value<int?> deletedAt;
@@ -2540,7 +2541,7 @@ class PlanEntriesCompanion extends UpdateCompanion<PlanEntry> {
        taskId = Value(taskId),
        sortOrder = Value(sortOrder),
        source = Value(source);
-  static Insertable<PlanEntry> custom({
+  static Insertable<PlanEntryRow> custom({
     Expression<String>? id,
     Expression<int>? updatedAt,
     Expression<int>? deletedAt,
@@ -4690,8 +4691,613 @@ class DayLedgerCompanion extends UpdateCompanion<DayLedgerData> {
   }
 }
 
+class $SpendSpansTable extends SpendSpans
+    with TableInfo<$SpendSpansTable, SpendSpanRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $SpendSpansTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    additionalChecks: GeneratedColumn.checkTextLength(
+      minTextLength: 36,
+      maxTextLength: 36,
+    ),
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<int> updatedAt = GeneratedColumn<int>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _deletedAtMeta = const VerificationMeta(
+    'deletedAt',
+  );
+  @override
+  late final GeneratedColumn<int> deletedAt = GeneratedColumn<int>(
+    'deleted_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _installIdMeta = const VerificationMeta(
+    'installId',
+  );
+  @override
+  late final GeneratedColumn<String> installId = GeneratedColumn<String>(
+    'install_id',
+    aliasedName,
+    false,
+    additionalChecks: GeneratedColumn.checkTextLength(
+      minTextLength: 36,
+      maxTextLength: 36,
+    ),
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _dayKeyMeta = const VerificationMeta('dayKey');
+  @override
+  late final GeneratedColumn<String> dayKey = GeneratedColumn<String>(
+    'day_key',
+    aliasedName,
+    false,
+    additionalChecks: GeneratedColumn.checkTextLength(
+      minTextLength: 10,
+      maxTextLength: 10,
+    ),
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _tzOffsetMinutesMeta = const VerificationMeta(
+    'tzOffsetMinutes',
+  );
+  @override
+  late final GeneratedColumn<int> tzOffsetMinutes = GeneratedColumn<int>(
+    'tz_offset_minutes',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _packageNameMeta = const VerificationMeta(
+    'packageName',
+  );
+  @override
+  late final GeneratedColumn<String> packageName = GeneratedColumn<String>(
+    'package_name',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _startedAtMeta = const VerificationMeta(
+    'startedAt',
+  );
+  @override
+  late final GeneratedColumn<int> startedAt = GeneratedColumn<int>(
+    'started_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _endedAtMeta = const VerificationMeta(
+    'endedAt',
+  );
+  @override
+  late final GeneratedColumn<int> endedAt = GeneratedColumn<int>(
+    'ended_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    updatedAt,
+    deletedAt,
+    installId,
+    dayKey,
+    tzOffsetMinutes,
+    packageName,
+    startedAt,
+    endedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'spend_spans';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<SpendSpanRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_updatedAtMeta);
+    }
+    if (data.containsKey('deleted_at')) {
+      context.handle(
+        _deletedAtMeta,
+        deletedAt.isAcceptableOrUnknown(data['deleted_at']!, _deletedAtMeta),
+      );
+    }
+    if (data.containsKey('install_id')) {
+      context.handle(
+        _installIdMeta,
+        installId.isAcceptableOrUnknown(data['install_id']!, _installIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_installIdMeta);
+    }
+    if (data.containsKey('day_key')) {
+      context.handle(
+        _dayKeyMeta,
+        dayKey.isAcceptableOrUnknown(data['day_key']!, _dayKeyMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_dayKeyMeta);
+    }
+    if (data.containsKey('tz_offset_minutes')) {
+      context.handle(
+        _tzOffsetMinutesMeta,
+        tzOffsetMinutes.isAcceptableOrUnknown(
+          data['tz_offset_minutes']!,
+          _tzOffsetMinutesMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_tzOffsetMinutesMeta);
+    }
+    if (data.containsKey('package_name')) {
+      context.handle(
+        _packageNameMeta,
+        packageName.isAcceptableOrUnknown(
+          data['package_name']!,
+          _packageNameMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_packageNameMeta);
+    }
+    if (data.containsKey('started_at')) {
+      context.handle(
+        _startedAtMeta,
+        startedAt.isAcceptableOrUnknown(data['started_at']!, _startedAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_startedAtMeta);
+    }
+    if (data.containsKey('ended_at')) {
+      context.handle(
+        _endedAtMeta,
+        endedAt.isAcceptableOrUnknown(data['ended_at']!, _endedAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_endedAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  SpendSpanRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return SpendSpanRow(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}updated_at'],
+      )!,
+      deletedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}deleted_at'],
+      ),
+      installId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}install_id'],
+      )!,
+      dayKey: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}day_key'],
+      )!,
+      tzOffsetMinutes: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}tz_offset_minutes'],
+      )!,
+      packageName: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}package_name'],
+      )!,
+      startedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}started_at'],
+      )!,
+      endedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}ended_at'],
+      )!,
+    );
+  }
+
+  @override
+  $SpendSpansTable createAlias(String alias) {
+    return $SpendSpansTable(attachedDatabase, alias);
+  }
+}
+
+class SpendSpanRow extends DataClass implements Insertable<SpendSpanRow> {
+  /// UUID v7. **Never an autoincrement integer.**
+  ///
+  /// Two devices both minting `id = 47` cannot be merged, and merge is the
+  /// whole reason this format is also a future sync protocol.
+  final String id;
+
+  /// UTC epoch millis of the last change. The merge key.
+  ///
+  /// Without it, last-writer-wins is impossible and every conflict is a coin
+  /// flip.
+  final int updatedAt;
+
+  /// Soft delete. A deleted row that leaves no tombstone comes back to life on
+  /// the next merge.
+  ///
+  /// Hard-delete only in an explicit purge, never in normal use.
+  final int? deletedAt;
+
+  /// Which install created this row. Tells a future merge which device said
+  /// what.
+  final String installId;
+
+  /// `YYYY-MM-DD`, computed once by the app's own day-boundary rule.
+  final String dayKey;
+
+  /// Device offset from UTC when the row was written, in minutes.
+  ///
+  /// Kept so a statement can explain itself later, and so a merge can tell a
+  /// genuine duplicate from two rows written in different zones.
+  final int tzOffsetMinutes;
+  final String packageName;
+  final int startedAt;
+  final int endedAt;
+  const SpendSpanRow({
+    required this.id,
+    required this.updatedAt,
+    this.deletedAt,
+    required this.installId,
+    required this.dayKey,
+    required this.tzOffsetMinutes,
+    required this.packageName,
+    required this.startedAt,
+    required this.endedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['updated_at'] = Variable<int>(updatedAt);
+    if (!nullToAbsent || deletedAt != null) {
+      map['deleted_at'] = Variable<int>(deletedAt);
+    }
+    map['install_id'] = Variable<String>(installId);
+    map['day_key'] = Variable<String>(dayKey);
+    map['tz_offset_minutes'] = Variable<int>(tzOffsetMinutes);
+    map['package_name'] = Variable<String>(packageName);
+    map['started_at'] = Variable<int>(startedAt);
+    map['ended_at'] = Variable<int>(endedAt);
+    return map;
+  }
+
+  SpendSpansCompanion toCompanion(bool nullToAbsent) {
+    return SpendSpansCompanion(
+      id: Value(id),
+      updatedAt: Value(updatedAt),
+      deletedAt: deletedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(deletedAt),
+      installId: Value(installId),
+      dayKey: Value(dayKey),
+      tzOffsetMinutes: Value(tzOffsetMinutes),
+      packageName: Value(packageName),
+      startedAt: Value(startedAt),
+      endedAt: Value(endedAt),
+    );
+  }
+
+  factory SpendSpanRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return SpendSpanRow(
+      id: serializer.fromJson<String>(json['id']),
+      updatedAt: serializer.fromJson<int>(json['updatedAt']),
+      deletedAt: serializer.fromJson<int?>(json['deletedAt']),
+      installId: serializer.fromJson<String>(json['installId']),
+      dayKey: serializer.fromJson<String>(json['dayKey']),
+      tzOffsetMinutes: serializer.fromJson<int>(json['tzOffsetMinutes']),
+      packageName: serializer.fromJson<String>(json['packageName']),
+      startedAt: serializer.fromJson<int>(json['startedAt']),
+      endedAt: serializer.fromJson<int>(json['endedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'updatedAt': serializer.toJson<int>(updatedAt),
+      'deletedAt': serializer.toJson<int?>(deletedAt),
+      'installId': serializer.toJson<String>(installId),
+      'dayKey': serializer.toJson<String>(dayKey),
+      'tzOffsetMinutes': serializer.toJson<int>(tzOffsetMinutes),
+      'packageName': serializer.toJson<String>(packageName),
+      'startedAt': serializer.toJson<int>(startedAt),
+      'endedAt': serializer.toJson<int>(endedAt),
+    };
+  }
+
+  SpendSpanRow copyWith({
+    String? id,
+    int? updatedAt,
+    Value<int?> deletedAt = const Value.absent(),
+    String? installId,
+    String? dayKey,
+    int? tzOffsetMinutes,
+    String? packageName,
+    int? startedAt,
+    int? endedAt,
+  }) => SpendSpanRow(
+    id: id ?? this.id,
+    updatedAt: updatedAt ?? this.updatedAt,
+    deletedAt: deletedAt.present ? deletedAt.value : this.deletedAt,
+    installId: installId ?? this.installId,
+    dayKey: dayKey ?? this.dayKey,
+    tzOffsetMinutes: tzOffsetMinutes ?? this.tzOffsetMinutes,
+    packageName: packageName ?? this.packageName,
+    startedAt: startedAt ?? this.startedAt,
+    endedAt: endedAt ?? this.endedAt,
+  );
+  SpendSpanRow copyWithCompanion(SpendSpansCompanion data) {
+    return SpendSpanRow(
+      id: data.id.present ? data.id.value : this.id,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+      deletedAt: data.deletedAt.present ? data.deletedAt.value : this.deletedAt,
+      installId: data.installId.present ? data.installId.value : this.installId,
+      dayKey: data.dayKey.present ? data.dayKey.value : this.dayKey,
+      tzOffsetMinutes: data.tzOffsetMinutes.present
+          ? data.tzOffsetMinutes.value
+          : this.tzOffsetMinutes,
+      packageName: data.packageName.present
+          ? data.packageName.value
+          : this.packageName,
+      startedAt: data.startedAt.present ? data.startedAt.value : this.startedAt,
+      endedAt: data.endedAt.present ? data.endedAt.value : this.endedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('SpendSpanRow(')
+          ..write('id: $id, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('deletedAt: $deletedAt, ')
+          ..write('installId: $installId, ')
+          ..write('dayKey: $dayKey, ')
+          ..write('tzOffsetMinutes: $tzOffsetMinutes, ')
+          ..write('packageName: $packageName, ')
+          ..write('startedAt: $startedAt, ')
+          ..write('endedAt: $endedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    updatedAt,
+    deletedAt,
+    installId,
+    dayKey,
+    tzOffsetMinutes,
+    packageName,
+    startedAt,
+    endedAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is SpendSpanRow &&
+          other.id == this.id &&
+          other.updatedAt == this.updatedAt &&
+          other.deletedAt == this.deletedAt &&
+          other.installId == this.installId &&
+          other.dayKey == this.dayKey &&
+          other.tzOffsetMinutes == this.tzOffsetMinutes &&
+          other.packageName == this.packageName &&
+          other.startedAt == this.startedAt &&
+          other.endedAt == this.endedAt);
+}
+
+class SpendSpansCompanion extends UpdateCompanion<SpendSpanRow> {
+  final Value<String> id;
+  final Value<int> updatedAt;
+  final Value<int?> deletedAt;
+  final Value<String> installId;
+  final Value<String> dayKey;
+  final Value<int> tzOffsetMinutes;
+  final Value<String> packageName;
+  final Value<int> startedAt;
+  final Value<int> endedAt;
+  final Value<int> rowid;
+  const SpendSpansCompanion({
+    this.id = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.deletedAt = const Value.absent(),
+    this.installId = const Value.absent(),
+    this.dayKey = const Value.absent(),
+    this.tzOffsetMinutes = const Value.absent(),
+    this.packageName = const Value.absent(),
+    this.startedAt = const Value.absent(),
+    this.endedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  SpendSpansCompanion.insert({
+    required String id,
+    required int updatedAt,
+    this.deletedAt = const Value.absent(),
+    required String installId,
+    required String dayKey,
+    required int tzOffsetMinutes,
+    required String packageName,
+    required int startedAt,
+    required int endedAt,
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       updatedAt = Value(updatedAt),
+       installId = Value(installId),
+       dayKey = Value(dayKey),
+       tzOffsetMinutes = Value(tzOffsetMinutes),
+       packageName = Value(packageName),
+       startedAt = Value(startedAt),
+       endedAt = Value(endedAt);
+  static Insertable<SpendSpanRow> custom({
+    Expression<String>? id,
+    Expression<int>? updatedAt,
+    Expression<int>? deletedAt,
+    Expression<String>? installId,
+    Expression<String>? dayKey,
+    Expression<int>? tzOffsetMinutes,
+    Expression<String>? packageName,
+    Expression<int>? startedAt,
+    Expression<int>? endedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (deletedAt != null) 'deleted_at': deletedAt,
+      if (installId != null) 'install_id': installId,
+      if (dayKey != null) 'day_key': dayKey,
+      if (tzOffsetMinutes != null) 'tz_offset_minutes': tzOffsetMinutes,
+      if (packageName != null) 'package_name': packageName,
+      if (startedAt != null) 'started_at': startedAt,
+      if (endedAt != null) 'ended_at': endedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  SpendSpansCompanion copyWith({
+    Value<String>? id,
+    Value<int>? updatedAt,
+    Value<int?>? deletedAt,
+    Value<String>? installId,
+    Value<String>? dayKey,
+    Value<int>? tzOffsetMinutes,
+    Value<String>? packageName,
+    Value<int>? startedAt,
+    Value<int>? endedAt,
+    Value<int>? rowid,
+  }) {
+    return SpendSpansCompanion(
+      id: id ?? this.id,
+      updatedAt: updatedAt ?? this.updatedAt,
+      deletedAt: deletedAt ?? this.deletedAt,
+      installId: installId ?? this.installId,
+      dayKey: dayKey ?? this.dayKey,
+      tzOffsetMinutes: tzOffsetMinutes ?? this.tzOffsetMinutes,
+      packageName: packageName ?? this.packageName,
+      startedAt: startedAt ?? this.startedAt,
+      endedAt: endedAt ?? this.endedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<int>(updatedAt.value);
+    }
+    if (deletedAt.present) {
+      map['deleted_at'] = Variable<int>(deletedAt.value);
+    }
+    if (installId.present) {
+      map['install_id'] = Variable<String>(installId.value);
+    }
+    if (dayKey.present) {
+      map['day_key'] = Variable<String>(dayKey.value);
+    }
+    if (tzOffsetMinutes.present) {
+      map['tz_offset_minutes'] = Variable<int>(tzOffsetMinutes.value);
+    }
+    if (packageName.present) {
+      map['package_name'] = Variable<String>(packageName.value);
+    }
+    if (startedAt.present) {
+      map['started_at'] = Variable<int>(startedAt.value);
+    }
+    if (endedAt.present) {
+      map['ended_at'] = Variable<int>(endedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('SpendSpansCompanion(')
+          ..write('id: $id, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('deletedAt: $deletedAt, ')
+          ..write('installId: $installId, ')
+          ..write('dayKey: $dayKey, ')
+          ..write('tzOffsetMinutes: $tzOffsetMinutes, ')
+          ..write('packageName: $packageName, ')
+          ..write('startedAt: $startedAt, ')
+          ..write('endedAt: $endedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 class $DaySpendTable extends DaySpend
-    with TableInfo<$DaySpendTable, DaySpendData> {
+    with TableInfo<$DaySpendTable, DaySpendRow> {
   @override
   final GeneratedDatabase attachedDatabase;
   final String? _alias;
@@ -4810,7 +5416,7 @@ class $DaySpendTable extends DaySpend
   static const String $name = 'day_spend';
   @override
   VerificationContext validateIntegrity(
-    Insertable<DaySpendData> instance, {
+    Insertable<DaySpendRow> instance, {
     bool isInserting = false,
   }) {
     final context = VerificationContext();
@@ -4886,9 +5492,9 @@ class $DaySpendTable extends DaySpend
   @override
   Set<GeneratedColumn> get $primaryKey => {id};
   @override
-  DaySpendData map(Map<String, dynamic> data, {String? tablePrefix}) {
+  DaySpendRow map(Map<String, dynamic> data, {String? tablePrefix}) {
     final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
-    return DaySpendData(
+    return DaySpendRow(
       id: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}id'],
@@ -4930,7 +5536,7 @@ class $DaySpendTable extends DaySpend
   }
 }
 
-class DaySpendData extends DataClass implements Insertable<DaySpendData> {
+class DaySpendRow extends DataClass implements Insertable<DaySpendRow> {
   /// UUID v7. **Never an autoincrement integer.**
   ///
   /// Two devices both minting `id = 47` cannot be merged, and merge is the
@@ -4963,7 +5569,7 @@ class DaySpendData extends DataClass implements Insertable<DaySpendData> {
   final int tzOffsetMinutes;
   final String packageName;
   final int seconds;
-  const DaySpendData({
+  const DaySpendRow({
     required this.id,
     required this.updatedAt,
     this.deletedAt,
@@ -5004,12 +5610,12 @@ class DaySpendData extends DataClass implements Insertable<DaySpendData> {
     );
   }
 
-  factory DaySpendData.fromJson(
+  factory DaySpendRow.fromJson(
     Map<String, dynamic> json, {
     ValueSerializer? serializer,
   }) {
     serializer ??= driftRuntimeOptions.defaultSerializer;
-    return DaySpendData(
+    return DaySpendRow(
       id: serializer.fromJson<String>(json['id']),
       updatedAt: serializer.fromJson<int>(json['updatedAt']),
       deletedAt: serializer.fromJson<int?>(json['deletedAt']),
@@ -5035,7 +5641,7 @@ class DaySpendData extends DataClass implements Insertable<DaySpendData> {
     };
   }
 
-  DaySpendData copyWith({
+  DaySpendRow copyWith({
     String? id,
     int? updatedAt,
     Value<int?> deletedAt = const Value.absent(),
@@ -5044,7 +5650,7 @@ class DaySpendData extends DataClass implements Insertable<DaySpendData> {
     int? tzOffsetMinutes,
     String? packageName,
     int? seconds,
-  }) => DaySpendData(
+  }) => DaySpendRow(
     id: id ?? this.id,
     updatedAt: updatedAt ?? this.updatedAt,
     deletedAt: deletedAt.present ? deletedAt.value : this.deletedAt,
@@ -5054,8 +5660,8 @@ class DaySpendData extends DataClass implements Insertable<DaySpendData> {
     packageName: packageName ?? this.packageName,
     seconds: seconds ?? this.seconds,
   );
-  DaySpendData copyWithCompanion(DaySpendCompanion data) {
-    return DaySpendData(
+  DaySpendRow copyWithCompanion(DaySpendCompanion data) {
+    return DaySpendRow(
       id: data.id.present ? data.id.value : this.id,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
       deletedAt: data.deletedAt.present ? data.deletedAt.value : this.deletedAt,
@@ -5073,7 +5679,7 @@ class DaySpendData extends DataClass implements Insertable<DaySpendData> {
 
   @override
   String toString() {
-    return (StringBuffer('DaySpendData(')
+    return (StringBuffer('DaySpendRow(')
           ..write('id: $id, ')
           ..write('updatedAt: $updatedAt, ')
           ..write('deletedAt: $deletedAt, ')
@@ -5100,7 +5706,7 @@ class DaySpendData extends DataClass implements Insertable<DaySpendData> {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      (other is DaySpendData &&
+      (other is DaySpendRow &&
           other.id == this.id &&
           other.updatedAt == this.updatedAt &&
           other.deletedAt == this.deletedAt &&
@@ -5111,7 +5717,7 @@ class DaySpendData extends DataClass implements Insertable<DaySpendData> {
           other.seconds == this.seconds);
 }
 
-class DaySpendCompanion extends UpdateCompanion<DaySpendData> {
+class DaySpendCompanion extends UpdateCompanion<DaySpendRow> {
   final Value<String> id;
   final Value<int> updatedAt;
   final Value<int?> deletedAt;
@@ -5149,7 +5755,7 @@ class DaySpendCompanion extends UpdateCompanion<DaySpendData> {
        tzOffsetMinutes = Value(tzOffsetMinutes),
        packageName = Value(packageName),
        seconds = Value(seconds);
-  static Insertable<DaySpendData> custom({
+  static Insertable<DaySpendRow> custom({
     Expression<String>? id,
     Expression<int>? updatedAt,
     Expression<int>? deletedAt,
@@ -5247,7 +5853,7 @@ class DaySpendCompanion extends UpdateCompanion<DaySpendData> {
   }
 }
 
-class $TreatsTable extends Treats with TableInfo<$TreatsTable, Treat> {
+class $TreatsTable extends Treats with TableInfo<$TreatsTable, TreatRow> {
   @override
   final GeneratedDatabase attachedDatabase;
   final String? _alias;
@@ -5374,7 +5980,7 @@ class $TreatsTable extends Treats with TableInfo<$TreatsTable, Treat> {
   static const String $name = 'treats';
   @override
   VerificationContext validateIntegrity(
-    Insertable<Treat> instance, {
+    Insertable<TreatRow> instance, {
     bool isInserting = false,
   }) {
     final context = VerificationContext();
@@ -5456,9 +6062,9 @@ class $TreatsTable extends Treats with TableInfo<$TreatsTable, Treat> {
   @override
   Set<GeneratedColumn> get $primaryKey => {id};
   @override
-  Treat map(Map<String, dynamic> data, {String? tablePrefix}) {
+  TreatRow map(Map<String, dynamic> data, {String? tablePrefix}) {
     final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
-    return Treat(
+    return TreatRow(
       id: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}id'],
@@ -5504,7 +6110,7 @@ class $TreatsTable extends Treats with TableInfo<$TreatsTable, Treat> {
   }
 }
 
-class Treat extends DataClass implements Insertable<Treat> {
+class TreatRow extends DataClass implements Insertable<TreatRow> {
   /// UUID v7. **Never an autoincrement integer.**
   ///
   /// Two devices both minting `id = 47` cannot be merged, and merge is the
@@ -5538,7 +6144,7 @@ class Treat extends DataClass implements Insertable<Treat> {
   final int minutesBurned;
   final String label;
   final String? note;
-  const Treat({
+  const TreatRow({
     required this.id,
     required this.updatedAt,
     this.deletedAt,
@@ -5584,12 +6190,12 @@ class Treat extends DataClass implements Insertable<Treat> {
     );
   }
 
-  factory Treat.fromJson(
+  factory TreatRow.fromJson(
     Map<String, dynamic> json, {
     ValueSerializer? serializer,
   }) {
     serializer ??= driftRuntimeOptions.defaultSerializer;
-    return Treat(
+    return TreatRow(
       id: serializer.fromJson<String>(json['id']),
       updatedAt: serializer.fromJson<int>(json['updatedAt']),
       deletedAt: serializer.fromJson<int?>(json['deletedAt']),
@@ -5617,7 +6223,7 @@ class Treat extends DataClass implements Insertable<Treat> {
     };
   }
 
-  Treat copyWith({
+  TreatRow copyWith({
     String? id,
     int? updatedAt,
     Value<int?> deletedAt = const Value.absent(),
@@ -5627,7 +6233,7 @@ class Treat extends DataClass implements Insertable<Treat> {
     int? minutesBurned,
     String? label,
     Value<String?> note = const Value.absent(),
-  }) => Treat(
+  }) => TreatRow(
     id: id ?? this.id,
     updatedAt: updatedAt ?? this.updatedAt,
     deletedAt: deletedAt.present ? deletedAt.value : this.deletedAt,
@@ -5638,8 +6244,8 @@ class Treat extends DataClass implements Insertable<Treat> {
     label: label ?? this.label,
     note: note.present ? note.value : this.note,
   );
-  Treat copyWithCompanion(TreatsCompanion data) {
-    return Treat(
+  TreatRow copyWithCompanion(TreatsCompanion data) {
+    return TreatRow(
       id: data.id.present ? data.id.value : this.id,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
       deletedAt: data.deletedAt.present ? data.deletedAt.value : this.deletedAt,
@@ -5658,7 +6264,7 @@ class Treat extends DataClass implements Insertable<Treat> {
 
   @override
   String toString() {
-    return (StringBuffer('Treat(')
+    return (StringBuffer('TreatRow(')
           ..write('id: $id, ')
           ..write('updatedAt: $updatedAt, ')
           ..write('deletedAt: $deletedAt, ')
@@ -5687,7 +6293,7 @@ class Treat extends DataClass implements Insertable<Treat> {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      (other is Treat &&
+      (other is TreatRow &&
           other.id == this.id &&
           other.updatedAt == this.updatedAt &&
           other.deletedAt == this.deletedAt &&
@@ -5699,7 +6305,7 @@ class Treat extends DataClass implements Insertable<Treat> {
           other.note == this.note);
 }
 
-class TreatsCompanion extends UpdateCompanion<Treat> {
+class TreatsCompanion extends UpdateCompanion<TreatRow> {
   final Value<String> id;
   final Value<int> updatedAt;
   final Value<int?> deletedAt;
@@ -5740,7 +6346,7 @@ class TreatsCompanion extends UpdateCompanion<Treat> {
        tzOffsetMinutes = Value(tzOffsetMinutes),
        minutesBurned = Value(minutesBurned),
        label = Value(label);
-  static Insertable<Treat> custom({
+  static Insertable<TreatRow> custom({
     Expression<String>? id,
     Expression<int>? updatedAt,
     Expression<int>? deletedAt,
@@ -5847,7 +6453,7 @@ class TreatsCompanion extends UpdateCompanion<Treat> {
 }
 
 class $SavingsTransfersTable extends SavingsTransfers
-    with TableInfo<$SavingsTransfersTable, SavingsTransfer> {
+    with TableInfo<$SavingsTransfersTable, SavingsTransferRow> {
   @override
   final GeneratedDatabase attachedDatabase;
   final String? _alias;
@@ -5969,7 +6575,7 @@ class $SavingsTransfersTable extends SavingsTransfers
   static const String $name = 'savings_transfers';
   @override
   VerificationContext validateIntegrity(
-    Insertable<SavingsTransfer> instance, {
+    Insertable<SavingsTransferRow> instance, {
     bool isInserting = false,
   }) {
     final context = VerificationContext();
@@ -6042,9 +6648,9 @@ class $SavingsTransfersTable extends SavingsTransfers
   @override
   Set<GeneratedColumn> get $primaryKey => {id};
   @override
-  SavingsTransfer map(Map<String, dynamic> data, {String? tablePrefix}) {
+  SavingsTransferRow map(Map<String, dynamic> data, {String? tablePrefix}) {
     final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
-    return SavingsTransfer(
+    return SavingsTransferRow(
       id: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}id'],
@@ -6086,7 +6692,8 @@ class $SavingsTransfersTable extends SavingsTransfers
   }
 }
 
-class SavingsTransfer extends DataClass implements Insertable<SavingsTransfer> {
+class SavingsTransferRow extends DataClass
+    implements Insertable<SavingsTransferRow> {
   /// UUID v7. **Never an autoincrement integer.**
   ///
   /// Two devices both minting `id = 47` cannot be merged, and merge is the
@@ -6122,7 +6729,7 @@ class SavingsTransfer extends DataClass implements Insertable<SavingsTransfer> {
   /// True moves balance into savings; false is a logged withdrawal covering a
   /// debt. There is no automatic bailout.
   final bool toSavings;
-  const SavingsTransfer({
+  const SavingsTransferRow({
     required this.id,
     required this.updatedAt,
     this.deletedAt,
@@ -6163,12 +6770,12 @@ class SavingsTransfer extends DataClass implements Insertable<SavingsTransfer> {
     );
   }
 
-  factory SavingsTransfer.fromJson(
+  factory SavingsTransferRow.fromJson(
     Map<String, dynamic> json, {
     ValueSerializer? serializer,
   }) {
     serializer ??= driftRuntimeOptions.defaultSerializer;
-    return SavingsTransfer(
+    return SavingsTransferRow(
       id: serializer.fromJson<String>(json['id']),
       updatedAt: serializer.fromJson<int>(json['updatedAt']),
       deletedAt: serializer.fromJson<int?>(json['deletedAt']),
@@ -6194,7 +6801,7 @@ class SavingsTransfer extends DataClass implements Insertable<SavingsTransfer> {
     };
   }
 
-  SavingsTransfer copyWith({
+  SavingsTransferRow copyWith({
     String? id,
     int? updatedAt,
     Value<int?> deletedAt = const Value.absent(),
@@ -6203,7 +6810,7 @@ class SavingsTransfer extends DataClass implements Insertable<SavingsTransfer> {
     int? tzOffsetMinutes,
     int? seconds,
     bool? toSavings,
-  }) => SavingsTransfer(
+  }) => SavingsTransferRow(
     id: id ?? this.id,
     updatedAt: updatedAt ?? this.updatedAt,
     deletedAt: deletedAt.present ? deletedAt.value : this.deletedAt,
@@ -6213,8 +6820,8 @@ class SavingsTransfer extends DataClass implements Insertable<SavingsTransfer> {
     seconds: seconds ?? this.seconds,
     toSavings: toSavings ?? this.toSavings,
   );
-  SavingsTransfer copyWithCompanion(SavingsTransfersCompanion data) {
-    return SavingsTransfer(
+  SavingsTransferRow copyWithCompanion(SavingsTransfersCompanion data) {
+    return SavingsTransferRow(
       id: data.id.present ? data.id.value : this.id,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
       deletedAt: data.deletedAt.present ? data.deletedAt.value : this.deletedAt,
@@ -6230,7 +6837,7 @@ class SavingsTransfer extends DataClass implements Insertable<SavingsTransfer> {
 
   @override
   String toString() {
-    return (StringBuffer('SavingsTransfer(')
+    return (StringBuffer('SavingsTransferRow(')
           ..write('id: $id, ')
           ..write('updatedAt: $updatedAt, ')
           ..write('deletedAt: $deletedAt, ')
@@ -6257,7 +6864,7 @@ class SavingsTransfer extends DataClass implements Insertable<SavingsTransfer> {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      (other is SavingsTransfer &&
+      (other is SavingsTransferRow &&
           other.id == this.id &&
           other.updatedAt == this.updatedAt &&
           other.deletedAt == this.deletedAt &&
@@ -6268,7 +6875,7 @@ class SavingsTransfer extends DataClass implements Insertable<SavingsTransfer> {
           other.toSavings == this.toSavings);
 }
 
-class SavingsTransfersCompanion extends UpdateCompanion<SavingsTransfer> {
+class SavingsTransfersCompanion extends UpdateCompanion<SavingsTransferRow> {
   final Value<String> id;
   final Value<int> updatedAt;
   final Value<int?> deletedAt;
@@ -6306,7 +6913,7 @@ class SavingsTransfersCompanion extends UpdateCompanion<SavingsTransfer> {
        tzOffsetMinutes = Value(tzOffsetMinutes),
        seconds = Value(seconds),
        toSavings = Value(toSavings);
-  static Insertable<SavingsTransfer> custom({
+  static Insertable<SavingsTransferRow> custom({
     Expression<String>? id,
     Expression<int>? updatedAt,
     Expression<int>? deletedAt,
@@ -6405,7 +7012,7 @@ class SavingsTransfersCompanion extends UpdateCompanion<SavingsTransfer> {
 }
 
 class $StickerStampsTable extends StickerStamps
-    with TableInfo<$StickerStampsTable, StickerStamp> {
+    with TableInfo<$StickerStampsTable, StickerStampRow> {
   @override
   final GeneratedDatabase attachedDatabase;
   final String? _alias;
@@ -6534,7 +7141,7 @@ class $StickerStampsTable extends StickerStamps
   static const String $name = 'sticker_stamps';
   @override
   VerificationContext validateIntegrity(
-    Insertable<StickerStamp> instance, {
+    Insertable<StickerStampRow> instance, {
     bool isInserting = false,
   }) {
     final context = VerificationContext();
@@ -6615,9 +7222,9 @@ class $StickerStampsTable extends StickerStamps
   @override
   Set<GeneratedColumn> get $primaryKey => {id};
   @override
-  StickerStamp map(Map<String, dynamic> data, {String? tablePrefix}) {
+  StickerStampRow map(Map<String, dynamic> data, {String? tablePrefix}) {
     final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
-    return StickerStamp(
+    return StickerStampRow(
       id: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}id'],
@@ -6663,7 +7270,7 @@ class $StickerStampsTable extends StickerStamps
   }
 }
 
-class StickerStamp extends DataClass implements Insertable<StickerStamp> {
+class StickerStampRow extends DataClass implements Insertable<StickerStampRow> {
   /// UUID v7. **Never an autoincrement integer.**
   ///
   /// Two devices both minting `id = 47` cannot be merged, and merge is the
@@ -6697,7 +7304,7 @@ class StickerStamp extends DataClass implements Insertable<StickerStamp> {
   final String stickerId;
   final String taskId;
   final int stampedAt;
-  const StickerStamp({
+  const StickerStampRow({
     required this.id,
     required this.updatedAt,
     this.deletedAt,
@@ -6741,12 +7348,12 @@ class StickerStamp extends DataClass implements Insertable<StickerStamp> {
     );
   }
 
-  factory StickerStamp.fromJson(
+  factory StickerStampRow.fromJson(
     Map<String, dynamic> json, {
     ValueSerializer? serializer,
   }) {
     serializer ??= driftRuntimeOptions.defaultSerializer;
-    return StickerStamp(
+    return StickerStampRow(
       id: serializer.fromJson<String>(json['id']),
       updatedAt: serializer.fromJson<int>(json['updatedAt']),
       deletedAt: serializer.fromJson<int?>(json['deletedAt']),
@@ -6774,7 +7381,7 @@ class StickerStamp extends DataClass implements Insertable<StickerStamp> {
     };
   }
 
-  StickerStamp copyWith({
+  StickerStampRow copyWith({
     String? id,
     int? updatedAt,
     Value<int?> deletedAt = const Value.absent(),
@@ -6784,7 +7391,7 @@ class StickerStamp extends DataClass implements Insertable<StickerStamp> {
     String? stickerId,
     String? taskId,
     int? stampedAt,
-  }) => StickerStamp(
+  }) => StickerStampRow(
     id: id ?? this.id,
     updatedAt: updatedAt ?? this.updatedAt,
     deletedAt: deletedAt.present ? deletedAt.value : this.deletedAt,
@@ -6795,8 +7402,8 @@ class StickerStamp extends DataClass implements Insertable<StickerStamp> {
     taskId: taskId ?? this.taskId,
     stampedAt: stampedAt ?? this.stampedAt,
   );
-  StickerStamp copyWithCompanion(StickerStampsCompanion data) {
-    return StickerStamp(
+  StickerStampRow copyWithCompanion(StickerStampsCompanion data) {
+    return StickerStampRow(
       id: data.id.present ? data.id.value : this.id,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
       deletedAt: data.deletedAt.present ? data.deletedAt.value : this.deletedAt,
@@ -6813,7 +7420,7 @@ class StickerStamp extends DataClass implements Insertable<StickerStamp> {
 
   @override
   String toString() {
-    return (StringBuffer('StickerStamp(')
+    return (StringBuffer('StickerStampRow(')
           ..write('id: $id, ')
           ..write('updatedAt: $updatedAt, ')
           ..write('deletedAt: $deletedAt, ')
@@ -6842,7 +7449,7 @@ class StickerStamp extends DataClass implements Insertable<StickerStamp> {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      (other is StickerStamp &&
+      (other is StickerStampRow &&
           other.id == this.id &&
           other.updatedAt == this.updatedAt &&
           other.deletedAt == this.deletedAt &&
@@ -6854,7 +7461,7 @@ class StickerStamp extends DataClass implements Insertable<StickerStamp> {
           other.stampedAt == this.stampedAt);
 }
 
-class StickerStampsCompanion extends UpdateCompanion<StickerStamp> {
+class StickerStampsCompanion extends UpdateCompanion<StickerStampRow> {
   final Value<String> id;
   final Value<int> updatedAt;
   final Value<int?> deletedAt;
@@ -6896,7 +7503,7 @@ class StickerStampsCompanion extends UpdateCompanion<StickerStamp> {
        stickerId = Value(stickerId),
        taskId = Value(taskId),
        stampedAt = Value(stampedAt);
-  static Insertable<StickerStamp> custom({
+  static Insertable<StickerStampRow> custom({
     Expression<String>? id,
     Expression<int>? updatedAt,
     Expression<int>? deletedAt,
@@ -9144,6 +9751,7 @@ abstract class _$TallyDatabase extends GeneratedDatabase {
     this,
   );
   late final $DayLedgerTable dayLedger = $DayLedgerTable(this);
+  late final $SpendSpansTable spendSpans = $SpendSpansTable(this);
   late final $DaySpendTable daySpend = $DaySpendTable(this);
   late final $TreatsTable treats = $TreatsTable(this);
   late final $SavingsTransfersTable savingsTransfers = $SavingsTransfersTable(
@@ -9167,6 +9775,7 @@ abstract class _$TallyDatabase extends GeneratedDatabase {
     watchedApps,
     usageCheckpoints,
     dayLedger,
+    spendSpans,
     daySpend,
     treats,
     savingsTransfers,
@@ -9425,14 +10034,14 @@ class $$TasksTableTableManager
         RootTableManager<
           _$TallyDatabase,
           $TasksTable,
-          Task,
+          TaskRow,
           $$TasksTableFilterComposer,
           $$TasksTableOrderingComposer,
           $$TasksTableAnnotationComposer,
           $$TasksTableCreateCompanionBuilder,
           $$TasksTableUpdateCompanionBuilder,
-          (Task, BaseReferences<_$TallyDatabase, $TasksTable, Task>),
-          Task,
+          (TaskRow, BaseReferences<_$TallyDatabase, $TasksTable, TaskRow>),
+          TaskRow,
           PrefetchHooks Function()
         > {
   $$TasksTableTableManager(_$TallyDatabase db, $TasksTable table)
@@ -9522,14 +10131,14 @@ typedef $$TasksTableProcessedTableManager =
     ProcessedTableManager<
       _$TallyDatabase,
       $TasksTable,
-      Task,
+      TaskRow,
       $$TasksTableFilterComposer,
       $$TasksTableOrderingComposer,
       $$TasksTableAnnotationComposer,
       $$TasksTableCreateCompanionBuilder,
       $$TasksTableUpdateCompanionBuilder,
-      (Task, BaseReferences<_$TallyDatabase, $TasksTable, Task>),
-      Task,
+      (TaskRow, BaseReferences<_$TallyDatabase, $TasksTable, TaskRow>),
+      TaskRow,
       PrefetchHooks Function()
     >;
 typedef $$ProjectsTableCreateCompanionBuilder =
@@ -9983,14 +10592,17 @@ class $$SessionsTableTableManager
         RootTableManager<
           _$TallyDatabase,
           $SessionsTable,
-          Session,
+          SessionRow,
           $$SessionsTableFilterComposer,
           $$SessionsTableOrderingComposer,
           $$SessionsTableAnnotationComposer,
           $$SessionsTableCreateCompanionBuilder,
           $$SessionsTableUpdateCompanionBuilder,
-          (Session, BaseReferences<_$TallyDatabase, $SessionsTable, Session>),
-          Session,
+          (
+            SessionRow,
+            BaseReferences<_$TallyDatabase, $SessionsTable, SessionRow>,
+          ),
+          SessionRow,
           PrefetchHooks Function()
         > {
   $$SessionsTableTableManager(_$TallyDatabase db, $SessionsTable table)
@@ -10068,14 +10680,14 @@ typedef $$SessionsTableProcessedTableManager =
     ProcessedTableManager<
       _$TallyDatabase,
       $SessionsTable,
-      Session,
+      SessionRow,
       $$SessionsTableFilterComposer,
       $$SessionsTableOrderingComposer,
       $$SessionsTableAnnotationComposer,
       $$SessionsTableCreateCompanionBuilder,
       $$SessionsTableUpdateCompanionBuilder,
-      (Session, BaseReferences<_$TallyDatabase, $SessionsTable, Session>),
-      Session,
+      (SessionRow, BaseReferences<_$TallyDatabase, $SessionsTable, SessionRow>),
+      SessionRow,
       PrefetchHooks Function()
     >;
 typedef $$PlanEntriesTableCreateCompanionBuilder =
@@ -10274,17 +10886,17 @@ class $$PlanEntriesTableTableManager
         RootTableManager<
           _$TallyDatabase,
           $PlanEntriesTable,
-          PlanEntry,
+          PlanEntryRow,
           $$PlanEntriesTableFilterComposer,
           $$PlanEntriesTableOrderingComposer,
           $$PlanEntriesTableAnnotationComposer,
           $$PlanEntriesTableCreateCompanionBuilder,
           $$PlanEntriesTableUpdateCompanionBuilder,
           (
-            PlanEntry,
-            BaseReferences<_$TallyDatabase, $PlanEntriesTable, PlanEntry>,
+            PlanEntryRow,
+            BaseReferences<_$TallyDatabase, $PlanEntriesTable, PlanEntryRow>,
           ),
-          PlanEntry,
+          PlanEntryRow,
           PrefetchHooks Function()
         > {
   $$PlanEntriesTableTableManager(_$TallyDatabase db, $PlanEntriesTable table)
@@ -10362,17 +10974,17 @@ typedef $$PlanEntriesTableProcessedTableManager =
     ProcessedTableManager<
       _$TallyDatabase,
       $PlanEntriesTable,
-      PlanEntry,
+      PlanEntryRow,
       $$PlanEntriesTableFilterComposer,
       $$PlanEntriesTableOrderingComposer,
       $$PlanEntriesTableAnnotationComposer,
       $$PlanEntriesTableCreateCompanionBuilder,
       $$PlanEntriesTableUpdateCompanionBuilder,
       (
-        PlanEntry,
-        BaseReferences<_$TallyDatabase, $PlanEntriesTable, PlanEntry>,
+        PlanEntryRow,
+        BaseReferences<_$TallyDatabase, $PlanEntriesTable, PlanEntryRow>,
       ),
-      PlanEntry,
+      PlanEntryRow,
       PrefetchHooks Function()
     >;
 typedef $$WatchedAppsTableCreateCompanionBuilder =
@@ -11315,6 +11927,286 @@ typedef $$DayLedgerTableProcessedTableManager =
       DayLedgerData,
       PrefetchHooks Function()
     >;
+typedef $$SpendSpansTableCreateCompanionBuilder =
+    SpendSpansCompanion Function({
+      required String id,
+      required int updatedAt,
+      Value<int?> deletedAt,
+      required String installId,
+      required String dayKey,
+      required int tzOffsetMinutes,
+      required String packageName,
+      required int startedAt,
+      required int endedAt,
+      Value<int> rowid,
+    });
+typedef $$SpendSpansTableUpdateCompanionBuilder =
+    SpendSpansCompanion Function({
+      Value<String> id,
+      Value<int> updatedAt,
+      Value<int?> deletedAt,
+      Value<String> installId,
+      Value<String> dayKey,
+      Value<int> tzOffsetMinutes,
+      Value<String> packageName,
+      Value<int> startedAt,
+      Value<int> endedAt,
+      Value<int> rowid,
+    });
+
+class $$SpendSpansTableFilterComposer
+    extends Composer<_$TallyDatabase, $SpendSpansTable> {
+  $$SpendSpansTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get deletedAt => $composableBuilder(
+    column: $table.deletedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get installId => $composableBuilder(
+    column: $table.installId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get dayKey => $composableBuilder(
+    column: $table.dayKey,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get tzOffsetMinutes => $composableBuilder(
+    column: $table.tzOffsetMinutes,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get packageName => $composableBuilder(
+    column: $table.packageName,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get startedAt => $composableBuilder(
+    column: $table.startedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get endedAt => $composableBuilder(
+    column: $table.endedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$SpendSpansTableOrderingComposer
+    extends Composer<_$TallyDatabase, $SpendSpansTable> {
+  $$SpendSpansTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get deletedAt => $composableBuilder(
+    column: $table.deletedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get installId => $composableBuilder(
+    column: $table.installId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get dayKey => $composableBuilder(
+    column: $table.dayKey,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get tzOffsetMinutes => $composableBuilder(
+    column: $table.tzOffsetMinutes,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get packageName => $composableBuilder(
+    column: $table.packageName,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get startedAt => $composableBuilder(
+    column: $table.startedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get endedAt => $composableBuilder(
+    column: $table.endedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$SpendSpansTableAnnotationComposer
+    extends Composer<_$TallyDatabase, $SpendSpansTable> {
+  $$SpendSpansTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<int> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+
+  GeneratedColumn<int> get deletedAt =>
+      $composableBuilder(column: $table.deletedAt, builder: (column) => column);
+
+  GeneratedColumn<String> get installId =>
+      $composableBuilder(column: $table.installId, builder: (column) => column);
+
+  GeneratedColumn<String> get dayKey =>
+      $composableBuilder(column: $table.dayKey, builder: (column) => column);
+
+  GeneratedColumn<int> get tzOffsetMinutes => $composableBuilder(
+    column: $table.tzOffsetMinutes,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get packageName => $composableBuilder(
+    column: $table.packageName,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get startedAt =>
+      $composableBuilder(column: $table.startedAt, builder: (column) => column);
+
+  GeneratedColumn<int> get endedAt =>
+      $composableBuilder(column: $table.endedAt, builder: (column) => column);
+}
+
+class $$SpendSpansTableTableManager
+    extends
+        RootTableManager<
+          _$TallyDatabase,
+          $SpendSpansTable,
+          SpendSpanRow,
+          $$SpendSpansTableFilterComposer,
+          $$SpendSpansTableOrderingComposer,
+          $$SpendSpansTableAnnotationComposer,
+          $$SpendSpansTableCreateCompanionBuilder,
+          $$SpendSpansTableUpdateCompanionBuilder,
+          (
+            SpendSpanRow,
+            BaseReferences<_$TallyDatabase, $SpendSpansTable, SpendSpanRow>,
+          ),
+          SpendSpanRow,
+          PrefetchHooks Function()
+        > {
+  $$SpendSpansTableTableManager(_$TallyDatabase db, $SpendSpansTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$SpendSpansTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$SpendSpansTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$SpendSpansTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<int> updatedAt = const Value.absent(),
+                Value<int?> deletedAt = const Value.absent(),
+                Value<String> installId = const Value.absent(),
+                Value<String> dayKey = const Value.absent(),
+                Value<int> tzOffsetMinutes = const Value.absent(),
+                Value<String> packageName = const Value.absent(),
+                Value<int> startedAt = const Value.absent(),
+                Value<int> endedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => SpendSpansCompanion(
+                id: id,
+                updatedAt: updatedAt,
+                deletedAt: deletedAt,
+                installId: installId,
+                dayKey: dayKey,
+                tzOffsetMinutes: tzOffsetMinutes,
+                packageName: packageName,
+                startedAt: startedAt,
+                endedAt: endedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required int updatedAt,
+                Value<int?> deletedAt = const Value.absent(),
+                required String installId,
+                required String dayKey,
+                required int tzOffsetMinutes,
+                required String packageName,
+                required int startedAt,
+                required int endedAt,
+                Value<int> rowid = const Value.absent(),
+              }) => SpendSpansCompanion.insert(
+                id: id,
+                updatedAt: updatedAt,
+                deletedAt: deletedAt,
+                installId: installId,
+                dayKey: dayKey,
+                tzOffsetMinutes: tzOffsetMinutes,
+                packageName: packageName,
+                startedAt: startedAt,
+                endedAt: endedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$SpendSpansTableProcessedTableManager =
+    ProcessedTableManager<
+      _$TallyDatabase,
+      $SpendSpansTable,
+      SpendSpanRow,
+      $$SpendSpansTableFilterComposer,
+      $$SpendSpansTableOrderingComposer,
+      $$SpendSpansTableAnnotationComposer,
+      $$SpendSpansTableCreateCompanionBuilder,
+      $$SpendSpansTableUpdateCompanionBuilder,
+      (
+        SpendSpanRow,
+        BaseReferences<_$TallyDatabase, $SpendSpansTable, SpendSpanRow>,
+      ),
+      SpendSpanRow,
+      PrefetchHooks Function()
+    >;
 typedef $$DaySpendTableCreateCompanionBuilder =
     DaySpendCompanion Function({
       required String id,
@@ -11483,17 +12375,17 @@ class $$DaySpendTableTableManager
         RootTableManager<
           _$TallyDatabase,
           $DaySpendTable,
-          DaySpendData,
+          DaySpendRow,
           $$DaySpendTableFilterComposer,
           $$DaySpendTableOrderingComposer,
           $$DaySpendTableAnnotationComposer,
           $$DaySpendTableCreateCompanionBuilder,
           $$DaySpendTableUpdateCompanionBuilder,
           (
-            DaySpendData,
-            BaseReferences<_$TallyDatabase, $DaySpendTable, DaySpendData>,
+            DaySpendRow,
+            BaseReferences<_$TallyDatabase, $DaySpendTable, DaySpendRow>,
           ),
-          DaySpendData,
+          DaySpendRow,
           PrefetchHooks Function()
         > {
   $$DaySpendTableTableManager(_$TallyDatabase db, $DaySpendTable table)
@@ -11563,17 +12455,17 @@ typedef $$DaySpendTableProcessedTableManager =
     ProcessedTableManager<
       _$TallyDatabase,
       $DaySpendTable,
-      DaySpendData,
+      DaySpendRow,
       $$DaySpendTableFilterComposer,
       $$DaySpendTableOrderingComposer,
       $$DaySpendTableAnnotationComposer,
       $$DaySpendTableCreateCompanionBuilder,
       $$DaySpendTableUpdateCompanionBuilder,
       (
-        DaySpendData,
-        BaseReferences<_$TallyDatabase, $DaySpendTable, DaySpendData>,
+        DaySpendRow,
+        BaseReferences<_$TallyDatabase, $DaySpendTable, DaySpendRow>,
       ),
-      DaySpendData,
+      DaySpendRow,
       PrefetchHooks Function()
     >;
 typedef $$TreatsTableCreateCompanionBuilder =
@@ -11759,14 +12651,14 @@ class $$TreatsTableTableManager
         RootTableManager<
           _$TallyDatabase,
           $TreatsTable,
-          Treat,
+          TreatRow,
           $$TreatsTableFilterComposer,
           $$TreatsTableOrderingComposer,
           $$TreatsTableAnnotationComposer,
           $$TreatsTableCreateCompanionBuilder,
           $$TreatsTableUpdateCompanionBuilder,
-          (Treat, BaseReferences<_$TallyDatabase, $TreatsTable, Treat>),
-          Treat,
+          (TreatRow, BaseReferences<_$TallyDatabase, $TreatsTable, TreatRow>),
+          TreatRow,
           PrefetchHooks Function()
         > {
   $$TreatsTableTableManager(_$TallyDatabase db, $TreatsTable table)
@@ -11840,14 +12732,14 @@ typedef $$TreatsTableProcessedTableManager =
     ProcessedTableManager<
       _$TallyDatabase,
       $TreatsTable,
-      Treat,
+      TreatRow,
       $$TreatsTableFilterComposer,
       $$TreatsTableOrderingComposer,
       $$TreatsTableAnnotationComposer,
       $$TreatsTableCreateCompanionBuilder,
       $$TreatsTableUpdateCompanionBuilder,
-      (Treat, BaseReferences<_$TallyDatabase, $TreatsTable, Treat>),
-      Treat,
+      (TreatRow, BaseReferences<_$TallyDatabase, $TreatsTable, TreatRow>),
+      TreatRow,
       PrefetchHooks Function()
     >;
 typedef $$SavingsTransfersTableCreateCompanionBuilder =
@@ -12016,21 +12908,21 @@ class $$SavingsTransfersTableTableManager
         RootTableManager<
           _$TallyDatabase,
           $SavingsTransfersTable,
-          SavingsTransfer,
+          SavingsTransferRow,
           $$SavingsTransfersTableFilterComposer,
           $$SavingsTransfersTableOrderingComposer,
           $$SavingsTransfersTableAnnotationComposer,
           $$SavingsTransfersTableCreateCompanionBuilder,
           $$SavingsTransfersTableUpdateCompanionBuilder,
           (
-            SavingsTransfer,
+            SavingsTransferRow,
             BaseReferences<
               _$TallyDatabase,
               $SavingsTransfersTable,
-              SavingsTransfer
+              SavingsTransferRow
             >,
           ),
-          SavingsTransfer,
+          SavingsTransferRow,
           PrefetchHooks Function()
         > {
   $$SavingsTransfersTableTableManager(
@@ -12102,21 +12994,21 @@ typedef $$SavingsTransfersTableProcessedTableManager =
     ProcessedTableManager<
       _$TallyDatabase,
       $SavingsTransfersTable,
-      SavingsTransfer,
+      SavingsTransferRow,
       $$SavingsTransfersTableFilterComposer,
       $$SavingsTransfersTableOrderingComposer,
       $$SavingsTransfersTableAnnotationComposer,
       $$SavingsTransfersTableCreateCompanionBuilder,
       $$SavingsTransfersTableUpdateCompanionBuilder,
       (
-        SavingsTransfer,
+        SavingsTransferRow,
         BaseReferences<
           _$TallyDatabase,
           $SavingsTransfersTable,
-          SavingsTransfer
+          SavingsTransferRow
         >,
       ),
-      SavingsTransfer,
+      SavingsTransferRow,
       PrefetchHooks Function()
     >;
 typedef $$StickerStampsTableCreateCompanionBuilder =
@@ -12300,17 +13192,21 @@ class $$StickerStampsTableTableManager
         RootTableManager<
           _$TallyDatabase,
           $StickerStampsTable,
-          StickerStamp,
+          StickerStampRow,
           $$StickerStampsTableFilterComposer,
           $$StickerStampsTableOrderingComposer,
           $$StickerStampsTableAnnotationComposer,
           $$StickerStampsTableCreateCompanionBuilder,
           $$StickerStampsTableUpdateCompanionBuilder,
           (
-            StickerStamp,
-            BaseReferences<_$TallyDatabase, $StickerStampsTable, StickerStamp>,
+            StickerStampRow,
+            BaseReferences<
+              _$TallyDatabase,
+              $StickerStampsTable,
+              StickerStampRow
+            >,
           ),
-          StickerStamp,
+          StickerStampRow,
           PrefetchHooks Function()
         > {
   $$StickerStampsTableTableManager(
@@ -12386,17 +13282,17 @@ typedef $$StickerStampsTableProcessedTableManager =
     ProcessedTableManager<
       _$TallyDatabase,
       $StickerStampsTable,
-      StickerStamp,
+      StickerStampRow,
       $$StickerStampsTableFilterComposer,
       $$StickerStampsTableOrderingComposer,
       $$StickerStampsTableAnnotationComposer,
       $$StickerStampsTableCreateCompanionBuilder,
       $$StickerStampsTableUpdateCompanionBuilder,
       (
-        StickerStamp,
-        BaseReferences<_$TallyDatabase, $StickerStampsTable, StickerStamp>,
+        StickerStampRow,
+        BaseReferences<_$TallyDatabase, $StickerStampsTable, StickerStampRow>,
       ),
-      StickerStamp,
+      StickerStampRow,
       PrefetchHooks Function()
     >;
 typedef $$GoalsTableCreateCompanionBuilder =
@@ -13434,6 +14330,8 @@ class $TallyDatabaseManager {
       $$UsageCheckpointsTableTableManager(_db, _db.usageCheckpoints);
   $$DayLedgerTableTableManager get dayLedger =>
       $$DayLedgerTableTableManager(_db, _db.dayLedger);
+  $$SpendSpansTableTableManager get spendSpans =>
+      $$SpendSpansTableTableManager(_db, _db.spendSpans);
   $$DaySpendTableTableManager get daySpend =>
       $$DaySpendTableTableManager(_db, _db.daySpend);
   $$TreatsTableTableManager get treats =>

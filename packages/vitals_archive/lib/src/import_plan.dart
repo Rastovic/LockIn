@@ -161,6 +161,9 @@ final class ImportPlanner {
 
 /// The outcome of verifying an import by recomputation.
 ///
+/// Named `ImportVerification` rather than `VerificationResult` because drift
+/// exports a type of that name and every app here uses drift.
+///
 /// After import, the engine is re-run over the imported raw inputs and compared
 /// against the imported derived rows. A mismatch **warns, imports the
 /// recomputed values, and logs** rather than refusing: the recomputed number is
@@ -168,8 +171,8 @@ final class ImportPlanner {
 ///
 /// In an app with a ledger this check is free, and it tests the exporter, the
 /// importer and the engine at once, on real user data.
-final class VerificationResult {
-  const VerificationResult({
+final class ImportVerification {
+  const ImportVerification({
     required this.checkedDays,
     required this.mismatchedDays,
   });

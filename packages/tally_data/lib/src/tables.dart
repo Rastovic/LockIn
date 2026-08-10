@@ -16,6 +16,7 @@ import 'package:drift/drift.dart';
 import 'package:vitals_archive/vitals_archive.dart';
 
 /// Habits, project tasks, dread tasks and one-offs.
+@DataClassName('TaskRow')
 class Tasks extends Table with PortableTable {
   /// `habit` / `projectTask` / `dread` / `oneoff`.
   TextColumn get kind => text()();
@@ -55,6 +56,7 @@ class Projects extends Table with PortableTable {
 }
 
 /// Completed focus blocks. **The only thing that earns minutes.**
+@DataClassName('SessionRow')
 class Sessions extends Table with PortableTable, DayScopedTable {
   TextColumn get taskId => text().nullable()();
 
@@ -71,6 +73,7 @@ class Sessions extends Table with PortableTable, DayScopedTable {
 }
 
 /// One day's plan. `today_plan` in the design docs.
+@DataClassName('PlanEntryRow')
 class PlanEntries extends Table with PortableTable, DayScopedTable {
   TextColumn get taskId => text()();
 
@@ -149,11 +152,36 @@ class DayLedger extends Table with PortableTable, DayScopedTable {
   Set<Column> get primaryKey => {id};
 }
 
-/// Spend attributed to one app on one day.
+/// Billable foreground time, with its real position in the day.
 ///
-/// Separate from [DayLedger] so the per-app breakdown can be excluded from an
-/// export without losing the day's totals: it names your apps and your worst
-/// numbers, so it defaults to off in the report builder.
+/// **The raw input the ledger recomputes from**, already merged so overlapping
+/// watched apps were charged once when the row was written.
+///
+/// Storing a per-day total instead would lose *when* the spend happened, and
+/// the ledger is order-sensitive: grace fires on a zero-crossing, so the same
+/// minutes spent before or after a focus session produce different balances.
+/// A day total would silently place every minute at the day's open, which is
+/// both wrong and wrong in the user's favour or against it depending on the
+/// day. `ledger_repository_test.dart` has the case that proves it.
+@DataClassName('SpendSpanRow')
+class SpendSpans extends Table with PortableTable, DayScopedTable {
+  TextColumn get packageName => text()();
+
+  IntColumn get startedAt => integer()();
+
+  IntColumn get endedAt => integer()();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
+/// Per-app spend for one day. **Derived from [SpendSpans].**
+///
+/// Exists so the Statement's per-app breakdown is one indexed read rather than
+/// a scan, and so that breakdown can be excluded from an export without losing
+/// the day's totals: it names your apps and your worst numbers, so it defaults
+/// to off in the report builder.
+@DataClassName('DaySpendRow')
 class DaySpend extends Table with PortableTable, DayScopedTable {
   TextColumn get packageName => text()();
 
@@ -164,6 +192,10 @@ class DaySpend extends Table with PortableTable, DayScopedTable {
 }
 
 /// Savings burned on something that is not a screen.
+///
+/// The row is `TreatRow`, not `Treat`: the domain type of that name lives in
+/// `tally_engine`, and a persistence row is not a domain object.
+@DataClassName('TreatRow')
 class Treats extends Table with PortableTable, DayScopedTable {
   IntColumn get minutesBurned => integer()();
 
@@ -176,6 +208,7 @@ class Treats extends Table with PortableTable, DayScopedTable {
 }
 
 /// Manual movement between balance and savings.
+@DataClassName('SavingsTransferRow')
 class SavingsTransfers extends Table with PortableTable, DayScopedTable {
   IntColumn get seconds => integer()();
 
@@ -190,6 +223,7 @@ class SavingsTransfers extends Table with PortableTable, DayScopedTable {
 /// One stamp per completed task. **Append-only, and never touches the ledger.**
 ///
 /// The second currency, kept separate in the schema rather than by convention.
+@DataClassName('StickerStampRow')
 class StickerStamps extends Table with PortableTable, DayScopedTable {
   TextColumn get stickerId => text()();
 

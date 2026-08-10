@@ -325,7 +325,7 @@ void main() {
 
   group('verification by recomputation', () {
     test('a clean result says so plainly', () {
-      const result = VerificationResult(checkedDays: 366, mismatchedDays: []);
+      const result = ImportVerification(checkedDays: 366, mismatchedDays: []);
       expect(result.isClean, isTrue);
       expect(result.message, 'Restored. Every day checked out.');
     });
@@ -333,7 +333,7 @@ void main() {
     test('a mismatch reports the count and what was done about it', () {
       // Warns, imports the recomputed values, logs. The recomputed number is
       // by definition the correct one, so refusing the import would be wrong.
-      const result = VerificationResult(
+      const result = ImportVerification(
         checkedDays: 366,
         mismatchedDays: ['2026-03-29', '2026-10-25'],
       );

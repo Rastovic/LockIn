@@ -19,6 +19,7 @@ part 'database.g.dart';
     WatchedApps,
     UsageCheckpoints,
     DayLedger,
+    SpendSpans,
     DaySpend,
     Treats,
     SavingsTransfers,
@@ -71,6 +72,7 @@ class TallyDatabase extends _$TallyDatabase {
       'CREATE INDEX IF NOT EXISTS idx_plan_entries_day '
           'ON plan_entries (day_key, sort_order)',
       'CREATE INDEX IF NOT EXISTS idx_day_spend_day ON day_spend (day_key)',
+      'CREATE INDEX IF NOT EXISTS idx_spend_spans_day ON spend_spans (day_key)',
       'CREATE INDEX IF NOT EXISTS idx_sticker_stamps_day '
           'ON sticker_stamps (day_key)',
       'CREATE INDEX IF NOT EXISTS idx_treats_day ON treats (day_key)',
