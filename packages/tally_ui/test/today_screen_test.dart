@@ -378,6 +378,57 @@ void main() {
     });
   });
 
+  group('Dynamic Type', () {
+    for (final scale in [1.0, 1.5, 2.0]) {
+      testWidgets('nothing overflows at ${scale}x text', (tester) async {
+        // DESIGN-SYSTEM.md requires support to 200%. A RenderFlex overflow
+        // throws in a test, so this fails loudly rather than shipping a
+        // clipped strip. Found by looking at a golden: the strip had a fixed
+        // height and the streak pill was already overflowing at 1x on a
+        // 390pt phone.
+        final tasks = [
+          task('Clear one surface', sticker: 'cleaning', estimate: 10),
+          task('Cancel one subscription', sticker: 'money', estimate: 10),
+        ];
+        final plan = planner.addToDay(
+          dayKey: today,
+          plan: const [],
+          taskIds: [for (final t in tasks) t.id],
+        );
+
+        tester.view.physicalSize = const Size(390, 800);
+        tester.view.devicePixelRatio = 1;
+        addTearDown(tester.view.reset);
+
+        await tester.pumpWidget(
+          MediaQuery(
+            data: MediaQueryData(textScaler: TextScaler.linear(scale)),
+            child: wrap(TodayScreen(model: modelFor(tasks, plan))),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        expect(tester.takeException(), isNull, reason: 'overflow at ${scale}x');
+      });
+    }
+
+    testWidgets('a long streak label does not clip the balance',
+        (tester) async {
+      // 365 solvent days is a real number someone will reach, and it is the
+      // widest this label ever gets.
+      await tester.pumpWidget(
+        wrap(
+          TodayScreen(
+            model: modelFor(const [], const [], streak: 365),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+      expect(find.text('42'), findsOneWidget);
+    });
+  });
+
   group('every theme renders the screen', () {
     for (final theme in TallyTheme.values) {
       testWidgets('${theme.name} builds without a hardcoded colour',

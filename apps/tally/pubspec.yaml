@@ -1,0 +1,23 @@
+name: tally
+description: Screen time you earned.
+publish_to: none
+version: 0.1.0+1
+resolution: workspace
+
+environment:
+  sdk: ^3.12.0
+
+dependencies:
+  flutter:
+    sdk: flutter
+  tally_engine: ^0.1.0
+  tally_ui: ^0.1.0
+  vitals_core: ^0.1.0
+
+dev_dependencies:
+  flutter_lints: ^5.0.0
+  flutter_test:
+    sdk: flutter
+
+flutter:
+  uses-material-design: true

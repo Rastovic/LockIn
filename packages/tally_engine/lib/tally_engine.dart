@@ -9,6 +9,7 @@
 library;
 
 export 'src/ledger_engine.dart';
+export 'src/generated/library_data.dart';
 export 'src/library.dart';
 export 'src/ledger_result.dart';
 export 'src/session.dart';

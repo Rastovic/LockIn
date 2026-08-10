@@ -15,3 +15,4 @@ workspace:
   - packages/tally_data
   - packages/vitals_notify
   - packages/tally_ui
+  - apps/tally

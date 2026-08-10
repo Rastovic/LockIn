@@ -362,3 +362,51 @@ dragging downwards; `onReorderItem` (Flutter 3.41+) reports a final position and
 is what `TodayPlanner.reorder` expects. Using the newer callback removes the
 correction entirely rather than hiding an off-by-one in the UI layer. The old
 one is deprecated, which is how this surfaced.
+
+## Testing does not involve Play at all
+
+Play is for distribution. Everything below runs the real app with no store, no
+account and no review:
+
+- `cd apps/tally && flutter run -d chrome` - the fastest look. Flutter draws its
+  own pixels, so a web build is a faithful preview of the layout.
+- `flutter run -d <emulator>` - a real Android device image.
+- `flutter run -d <phone>` over USB with developer mode on. This is the only way
+  to judge the live ticker, which is the signature interaction and the one thing
+  no static image can show.
+- `flutter build apk` then `adb install` - a real installable build, still no
+  store involved.
+- `flutter test --update-goldens --tags golden` then look at
+  `packages/tally_ui/test/goldens/`.
+
+`apps/tally` currently runs a preview harness rather than the shipping app:
+the real screens, driven by the real engines, over a fixed Tuesday instead of a
+database. Theme, brightness and balance state are switchable from a side panel
+on a wide window.
+
+## Goldens need a real font loaded or they are unreadable
+
+`flutter test` ships a placeholder font that draws every glyph as a filled box.
+That is fine for catching a moved pixel and useless for judging copy, which is
+what these images are for. `golden_test.dart` loads a system TTF in `setUpAll`
+and falls back silently when it is absent, so CI on another machine still gets a
+valid baseline.
+
+Emoji and Material icons still render as boxes, because the substituted font has
+neither. Not worth chasing: both render correctly on a device.
+
+## The day header overflowed, and a golden is what showed it
+
+The header was `Row(Text, Spacer, Text)`. Two unflexible children either side of
+a Spacer overflow rather than yield, so at 2x text it ran 266 pixels past the
+edge - and the striped overflow banner was visible in the very first golden.
+
+`DESIGN-SYSTEM.md` requires Dynamic Type to 200%, so this was a real defect
+rather than a test artifact. It is now a `Wrap`, which drops the planned total
+to a second line instead. `today_screen_test.dart` runs the screen at 1x, 1.5x
+and 2x and fails on any overflow, because a RenderFlex overflow throws in a
+test.
+
+The balance strip had the same shape and was fixed alongside it: the unit label
+and the streak pill are both `Flexible` now, and the strip has a minimum height
+rather than a fixed one.

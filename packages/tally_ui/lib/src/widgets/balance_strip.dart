@@ -61,8 +61,11 @@ class BalanceStrip extends StatelessWidget {
       child: GestureDetector(
         onTap: onTap,
         behavior: HitTestBehavior.opaque,
-        child: SizedBox(
-          height: 56,
+        child: ConstrainedBox(
+          // Grows rather than overflows when the user raises text size. The
+          // design system requires Dynamic Type to 200%, and a fixed height
+          // here clipped the streak pill long before that.
+          constraints: const BoxConstraints(minHeight: 56),
           child: Stack(
             children: [
               // The glow: a soft blurred field behind the number, taking the
@@ -76,6 +79,7 @@ class BalanceStrip extends StatelessWidget {
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 18),
                 child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Container(
                       width: 9,
@@ -91,11 +95,23 @@ class BalanceStrip extends StatelessWidget {
                       style: text.displayMedium?.copyWith(color: color),
                     ),
                     const SizedBox(width: 6),
-                    Text(label, style: text.labelMedium),
-                    const Spacer(),
-                    _StreakPill(
-                      streak: solvencyStreak,
-                      broken: state == BalanceState.borrowing,
+                    // The unit label yields first: it is the least informative
+                    // thing in the row, and the number and the streak both
+                    // carry meaning the user came for.
+                    Flexible(
+                      child: Text(
+                        label,
+                        style: text.labelMedium,
+                        overflow: TextOverflow.ellipsis,
+                        maxLines: 1,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Flexible(
+                      child: _StreakPill(
+                        streak: solvencyStreak,
+                        broken: state == BalanceState.borrowing,
+                      ),
                     ),
                   ],
                 ),
@@ -165,6 +181,9 @@ class _StreakPill extends StatelessWidget {
         // scolded.
         broken ? 'streak broken' : '$streak solvent days',
         style: Theme.of(context).textTheme.labelMedium,
+        overflow: TextOverflow.ellipsis,
+        maxLines: 1,
+        softWrap: false,
       ),
     );
   }

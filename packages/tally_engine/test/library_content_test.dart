@@ -59,6 +59,23 @@ void main() {
     });
   });
 
+  group('the generated copy matches the source', () {
+    test('same count, same ids, same copy', () {
+      // The JSON is the editable source and the Dart is what ships. Drift
+      // between them would mean an edit that never reached a user, so it is
+      // guarded rather than remembered.
+      expect(shippedLibrary.length, items.length);
+      expect(libraryVersion, parsed.version);
+      for (var i = 0; i < items.length; i++) {
+        expect(shippedLibrary[i].id, items[i].id);
+        expect(shippedLibrary[i].why, items[i].why);
+        expect(shippedLibrary[i].minutes, items[i].minutes);
+        expect(shippedLibrary[i].phoneDown, items[i].phoneDown);
+        expect(shippedLibrary[i].stickerId, items[i].stickerId);
+      }
+    });
+  });
+
   group('the shape of an item', () {
     test('every estimate is a real, finishable length', () {
       for (final item in items) {

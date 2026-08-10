@@ -88,20 +88,38 @@ class TodayScreen extends StatelessWidget {
             ),
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 12, 20, 10),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.baseline,
-                textBaseline: TextBaseline.alphabetic,
+              // Wrap rather than Row: at large text sizes the date and the
+              // planned total do not fit on one line, and a Spacer between two
+              // unflexible Texts overflows rather than yielding. This drops the
+              // total to a second line instead, which is the right answer for
+              // a header whose whole job is to be readable.
+              child: Wrap(
+                alignment: WrapAlignment.spaceBetween,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                spacing: 12,
+                runSpacing: 4,
                 children: [
-                  Text(
-                    model.dateLabel.toUpperCase(),
-                    style: text.labelSmall?.copyWith(color: tokens.inkMuted),
-                  ),
-                  const Spacer(),
-                  // The only feedback on an overloaded day. Stated, never
-                  // coloured, never capped.
-                  Text(
-                    '${view.plannedMinutes} min planned',
-                    style: text.labelMedium,
+                  SizedBox(
+                    width: double.infinity,
+                    child: Wrap(
+                      alignment: WrapAlignment.spaceBetween,
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      spacing: 12,
+                      runSpacing: 4,
+                      children: [
+                        Text(
+                          model.dateLabel.toUpperCase(),
+                          style: text.labelSmall
+                              ?.copyWith(color: tokens.inkMuted),
+                        ),
+                        // The only feedback on an overloaded day. Stated,
+                        // never coloured, never capped.
+                        Text(
+                          '${view.plannedMinutes} min planned',
+                          style: text.labelMedium,
+                        ),
+                      ],
+                    ),
                   ),
                 ],
               ),
