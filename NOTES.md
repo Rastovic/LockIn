@@ -243,3 +243,30 @@ optimised away later.
 - drift exports `isNull` and `isNotNull` as query builders, which shadow the
   matchers in every test importing both. Test files use
   `import 'package:drift/drift.dart' hide isNull, isNotNull;`.
+
+## The library's tone rules are tests, not intentions
+
+`library_content_test.dart` checks the shipped copy the way the code is
+checked: every reason is exactly one sentence, no exclamation marks anywhere,
+no self-help vocabulary from an explicit banned list ("journey", "mindset",
+"you've got this", "small wins"), no guilt vocabulary, no reason opening by
+addressing the reader, and every reason distinct.
+
+The plan is unusually strict about this - the library "is not a motivational
+quote engine and it ships zero quotes", and the voice is a friend with a
+spreadsheet. That kind of rule erodes one well-meaning edit at a time, and it
+erodes invisibly. Mechanising it costs an afternoon and holds for the life of
+the app.
+
+Two content rules that turned out to be correctness rules rather than style:
+
+- **Every suggested item uses a base sticker, never an unlockable one.** A
+  suggested task wearing a locked sticker shows an empty square on day one,
+  which reads as a broken app rather than as something to earn.
+- **No item is under the five minute earning floor.** An item that cannot earn
+  teaches the user that the timer does not work.
+
+There is also a test that runs the real picker over 365 days against the real
+library and asserts a suggestion is available on every one of them. Forty items
+against a thirty day repeat window is comfortable, but it is the kind of margin
+worth pinning rather than assuming.

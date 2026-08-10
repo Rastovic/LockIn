@@ -41,7 +41,75 @@ final class LibraryItem {
   String toString() => 'LibraryItem($id, "$title", ${minutes}m)';
 }
 
-enum LibraryCategory { home, body, mind, admin, craft }
+enum LibraryCategory {
+  home,
+  body,
+  mind,
+  admin,
+  craft;
+
+  static LibraryCategory? parse(String value) {
+    for (final category in values) {
+      if (category.name == value) return category;
+    }
+    return null;
+  }
+}
+
+/// Parses the shipped library asset.
+///
+/// Pure Dart, so the same code reads the file in a test and the bundled asset
+/// on either platform. The caller supplies the string; how it was obtained is
+/// the app's problem, not the engine's.
+///
+/// Malformed items are **skipped rather than thrown**, on the same reasoning as
+/// the archive reader: one bad entry should cost one suggestion, never the
+/// whole library and never a crash on launch.
+({List<LibraryItem> items, int version, List<String> skipped}) parseLibrary(
+  Map<String, Object?> json,
+) {
+  final version = json['version'] as int? ?? 0;
+  final raw = json['items'];
+  if (raw is! List) {
+    return (items: const [], version: version, skipped: const ['no items']);
+  }
+
+  final items = <LibraryItem>[];
+  final skipped = <String>[];
+  for (final entry in raw) {
+    if (entry is! Map<String, Object?>) {
+      skipped.add('not an object');
+      continue;
+    }
+    final id = entry['id'];
+    final title = entry['title'];
+    final why = entry['why'];
+    final minutes = entry['minutes'];
+    final category = LibraryCategory.parse(entry['category'] as String? ?? '');
+
+    if (id is! String ||
+        title is! String ||
+        why is! String ||
+        minutes is! int ||
+        category == null) {
+      skipped.add(id is String ? id : 'unnamed entry');
+      continue;
+    }
+
+    items.add(
+      LibraryItem(
+        id: id,
+        title: title,
+        category: category,
+        minutes: minutes,
+        why: why,
+        phoneDown: entry['phoneDown'] as bool? ?? false,
+        stickerId: entry['sticker'] as String?,
+      ),
+    );
+  }
+  return (items: items, version: version, skipped: skipped);
+}
 
 /// What happened the last time an item was offered.
 enum SuggestionOutcome { offered, accepted, dismissed }

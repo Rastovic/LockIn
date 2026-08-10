@@ -1,0 +1,370 @@
+{
+  "version": 1,
+  "note": "The discipline library. Every 'why' is one sentence stating a mechanism, never encouragement. This file ships with the app and is never fetched.",
+  "items": [
+    {
+      "id": "home_one_surface",
+      "title": "Clear one surface",
+      "category": "home",
+      "minutes": 10,
+      "sticker": "cleaning",
+      "phoneDown": false,
+      "why": "A clear surface changes how the whole room reads, which makes it the cheapest visible win in the flat."
+    },
+    {
+      "id": "home_dishes",
+      "title": "The dishes",
+      "category": "home",
+      "minutes": 15,
+      "sticker": "dishes",
+      "phoneDown": false,
+      "why": "Starting is the expensive part, and a sink you can see the bottom of stays empty longer."
+    },
+    {
+      "id": "home_one_drawer",
+      "title": "One drawer",
+      "category": "home",
+      "minutes": 15,
+      "sticker": "cleaning",
+      "phoneDown": false,
+      "why": "A drawer is small enough to finish in one sitting, which is what separates it from tidying the room."
+    },
+    {
+      "id": "home_laundry_away",
+      "title": "Put the clean pile away",
+      "category": "home",
+      "minutes": 10,
+      "sticker": "laundry",
+      "phoneDown": false,
+      "why": "Clean laundry that never gets put away charges you the same decision every morning."
+    },
+    {
+      "id": "home_sheets",
+      "title": "Change the sheets",
+      "category": "home",
+      "minutes": 15,
+      "sticker": "sleep",
+      "phoneDown": false,
+      "why": "It is a ten minute job that gets postponed for weeks, and the payoff lands the same night."
+    },
+    {
+      "id": "home_fridge",
+      "title": "Clear one fridge shelf",
+      "category": "home",
+      "minutes": 20,
+      "sticker": "cooking",
+      "phoneDown": false,
+      "why": "Food you are avoiding looking at is food you are not going to cook."
+    },
+    {
+      "id": "home_ten_things",
+      "title": "Find ten things to bin",
+      "category": "home",
+      "minutes": 15,
+      "sticker": "cleaning",
+      "phoneDown": false,
+      "why": "A fixed number turns an open-ended declutter into something with an end."
+    },
+    {
+      "id": "home_floor",
+      "title": "Clear the floor of one room",
+      "category": "home",
+      "minutes": 20,
+      "sticker": "cleaning",
+      "phoneDown": false,
+      "why": "Floor space is what your eye reads as mess, well before anything on the shelves."
+    },
+
+    {
+      "id": "body_walk",
+      "title": "Walk with no destination",
+      "category": "body",
+      "minutes": 20,
+      "sticker": "walk",
+      "phoneDown": true,
+      "why": "Twenty minutes outside changes how the evening feels, and it removes the step of deciding where to go."
+    },
+    {
+      "id": "body_stretch",
+      "title": "Stretch on the floor",
+      "category": "body",
+      "minutes": 10,
+      "sticker": "stretch",
+      "phoneDown": false,
+      "why": "Ten minutes undoes a little of what eight hours in a chair did."
+    },
+    {
+      "id": "body_pushups",
+      "title": "Twenty push-ups",
+      "category": "body",
+      "minutes": 5,
+      "sticker": "gym",
+      "phoneDown": false,
+      "why": "Short enough that the excuse has to be an honest one."
+    },
+    {
+      "id": "body_dishes_dance",
+      "title": "One album, one kitchen",
+      "category": "body",
+      "minutes": 15,
+      "sticker": "music",
+      "phoneDown": false,
+      "why": "Pairing a chore with music you like makes the chore the price of the music."
+    },
+    {
+      "id": "body_stairs",
+      "title": "Stairs",
+      "category": "body",
+      "minutes": 10,
+      "sticker": "gym",
+      "phoneDown": false,
+      "why": "No equipment and no commute, and it works whether you have ten minutes or thirty."
+    },
+    {
+      "id": "body_water",
+      "title": "Fill the water bottle",
+      "category": "body",
+      "minutes": 5,
+      "sticker": "selfcare",
+      "phoneDown": false,
+      "why": "Most of not drinking water is not having any within reach."
+    },
+    {
+      "id": "body_start_bed",
+      "title": "Start going to bed",
+      "category": "body",
+      "minutes": 15,
+      "sticker": "sleep",
+      "phoneDown": false,
+      "why": "The hard part is not sleeping, it is stopping, and stopping is a task like any other."
+    },
+    {
+      "id": "body_daylight",
+      "title": "Get outside before noon",
+      "category": "body",
+      "minutes": 15,
+      "sticker": "outdoors",
+      "phoneDown": true,
+      "why": "Morning light is the cheapest input to sleeping properly tonight."
+    },
+
+    {
+      "id": "mind_sit",
+      "title": "Sit with no phone",
+      "category": "mind",
+      "minutes": 10,
+      "sticker": "selfcare",
+      "phoneDown": true,
+      "why": "Ten minutes with nothing to look at is uncomfortable, and the discomfort is the exercise."
+    },
+    {
+      "id": "mind_read",
+      "title": "Read a real book",
+      "category": "mind",
+      "minutes": 20,
+      "sticker": "read",
+      "phoneDown": true,
+      "why": "A book you have to hold competes with nothing else for your hands."
+    },
+    {
+      "id": "mind_five_lines",
+      "title": "Write five lines about today",
+      "category": "mind",
+      "minutes": 10,
+      "sticker": "write",
+      "phoneDown": false,
+      "why": "Five lines is short enough that you will do it and long enough to show a pattern over a month."
+    },
+    {
+      "id": "mind_plan_tomorrow",
+      "title": "Plan tomorrow",
+      "category": "mind",
+      "minutes": 10,
+      "sticker": "write",
+      "phoneDown": false,
+      "why": "Deciding tonight makes tomorrow morning execution rather than negotiation."
+    },
+    {
+      "id": "mind_close_tabs",
+      "title": "Close the tabs",
+      "category": "mind",
+      "minutes": 10,
+      "sticker": "work",
+      "phoneDown": false,
+      "why": "An unread tab is a decision you already made and are still paying for."
+    },
+    {
+      "id": "mind_write_worry",
+      "title": "Write down what is bothering you",
+      "category": "mind",
+      "minutes": 10,
+      "sticker": "write",
+      "phoneDown": false,
+      "why": "A worry on paper has a specific size; a worry in your head does not."
+    },
+    {
+      "id": "mind_name_it",
+      "title": "Name the thing you are avoiding",
+      "category": "mind",
+      "minutes": 5,
+      "sticker": "write",
+      "phoneDown": false,
+      "why": "Writing it down costs nothing and is often the whole blockage."
+    },
+    {
+      "id": "mind_phone_away",
+      "title": "Phone in another room",
+      "category": "mind",
+      "minutes": 30,
+      "sticker": "selfcare",
+      "phoneDown": true,
+      "why": "Distance works where willpower does not, because the phone has to be fetched."
+    },
+
+    {
+      "id": "admin_the_email",
+      "title": "The email you are avoiding",
+      "category": "admin",
+      "minutes": 15,
+      "sticker": "admin",
+      "phoneDown": false,
+      "why": "It is almost always shorter to write than it has been to avoid."
+    },
+    {
+      "id": "admin_appointment",
+      "title": "Book the appointment",
+      "category": "admin",
+      "minutes": 10,
+      "sticker": "call",
+      "phoneDown": false,
+      "why": "The booking takes five minutes; the postponing has taken months."
+    },
+    {
+      "id": "admin_open_post",
+      "title": "Open the envelopes",
+      "category": "admin",
+      "minutes": 10,
+      "sticker": "admin",
+      "phoneDown": false,
+      "why": "Unopened post does not become less true, and most of it turns out to be nothing."
+    },
+    {
+      "id": "admin_cancel_sub",
+      "title": "Cancel one subscription",
+      "category": "admin",
+      "minutes": 10,
+      "sticker": "money",
+      "phoneDown": false,
+      "why": "One cancellation keeps paying you back every month with no further effort."
+    },
+    {
+      "id": "admin_backup_phone",
+      "title": "Back up your phone",
+      "category": "admin",
+      "minutes": 15,
+      "sticker": "admin",
+      "phoneDown": false,
+      "why": "The cost of skipping this is not gradual, it arrives all at once."
+    },
+    {
+      "id": "admin_check_balance",
+      "title": "Look at your balance",
+      "category": "admin",
+      "minutes": 10,
+      "sticker": "money",
+      "phoneDown": false,
+      "why": "Not looking does not change the number, it only delays knowing it."
+    },
+    {
+      "id": "admin_do_the_update",
+      "title": "Do the update it keeps asking about",
+      "category": "admin",
+      "minutes": 15,
+      "sticker": "admin",
+      "phoneDown": false,
+      "why": "A postponed update becomes a forced update at the worst possible moment."
+    },
+    {
+      "id": "admin_find_document",
+      "title": "Find the document before you need it",
+      "category": "admin",
+      "minutes": 20,
+      "sticker": "admin",
+      "phoneDown": false,
+      "why": "Looking for it now is calm, and looking for it later will not be."
+    },
+
+    {
+      "id": "craft_instrument",
+      "title": "Instrument",
+      "category": "craft",
+      "minutes": 20,
+      "sticker": "music",
+      "phoneDown": true,
+      "why": "Twenty minutes a day beats three hours on Sunday, because the hands remember frequency rather than duration."
+    },
+    {
+      "id": "craft_side_project",
+      "title": "The side project",
+      "category": "craft",
+      "minutes": 30,
+      "sticker": "creative",
+      "phoneDown": false,
+      "why": "Half an hour is enough to get back into it, and getting back in is what stops most restarts."
+    },
+    {
+      "id": "craft_language",
+      "title": "Ten minutes of the language",
+      "category": "craft",
+      "minutes": 10,
+      "sticker": "study",
+      "phoneDown": false,
+      "why": "Ten minutes daily is what actually moves a language, and it is small enough to survive a bad week."
+    },
+    {
+      "id": "craft_sketch",
+      "title": "Sketch one object",
+      "category": "craft",
+      "minutes": 15,
+      "sticker": "creative",
+      "phoneDown": true,
+      "why": "Drawing one thing badly is how drawing starts, and it needs no setup."
+    },
+    {
+      "id": "craft_200_words",
+      "title": "Write 200 words",
+      "category": "craft",
+      "minutes": 20,
+      "sticker": "write",
+      "phoneDown": false,
+      "why": "A word count can be finished in a way that working on the thing cannot."
+    },
+    {
+      "id": "craft_one_shortcut",
+      "title": "Learn one shortcut",
+      "category": "craft",
+      "minutes": 5,
+      "sticker": "work",
+      "phoneDown": false,
+      "why": "One shortcut a week compounds across every working day you have left."
+    },
+    {
+      "id": "craft_fix_annoyance",
+      "title": "Fix the thing that annoys you daily",
+      "category": "craft",
+      "minutes": 20,
+      "sticker": "work",
+      "phoneDown": false,
+      "why": "A small annoyance charges you attention every day until it is fixed once."
+    },
+    {
+      "id": "craft_tidy_project",
+      "title": "Tidy the project folder",
+      "category": "craft",
+      "minutes": 15,
+      "sticker": "work",
+      "phoneDown": false,
+      "why": "A folder you can navigate is the difference between starting next time and not."
+    }
+  ]
+}
