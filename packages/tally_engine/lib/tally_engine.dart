@@ -12,4 +12,6 @@ export 'src/ledger_engine.dart';
 export 'src/ledger_result.dart';
 export 'src/session.dart';
 export 'src/settings.dart';
+export 'src/task.dart';
+export 'src/today_planner.dart';
 export 'src/usage.dart';

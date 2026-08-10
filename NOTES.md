@@ -84,3 +84,29 @@ iOS, which has no equivalent API, supplies coarser spans built from
 Timezones enter through an `OffsetResolver` callback rather than a fixed number,
 so a DST transition is expressible in a test: on 2026-03-29 a European local day
 is 23 hours long and a ledger assuming 24 loses or double-counts an hour.
+
+## Spec contradiction found: the weekly challenge
+
+Tally's plan says under *Suggested tasks*: "**Weekly challenge:** accept and
+complete 3 suggested tasks in a week for a **bonus credit**." Credit means
+minutes.
+
+That predates settled decision 12, added when the app was rescoped: **ticking a
+task earns nothing, only timed focus earns.** A weekly challenge paying minutes
+for completing self-reported tasks reintroduces exactly the farmable path that
+decision closed.
+
+Resolved the way the rest of the design already assumes: **the weekly challenge
+pays a sticker, not minutes.** `ASSET-PROMPTS.md` already lists a `challenge`
+rosette with the rule "Complete the weekly challenge", so the sticker version
+was the intended one and the word "credit" is a leftover. The plan text needs
+correcting; nothing in code implements the minutes version.
+
+## The day layer cannot pay the ledger, by type
+
+`TodayPlanner` and `LedgerEngine` share no type that carries credit.
+`TodayView` exposes the user's own estimate in seconds and nothing creditable;
+`complete()` returns a `StickerStamp` or nothing. There is no code path from a
+checkbox to the balance because there is no vocabulary for one. That is cheaper
+to maintain than a test asserting a negative, though `today_planner_test.dart`
+asserts it too.
