@@ -298,3 +298,33 @@ Android 14's `SCHEDULE_EXACT_ALARM`. That permission needs a special-access
 grant and a Play declaration, nothing here needs second precision, and asking
 for exact alarms in order to nudge someone about scrolling would not survive
 review.
+
+## Blush had the exact failure its own rule was written to prevent
+
+The plan says: "which is why Blush's borrowing is a deep crimson and not another
+pink". Both Blush sets shipped a borrowing colour that was, in fact, another
+pink - `#FF6B85` in dark and `#A81B3B` in light, sitting 104 and 99 perceptual
+units from their own solvent colour. Close enough to be confused at a glance.
+
+Caught by the distinguishability test, and only after that test was fixed, which
+is the more interesting half:
+
+**The first version measured WCAG contrast, which is the wrong tool.** Contrast
+is a luminance ratio. Mint `#4FE3A1` and amber `#FFC24B` score 1.02 on it and
+are in no danger of being mistaken for one another. Contrast answers "can text
+be read on this ground"; it says nothing about whether two signal colours look
+alike. The test now uses a redmean perceptual distance with a floor of 120.
+
+Blush dark borrowing is now `#FF5252` (190 units) and Blush light `#B81E1E`
+(133). Both stay warm enough to belong to the palette while reading as red
+rather than pink. The light one matters more than the rest: Blush is the theme
+the store listing is shot in.
+
+## Theme changes animate, which hides token bugs in tests
+
+`MaterialApp` animates a `ThemeData` change, and `TallyTokens.lerp` swaps
+wholesale at the halfway point rather than blending. A widget test that reads a
+colour straight after `pumpWidget` therefore reads the *previous* theme's token
+and every theme looks identical. `pumpAndSettle` first. Worth knowing because
+the symptom - "all three themes render the same colour" - looks exactly like the
+hardcoded-colour bug the test was written to catch.

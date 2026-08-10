@@ -14,3 +14,4 @@ workspace:
   - packages/vitals_archive
   - packages/tally_data
   - packages/vitals_notify
+  - packages/tally_ui
