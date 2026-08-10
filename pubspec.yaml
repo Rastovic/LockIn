@@ -13,3 +13,4 @@ workspace:
   - packages/tally_engine
   - packages/vitals_archive
   - packages/tally_data
+  - packages/vitals_notify

@@ -270,3 +270,31 @@ There is also a test that runs the real picker over 365 days against the real
 library and asserts a suggestion is available on every one of them. Forty items
 against a thirty day repeat window is comfortable, but it is the kind of margin
 worth pinning rather than assuming.
+
+## Notification policy is pure; only one file touches the plugin
+
+`NudgePolicy` holds every rule worth arguing about - daily caps per kind,
+cooldowns by tag, quiet hours, what happens when permission is refused - and is
+pure Dart, so all of it is tested without a device. `LocalNotifier` is the only
+file importing `flutter_local_notifications`.
+
+Three rules that are easy to get wrong and are pinned by tests:
+
+- **A batch consumes its own budget as it goes.** Three nudges queued in one
+  reconcile would otherwise each check a cap none of them had consumed yet, and
+  all three would fire.
+- **The cap resets at the app's 04:00 day boundary, not at midnight.** A nudge
+  at 02:00 belongs to yesterday and must not get a fresh budget.
+- **Quiet hours crossing midnight is one window, not two**, and it is judged in
+  local time. Judging by UTC would nudge someone at midnight in one zone and
+  treat 21:00 as quiet in another.
+
+A reminder the user scheduled is never capped, never held for quiet hours and
+never deduplicated. Silently dropping something someone explicitly set is a
+broken app, not a considerate one.
+
+Android scheduling uses `inexactAllowWhileIdle`, which keeps the app off
+Android 14's `SCHEDULE_EXACT_ALARM`. That permission needs a special-access
+grant and a Play declaration, nothing here needs second precision, and asking
+for exact alarms in order to nudge someone about scrolling would not survive
+review.
