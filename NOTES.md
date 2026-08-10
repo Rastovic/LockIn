@@ -56,3 +56,31 @@ carry an explicit `sortOrder`; rows needing a time carry an explicit timestamp.
 28 to 30 March, because that local span is 47 hours. A day key is a calendar
 label rather than an instant, so `parseDayKey`, `addDays` and `daysBetween` all
 work in UTC. The DST test in `day_key_test.dart` is the regression guard.
+
+## Two ledger facts the tests pinned down
+
+Both were found by writing the test before trusting the arithmetic.
+
+**A 120-minute binge takes two days of allowance to clear, not one.** Spend
+120: 30 allowance, 5 grace, then debt, floored at -60. The next day's 30-minute
+allowance leaves -30, and only the day after closes at zero. So the solvency
+streak stays broken for two days. That is the intended cost of a bad night, and
+`ledger_engine_test.dart` asserts the whole three-day shape rather than just the
+first day.
+
+**Spendable minutes floor towards negative infinity, never towards zero.**
+90 seconds of debt displays as -2 minutes, not -1. Rounding a debt towards zero
+flatters the number, which is the one thing this app must never do.
+
+## LedgerEngine lives in a pure Dart package
+
+`packages/tally_engine` has no Flutter and no plugin dependency at all. Tally's
+plan says "the engine imports nothing platform-specific, ever"; putting it in a
+package that *cannot* import Flutter makes that structural instead of
+remembered. Android supplies spend as `UsageSpan`s from `UsageStatsManager`;
+iOS, which has no equivalent API, supplies coarser spans built from
+`DeviceActivityMonitor` threshold callbacks. Neither is visible from the engine.
+
+Timezones enter through an `OffsetResolver` callback rather than a fixed number,
+so a DST transition is expressible in a test: on 2026-03-29 a European local day
+is 23 hours long and a ledger assuming 24 loses or double-counts an hour.
