@@ -328,3 +328,37 @@ colour straight after `pumpWidget` therefore reads the *previous* theme's token
 and every theme looks identical. `pumpAndSettle` first. Worth knowing because
 the symptom - "all three themes render the same colour" - looks exactly like the
 hardcoded-colour bug the test was written to catch.
+
+## Row layout and the done control, revised at review
+
+Both controls now sit together on the right: grip, sticker, title, estimate,
+then the done dot and the play button. Grouping them lets the sticker and title
+read as one unit starting near the left edge.
+
+The done control lost its tick glyph. The row already says done three ways -
+the title is struck through, dimmed, and the sticker has stamped - so a check
+mark was a fourth signal and the loudest of them. It is now a 1px ring that
+fills solid. **A plan should not read like a form.**
+
+Hit targets stayed at 44pt around 16pt visuals. Making a control quieter must
+not make it harder to hit.
+
+## Semantics with text children swallow their own label
+
+`_OfferedHabit` wrapped a `Semantics(button: true, label: ...)` around a row
+containing `Text` widgets. The Text nodes produce their own semantics, which
+compete with the parent's label, and `find.bySemanticsLabel` found nothing -
+meaning a screen reader would not have found the button either.
+
+Fixed with `excludeSemantics: true`, which is correct here because the label
+fully describes the control and the visible text is redundant with it. Worth
+remembering: a Semantics label on a container of text is not automatically the
+node a screen reader lands on.
+
+## ReorderableListView.onReorder reports an insertion index
+
+`onReorder` gives a destination one higher than the final position when
+dragging downwards; `onReorderItem` (Flutter 3.41+) reports a final position and
+is what `TodayPlanner.reorder` expects. Using the newer callback removes the
+correction entirely rather than hiding an off-by-one in the UI layer. The old
+one is deprecated, which is how this surfaced.

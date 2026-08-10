@@ -357,7 +357,7 @@ void main() {
         ),
       );
 
-      await tester.tap(find.bySemanticsLabel('Mark done'));
+      await tester.tap(find.bySemanticsLabel('Mark Clear one surface done'));
       await tester.tap(
         find.bySemanticsLabel('Start a focus session on Clear one surface'),
       );
@@ -378,7 +378,7 @@ void main() {
         ),
       );
 
-      for (final label in ['Mark done', 'Start a focus session on Gym']) {
+      for (final label in ['Mark Gym done', 'Start a focus session on Gym']) {
         final size = tester.getSize(find.bySemanticsLabel(label));
         expect(size.width, greaterThanOrEqualTo(44), reason: label);
         expect(size.height, greaterThanOrEqualTo(44), reason: label);

@@ -5,9 +5,13 @@ import 'sticker_chip.dart';
 
 /// One row of today's plan.
 ///
-/// Drag to reorder, tick to complete, and a play button that starts a focus
-/// session on this task. **Ticking earns nothing** - it stamps the sticker, and
-/// that separation is enforced all the way down in the engine.
+/// Layout, settled at review on 2026-08-10: grip, sticker, title, estimate,
+/// then **both controls grouped on the right**. Grouping them lets the sticker
+/// and title read as one unit starting near the left edge, and keeps every
+/// tappable thing in one place.
+///
+/// **Ticking earns nothing.** It stamps the sticker, and that separation is
+/// enforced all the way down in the engine.
 class TaskRow extends StatelessWidget {
   const TaskRow({
     required this.title,
@@ -46,47 +50,13 @@ class TaskRow extends StatelessWidget {
           color: tokens.surface,
           borderRadius: BorderRadius.circular(14),
         ),
-        padding: const EdgeInsets.fromLTRB(8, 10, 12, 10),
+        padding: const EdgeInsets.fromLTRB(8, 6, 6, 6),
         child: Row(
           children: [
-            if (showGrip)
+            if (showGrip) ...[
               Icon(Icons.drag_indicator, size: 16, color: tokens.inkFaint),
-            // A 44pt hit target around a 19pt circle: the accessibility floor
-            // is not negotiable, and this is the most-tapped control here.
-            Semantics(
-              button: true,
-              label: done ? 'Mark not done' : 'Mark done',
-              child: GestureDetector(
-                onTap: onToggle,
-                behavior: HitTestBehavior.opaque,
-                child: SizedBox(
-                  width: 44,
-                  height: 44,
-                  child: Center(
-                    child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 160),
-                      width: 19,
-                      height: 19,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: done
-                            ? tokens.states.solvent
-                            : const Color(0x00000000),
-                        border: Border.all(
-                          color: done
-                              ? tokens.states.solvent
-                              : tokens.inkFaint,
-                          width: 1.5,
-                        ),
-                      ),
-                      child: done
-                          ? Icon(Icons.check, size: 13, color: tokens.bg)
-                          : null,
-                    ),
-                  ),
-                ),
-              ),
-            ),
+              const SizedBox(width: 4),
+            ],
             if (stickerId != null) ...[
               StickerChip(stickerId: stickerId!, stamped: done),
               const SizedBox(width: 10),
@@ -100,15 +70,15 @@ class TaskRow extends StatelessWidget {
                     title,
                     style: text.bodyLarge?.copyWith(
                       color: done ? tokens.inkFaint : tokens.ink,
-                      decoration:
-                          done ? TextDecoration.lineThrough : TextDecoration.none,
+                      decoration: done
+                          ? TextDecoration.lineThrough
+                          : TextDecoration.none,
                       decorationColor: tokens.inkFaint,
                     ),
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                   ),
-                  if (subtitle != null)
-                    Text(subtitle!, style: text.labelMedium),
+                  if (subtitle != null) Text(subtitle!, style: text.labelMedium),
                 ],
               ),
             ),
@@ -116,37 +86,100 @@ class TaskRow extends StatelessWidget {
               const SizedBox(width: 8),
               Text('${estimateMinutes}m', style: text.labelMedium),
             ],
-            if (onStartFocus != null) ...[
-              const SizedBox(width: 8),
-              Semantics(
-                button: true,
-                label: 'Start a focus session on $title',
-                child: GestureDetector(
-                  onTap: onStartFocus,
-                  behavior: HitTestBehavior.opaque,
-                  child: SizedBox(
-                    width: 44,
-                    height: 44,
-                    child: Center(
-                      child: Container(
-                        width: 26,
-                        height: 26,
-                        decoration: BoxDecoration(
-                          color: tokens.surfaceStrong,
-                          shape: BoxShape.circle,
-                        ),
-                        child: Icon(
-                          Icons.play_arrow_rounded,
-                          size: 16,
-                          color: tokens.inkMuted,
-                        ),
-                      ),
-                    ),
-                  ),
+            const SizedBox(width: 6),
+            _DoneDot(done: done, onTap: onToggle, title: title),
+            if (onStartFocus != null)
+              _PlayButton(onTap: onStartFocus!, title: title),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// The completion control.
+///
+/// **Deliberately quiet.** Settled at review: a thin ring that fills solid, with
+/// no tick glyph inside. The row already says done three other ways - the title
+/// is struck through, dimmed, and the sticker has stamped - so a check mark was
+/// a fourth signal and the loudest of them. A plan should not read like a form.
+class _DoneDot extends StatelessWidget {
+  const _DoneDot({required this.done, required this.onTap, required this.title});
+
+  final bool done;
+  final VoidCallback? onTap;
+  final String title;
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.tokens;
+
+    return Semantics(
+      button: true,
+      label: done ? 'Mark $title not done' : 'Mark $title done',
+      child: GestureDetector(
+        onTap: onTap,
+        behavior: HitTestBehavior.opaque,
+        // 44pt around a 16pt visual. The floor is not negotiable, and this is
+        // the most-tapped control in the app.
+        child: SizedBox(
+          width: 44,
+          height: 44,
+          child: Center(
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 160),
+              curve: Curves.easeOut,
+              width: 16,
+              height: 16,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: done ? tokens.states.solvent : const Color(0x00000000),
+                border: Border.all(
+                  color: done ? tokens.states.solvent : tokens.inkFaint,
+                  width: 1,
                 ),
               ),
-            ],
-          ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _PlayButton extends StatelessWidget {
+  const _PlayButton({required this.onTap, required this.title});
+
+  final VoidCallback onTap;
+  final String title;
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.tokens;
+    return Semantics(
+      button: true,
+      label: 'Start a focus session on $title',
+      child: GestureDetector(
+        onTap: onTap,
+        behavior: HitTestBehavior.opaque,
+        child: SizedBox(
+          width: 44,
+          height: 44,
+          child: Center(
+            child: Container(
+              width: 26,
+              height: 26,
+              decoration: BoxDecoration(
+                color: tokens.surfaceStrong,
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                Icons.play_arrow_rounded,
+                size: 16,
+                color: tokens.inkMuted,
+              ),
+            ),
+          ),
         ),
       ),
     );
