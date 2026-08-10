@@ -147,3 +147,29 @@ Fixed by granting the host terminal (iTerm) access under System Settings ->
 Privacy & Security -> Files & Folders. Nothing was lost: the files were already
 written and the suite was green before the block. Worth knowing if it recurs,
 because the failure looks like disk corruption and is not.
+
+## `vitals_archive` is pure Dart; the SAF wrappers are not in it
+
+`DATA-PORTABILITY.md` lists SAF create/open-document wrappers as part of this
+package. Those need Flutter. Keeping the package pure Dart means the whole read
+path, the conflict rule, the checksum verification and the import preview are
+testable without a device or an emulator, which is most of the risk. The
+document-picker layer will sit above it as a thin Flutter shim, and on iOS that
+same shim is `UIDocumentPicker` with no change below it.
+
+## ZipDecoder does not throw on arbitrary bytes
+
+It returns an empty archive. Caught by the "random bytes are not mistaken for a
+backup" test: the file was correctly refused, but with `missingFile` and the
+message "this backup has no manifest". For a user who picked a photo by
+mistake, that reads as data loss rather than as the wrong file. `ArchiveReader`
+now treats a zip containing zero files as malformed.
+
+## Conflict resolution has a deterministic tiebreak
+
+Last-writer-wins on `updatedAt`, tombstone wins a tie. A true tie between two
+live rows with the same `updatedAt` breaks on `installId`, so two devices
+merging the same pair in opposite order converge on the same answer rather than
+ping-ponging forever. This matters only for merge-mode import and a future
+`POST /sync`, neither of which ships in v1, but the rule has to be decided
+before rows are written or the data cannot support it later.

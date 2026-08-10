@@ -11,3 +11,4 @@ workspace:
   - packages/vitals_core
   - packages/vitals_ui
   - packages/tally_engine
+  - packages/vitals_archive
