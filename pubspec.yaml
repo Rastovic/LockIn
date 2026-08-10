@@ -1,0 +1,12 @@
+name: vitals_workspace
+description: Shared packages and apps for the Vitals portfolio.
+publish_to: none
+
+environment:
+  sdk: ^3.12.0
+
+# Native Dart pub workspace. `flutter pub get` here resolves every package below
+# against one shared lockfile. See NOTES.md for why this replaced `melos bootstrap`.
+workspace:
+  - packages/vitals_core
+  - packages/vitals_ui
