@@ -173,3 +173,39 @@ merging the same pair in opposite order converge on the same answer rather than
 ping-ponging forever. This matters only for merge-mode import and a future
 `POST /sync`, neither of which ships in v1, but the rule has to be decided
 before rows are written or the data cannot support it later.
+
+## drift_dev is pinned below 2.34.1, and the reason is the workspace
+
+From 2.34.1, `drift_dev` requires `analyzer ^13.0.0`. The Flutter SDK pins
+`flutter_test -> test_api 0.7.11`, which caps `test` at a version needing
+`analyzer <13`. A pub workspace has **one shared resolution**, so one package's
+build-time dependency can break every other package's tests.
+
+`drift_dev: '>=2.33.0 <2.34.1'` is the last version on the compatible side.
+Revisit when Flutter's bundled `flutter_test` moves to analyzer 13; the runtime
+`drift` dependency is unconstrained and stays current.
+
+## `Meta` is not a usable drift table name
+
+A table class called `Meta` fails codegen with "the referenced element, Meta, is
+not understood by drift" - it collides with the annotation class in
+`package:meta`. Renamed to `AppMeta` with `@DataClassName('AppMetaRow')`; the
+SQL table is still `meta`, so the archive format is unaffected.
+
+Also: in a drift table file the `library;` directive must come **before** the
+imports, or the analyzer rejects the file with a message that does not mention
+directive order.
+
+## The import preview was looking for the wrong column name
+
+`ImportPlanner.preview` searched rows for a `dayKey` column. Drift writes
+`day_key`. The synthetic archive tests hand-wrote `dayKey` and passed, so the
+bug only surfaced in the first test that exported a real database.
+
+The effect was silent and bad: the date range vanished from the confirmation
+sheet, so the user would have been asked to confirm wiping their history with no
+statement of what period was about to be replaced. It now accepts both names.
+
+Worth remembering as a pattern - the unit tests agreed with each other because
+they shared my wrong assumption. Only the round-trip against a real schema
+disagreed.

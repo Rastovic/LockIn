@@ -74,10 +74,19 @@ final class ImportPreview {
 final class ImportPlanner {
   const ImportPlanner();
 
+  /// Column names a day key can arrive under.
+  ///
+  /// Drift writes `day_key`; a hand-built archive or a future JSON producer may
+  /// write `dayKey`. Accepting both is not politeness: the date range is the
+  /// load-bearing sentence on the confirmation sheet, and looking for the wrong
+  /// name loses it **silently**, leaving the user to confirm a wipe with no
+  /// idea what period they are about to replace.
+  static const dayKeyColumns = ['day_key', 'dayKey'];
+
   ImportPreview preview(
     ArchiveContents contents, {
     ImportMode mode = ImportMode.replace,
-    String dayKeyColumn = 'dayKey',
+    List<String> dayKeyColumnNames = dayKeyColumns,
   }) {
     final counts = {
       for (final entry in contents.tables.entries)
@@ -88,10 +97,13 @@ final class ImportPlanner {
     String? latest;
     for (final table in contents.tables.values) {
       for (final row in table.rows) {
-        final day = row[dayKeyColumn];
-        if (day is! String || day.length != 10) continue;
-        if (earliest == null || day.compareTo(earliest) < 0) earliest = day;
-        if (latest == null || day.compareTo(latest) > 0) latest = day;
+        for (final column in dayKeyColumnNames) {
+          final day = row[column];
+          if (day is! String || day.length != 10) continue;
+          if (earliest == null || day.compareTo(earliest) < 0) earliest = day;
+          if (latest == null || day.compareTo(latest) > 0) latest = day;
+          break;
+        }
       }
     }
 

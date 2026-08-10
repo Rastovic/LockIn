@@ -1,0 +1,26 @@
+name: tally_data
+description: Tally's drift schema. Portable by construction, per DATA-PORTABILITY.md.
+version: 0.1.0
+publish_to: none
+resolution: workspace
+
+environment:
+  sdk: ^3.12.0
+
+dependencies:
+  drift: ^2.34.3
+  tally_engine: ^0.1.0
+  vitals_archive: ^0.1.0
+  vitals_core: ^0.1.0
+
+dev_dependencies:
+  build_runner: ^2.4.13
+  # Pinned below 2.34.1 deliberately. From 2.34.1 drift_dev requires
+  # analyzer ^13, while the Flutter SDK pins flutter_test -> test_api 0.7.11,
+  # which caps the workspace at analyzer <13. One shared resolution means one
+  # package's build-time dependency can break every other package's tests.
+  # See NOTES.md.
+  drift_dev: '>=2.33.0 <2.34.1'
+  lints: ^5.0.0
+  sqlite3: ^3.4.0
+  test: ^1.25.0
