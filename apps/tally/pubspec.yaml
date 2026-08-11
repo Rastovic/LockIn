@@ -14,6 +14,7 @@ dependencies:
   # 0.3.x is the first line on sqlite3 3.x, which tally_data already needs.
   drift_flutter: ^0.3.1
   path_provider: ^2.1.5
+  share_plus: ^12.0.0
   shared_preferences: ^2.3.3
   tally_data: ^0.1.0
   tally_engine: ^0.1.0

@@ -794,3 +794,33 @@ Both charts are bar series, which is one of the three kinds section 4 of
 `DESIGN-SYSTEM.md` allows. The instruction there is explicit - "only three
 kinds, don't invent more" - so the histogram is a bar series with fewer labels
 rather than a new chart type.
+
+## Goals, export and the theme picker
+
+**Goals are not tasks, and the type says so.** No estimate, no schedule, no
+completion that earns anything, and no code path into a day. The card has a
+different shape from a task row - an outline rather than a fill - so the two
+never read as the same kind of thing. The moment a goal can be ticked it becomes
+another thing to fail at.
+
+The one place a goal earns its keep is a linked project, which turns a wish into
+something with real hours behind it: "thesis: 62 sessions, 41 hours".
+
+**The CSV says plainly what it is not.** The row in Settings reads "A
+spreadsheet to read. Not a backup: it cannot be loaded back in." The archive in
+`vitals_archive` is the thing that round-trips, and a user who confuses the two
+loses data. Task titles are escaped, because a comma in one would silently shift
+every column after it.
+
+Per-app spend is off by default in the export. It names your apps and your worst
+numbers, and this is the file most likely to be shared or left in a downloads
+folder.
+
+**Theme and brightness live in preferences, not the database.** They describe
+this device's look rather than the user's data, so a restored backup does not
+repaint the phone it landed on.
+
+Third instance of the drift row-name collision: `Goals` generates `Goal`, which
+clashed with the domain type. `@DataClassName('GoalRow')`, same as `TreatRow`
+and `TaskRow` before it. Worth doing pre-emptively on any new table whose name
+has a domain twin.

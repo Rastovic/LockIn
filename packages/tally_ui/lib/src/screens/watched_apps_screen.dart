@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:tally_engine/tally_engine.dart';
 
+import '../theme/tally_theme.dart';
 import '../theme/tally_theme_data.dart';
 
 /// One app in the picker.
@@ -54,6 +55,11 @@ class WatchedAppsScreen extends StatelessWidget {
     this.onGrantAccess,
     this.onClose,
     this.maxWatched = 10,
+    this.theme,
+    this.themeMode,
+    this.onTheme,
+    this.onOpenGoals,
+    this.onExportCsv,
     super.key,
   });
 
@@ -67,6 +73,12 @@ class WatchedAppsScreen extends StatelessWidget {
   final VoidCallback? onClose;
 
   final int maxWatched;
+
+  final TallyTheme? theme;
+  final ThemeMode? themeMode;
+  final void Function(TallyTheme, ThemeMode)? onTheme;
+  final VoidCallback? onOpenGoals;
+  final Future<void> Function()? onExportCsv;
 
   int get _watchedCount => apps.where((a) => a.watching).length;
 
@@ -221,6 +233,57 @@ class WatchedAppsScreen extends StatelessWidget {
                     'nothing is ever blocked.',
                     style: text.labelMedium,
                   ),
+                  if (theme != null && onTheme != null) ...[
+                    const SizedBox(height: 30),
+                    Text('LOOK', style: text.labelSmall),
+                    const SizedBox(height: 10),
+                    _RuleChoice(
+                      title: 'Theme',
+                      detail: 'Two, and each is written in light and dark.',
+                      options: {
+                        for (final t in TallyTheme.values) t.label: t,
+                      },
+                      selected: theme!,
+                      onPick: (value) => onTheme!(
+                        value as TallyTheme,
+                        themeMode ?? ThemeMode.dark,
+                      ),
+                    ),
+                    _RuleChoice(
+                      title: 'Light or dark',
+                      detail: 'Following the system means Tally changes when '
+                          'your phone does.',
+                      options: const {
+                        'Dark': ThemeMode.dark,
+                        'Light': ThemeMode.light,
+                        'System': ThemeMode.system,
+                      },
+                      selected: themeMode ?? ThemeMode.dark,
+                      onPick: (value) => onTheme!(
+                        theme!,
+                        value as ThemeMode,
+                      ),
+                    ),
+                  ],
+                  const SizedBox(height: 20),
+                  Text('ELSEWHERE', style: text.labelSmall),
+                  const SizedBox(height: 10),
+                  if (onOpenGoals != null)
+                    _LinkRow(
+                      label: 'Goals',
+                      detail: 'Year and someday. They never join a day.',
+                      onTap: onOpenGoals!,
+                    ),
+                  if (onExportCsv != null)
+                    _LinkRow(
+                      label: 'Export the numbers',
+                      // Says plainly what it is and is not, because the other
+                      // export - the backup archive - is the one that
+                      // round-trips, and confusing the two loses data.
+                      detail: 'A spreadsheet to read. Not a backup: it cannot '
+                          'be loaded back in.',
+                      onTap: onExportCsv!,
+                    ),
                 ],
               ),
             ),
@@ -237,6 +300,56 @@ class WatchedAppsScreen extends StatelessWidget {
       return '$need minutes focused buy one minute of scrolling.';
     }
     return 'One minute focused buys ${ratio.round()} minutes of scrolling.';
+  }
+}
+
+class _LinkRow extends StatelessWidget {
+  const _LinkRow({
+    required this.label,
+    required this.detail,
+    required this.onTap,
+  });
+
+  final String label;
+  final String detail;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.tokens;
+    final text = Theme.of(context).textTheme;
+    return Semantics(
+      button: true,
+      label: label,
+      excludeSemantics: true,
+      child: GestureDetector(
+        onTap: onTap,
+        behavior: HitTestBehavior.opaque,
+        child: Container(
+          margin: const EdgeInsets.only(bottom: 8),
+          padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+          decoration: BoxDecoration(
+            color: tokens.surface,
+            borderRadius: BorderRadius.circular(14),
+          ),
+          child: Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(label, style: text.bodyLarge),
+                    Text(detail, style: text.labelMedium),
+                  ],
+                ),
+              ),
+              Icon(Icons.chevron_right, size: 18, color: tokens.inkFaint),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }
 

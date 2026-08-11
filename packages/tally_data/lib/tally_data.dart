@@ -6,6 +6,7 @@
 library;
 
 export 'src/backup.dart';
+export 'src/csv_export.dart';
 export 'src/database.dart';
 export 'src/ledger_repository.dart';
 export 'src/tables.dart';

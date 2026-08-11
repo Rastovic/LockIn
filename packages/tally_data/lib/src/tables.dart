@@ -239,6 +239,10 @@ class StickerStamps extends Table with PortableTable, DayScopedTable {
 ///
 /// Deliberately the least featured thing in the app: no dates, no reminders, no
 /// progress bars, and **no path into a day**.
+///
+/// The row is `GoalRow`: the domain type of that name lives in `tally_ui`, and
+/// a persistence row is not a domain object.
+@DataClassName('GoalRow')
 class Goals extends Table with PortableTable {
   /// `year` or `life`.
   TextColumn get scope => text()();

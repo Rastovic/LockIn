@@ -116,6 +116,7 @@ class TallyController extends ChangeNotifier {
     streaks = await _tasks.habitStreaks(dayKey: dayKey);
     await _reconcile();
     await loadWatchable();
+    await loadGoals();
     loading = false;
     notifyListeners();
   }
@@ -656,6 +657,108 @@ class TallyController extends ChangeNotifier {
       ],
     );
   }
+
+  List<Goal> goals = const [];
+
+  /// Loads goals, with any linked project's real hours attached.
+  Future<void> loadGoals() async {
+    final rows = await (db.select(db.goals)
+          ..where((t) => t.deletedAt.isNull()))
+        .get();
+    final sessions = await (db.select(db.sessions)
+          ..where((t) => t.deletedAt.isNull()))
+        .get();
+
+    final byProject = <String, (int count, int seconds)>{};
+    for (final row in sessions) {
+      final task = tasks.where((t) => t.id == row.taskId).firstOrNull;
+      final project = task?.projectId ?? task?.id;
+      if (project == null) continue;
+      final seconds = (row.endedAt - row.startedAt) ~/ 1000;
+      final current = byProject[project] ?? (0, 0);
+      byProject[project] = (current.$1 + 1, current.$2 + seconds);
+    }
+
+    goals = [
+      for (final row in rows)
+        Goal(
+          id: row.id,
+          scope: row.scope == 'life' ? GoalScope.life : GoalScope.year,
+          title: row.title,
+          note: row.note,
+          linkedProjectTitle: row.linkedProjectId == null
+              ? null
+              : tasks
+                  .where((t) => t.id == row.linkedProjectId)
+                  .firstOrNull
+                  ?.title,
+          linkedSessions: byProject[row.linkedProjectId]?.$1 ?? 0,
+          linkedSeconds: byProject[row.linkedProjectId]?.$2 ?? 0,
+          achievedAt: row.achievedAt == null
+              ? null
+              : DateTime.fromMillisecondsSinceEpoch(
+                  row.achievedAt!,
+                  isUtc: true,
+                ),
+        ),
+    ];
+    notifyListeners();
+  }
+
+  Future<void> saveGoal({
+    required GoalScope scope,
+    required String title,
+    String? note,
+    String? existingId,
+  }) async {
+    final stamp = now.millisecondsSinceEpoch;
+    if (existingId == null) {
+      await db.into(db.goals).insert(
+            GoalsCompanion.insert(
+              id: Ids.newId(),
+              updatedAt: stamp,
+              installId: installId,
+              scope: scope.name,
+              title: title,
+              createdAt: stamp,
+              note: Value(note),
+            ),
+          );
+    } else {
+      await (db.update(db.goals)..where((t) => t.id.equals(existingId))).write(
+        GoalsCompanion(
+          title: Value(title),
+          note: Value(note),
+          updatedAt: Value(stamp),
+        ),
+      );
+    }
+    await loadGoals();
+  }
+
+  Future<void> achieveGoal(String id) async {
+    final stamp = now.millisecondsSinceEpoch;
+    await (db.update(db.goals)..where((t) => t.id.equals(id))).write(
+      GoalsCompanion(achievedAt: Value(stamp), updatedAt: Value(stamp)),
+    );
+    await loadGoals();
+  }
+
+  Future<void> deleteGoal(String id) async {
+    final stamp = now.millisecondsSinceEpoch;
+    await (db.update(db.goals)..where((t) => t.id.equals(id))).write(
+      GoalsCompanion(deletedAt: Value(stamp), updatedAt: Value(stamp)),
+    );
+    await loadGoals();
+  }
+
+  /// The numbers as a spreadsheet, for the period shown.
+  Future<String> exportCsv(StatementPeriod period, {bool perApp = false}) =>
+      CsvExport(db).build(
+        fromDay: addDays(dayKey, -(period.days - 1)),
+        toDay: dayKey,
+        includePerApp: perApp,
+      );
 
   /// This month's stamps.
   Future<StickerSheetModel> stickerSheet() async {

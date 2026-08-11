@@ -7609,7 +7609,7 @@ class StickerStampsCompanion extends UpdateCompanion<StickerStampRow> {
   }
 }
 
-class $GoalsTable extends Goals with TableInfo<$GoalsTable, Goal> {
+class $GoalsTable extends Goals with TableInfo<$GoalsTable, GoalRow> {
   @override
   final GeneratedDatabase attachedDatabase;
   final String? _alias;
@@ -7760,7 +7760,7 @@ class $GoalsTable extends Goals with TableInfo<$GoalsTable, Goal> {
   static const String $name = 'goals';
   @override
   VerificationContext validateIntegrity(
-    Insertable<Goal> instance, {
+    Insertable<GoalRow> instance, {
     bool isInserting = false,
   }) {
     final context = VerificationContext();
@@ -7849,9 +7849,9 @@ class $GoalsTable extends Goals with TableInfo<$GoalsTable, Goal> {
   @override
   Set<GeneratedColumn> get $primaryKey => {id};
   @override
-  Goal map(Map<String, dynamic> data, {String? tablePrefix}) {
+  GoalRow map(Map<String, dynamic> data, {String? tablePrefix}) {
     final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
-    return Goal(
+    return GoalRow(
       id: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}id'],
@@ -7905,7 +7905,7 @@ class $GoalsTable extends Goals with TableInfo<$GoalsTable, Goal> {
   }
 }
 
-class Goal extends DataClass implements Insertable<Goal> {
+class GoalRow extends DataClass implements Insertable<GoalRow> {
   /// UUID v7. **Never an autoincrement integer.**
   ///
   /// Two devices both minting `id = 47` cannot be merged, and merge is the
@@ -7936,7 +7936,7 @@ class Goal extends DataClass implements Insertable<Goal> {
   final String? linkedProjectId;
   final int createdAt;
   final int? achievedAt;
-  const Goal({
+  const GoalRow({
     required this.id,
     required this.updatedAt,
     this.deletedAt,
@@ -8000,12 +8000,12 @@ class Goal extends DataClass implements Insertable<Goal> {
     );
   }
 
-  factory Goal.fromJson(
+  factory GoalRow.fromJson(
     Map<String, dynamic> json, {
     ValueSerializer? serializer,
   }) {
     serializer ??= driftRuntimeOptions.defaultSerializer;
-    return Goal(
+    return GoalRow(
       id: serializer.fromJson<String>(json['id']),
       updatedAt: serializer.fromJson<int>(json['updatedAt']),
       deletedAt: serializer.fromJson<int?>(json['deletedAt']),
@@ -8037,7 +8037,7 @@ class Goal extends DataClass implements Insertable<Goal> {
     };
   }
 
-  Goal copyWith({
+  GoalRow copyWith({
     String? id,
     int? updatedAt,
     Value<int?> deletedAt = const Value.absent(),
@@ -8049,7 +8049,7 @@ class Goal extends DataClass implements Insertable<Goal> {
     Value<String?> linkedProjectId = const Value.absent(),
     int? createdAt,
     Value<int?> achievedAt = const Value.absent(),
-  }) => Goal(
+  }) => GoalRow(
     id: id ?? this.id,
     updatedAt: updatedAt ?? this.updatedAt,
     deletedAt: deletedAt.present ? deletedAt.value : this.deletedAt,
@@ -8064,8 +8064,8 @@ class Goal extends DataClass implements Insertable<Goal> {
     createdAt: createdAt ?? this.createdAt,
     achievedAt: achievedAt.present ? achievedAt.value : this.achievedAt,
   );
-  Goal copyWithCompanion(GoalsCompanion data) {
-    return Goal(
+  GoalRow copyWithCompanion(GoalsCompanion data) {
+    return GoalRow(
       id: data.id.present ? data.id.value : this.id,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
       deletedAt: data.deletedAt.present ? data.deletedAt.value : this.deletedAt,
@@ -8086,7 +8086,7 @@ class Goal extends DataClass implements Insertable<Goal> {
 
   @override
   String toString() {
-    return (StringBuffer('Goal(')
+    return (StringBuffer('GoalRow(')
           ..write('id: $id, ')
           ..write('updatedAt: $updatedAt, ')
           ..write('deletedAt: $deletedAt, ')
@@ -8119,7 +8119,7 @@ class Goal extends DataClass implements Insertable<Goal> {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      (other is Goal &&
+      (other is GoalRow &&
           other.id == this.id &&
           other.updatedAt == this.updatedAt &&
           other.deletedAt == this.deletedAt &&
@@ -8133,7 +8133,7 @@ class Goal extends DataClass implements Insertable<Goal> {
           other.achievedAt == this.achievedAt);
 }
 
-class GoalsCompanion extends UpdateCompanion<Goal> {
+class GoalsCompanion extends UpdateCompanion<GoalRow> {
   final Value<String> id;
   final Value<int> updatedAt;
   final Value<int?> deletedAt;
@@ -8179,7 +8179,7 @@ class GoalsCompanion extends UpdateCompanion<Goal> {
        scope = Value(scope),
        title = Value(title),
        createdAt = Value(createdAt);
-  static Insertable<Goal> custom({
+  static Insertable<GoalRow> custom({
     Expression<String>? id,
     Expression<int>? updatedAt,
     Expression<int>? deletedAt,
@@ -13508,14 +13508,14 @@ class $$GoalsTableTableManager
         RootTableManager<
           _$TallyDatabase,
           $GoalsTable,
-          Goal,
+          GoalRow,
           $$GoalsTableFilterComposer,
           $$GoalsTableOrderingComposer,
           $$GoalsTableAnnotationComposer,
           $$GoalsTableCreateCompanionBuilder,
           $$GoalsTableUpdateCompanionBuilder,
-          (Goal, BaseReferences<_$TallyDatabase, $GoalsTable, Goal>),
-          Goal,
+          (GoalRow, BaseReferences<_$TallyDatabase, $GoalsTable, GoalRow>),
+          GoalRow,
           PrefetchHooks Function()
         > {
   $$GoalsTableTableManager(_$TallyDatabase db, $GoalsTable table)
@@ -13597,14 +13597,14 @@ typedef $$GoalsTableProcessedTableManager =
     ProcessedTableManager<
       _$TallyDatabase,
       $GoalsTable,
-      Goal,
+      GoalRow,
       $$GoalsTableFilterComposer,
       $$GoalsTableOrderingComposer,
       $$GoalsTableAnnotationComposer,
       $$GoalsTableCreateCompanionBuilder,
       $$GoalsTableUpdateCompanionBuilder,
-      (Goal, BaseReferences<_$TallyDatabase, $GoalsTable, Goal>),
-      Goal,
+      (GoalRow, BaseReferences<_$TallyDatabase, $GoalsTable, GoalRow>),
+      GoalRow,
       PrefetchHooks Function()
     >;
 typedef $$SuggestionHistoryTableCreateCompanionBuilder =

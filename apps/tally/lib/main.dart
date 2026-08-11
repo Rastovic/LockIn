@@ -16,6 +16,7 @@ Future<void> main() async {
   final installId = await InstallId.load();
   final settings = await TallyController.loadSettings(db);
   final onboarded = await OnboardingState.isDone();
+  final (theme, mode) = await ThemePreference.load();
 
   runApp(
     TallyRoot(
@@ -23,6 +24,8 @@ Future<void> main() async {
       installId: installId,
       settings: settings,
       onboarded: onboarded,
+      theme: theme,
+      themeMode: mode,
     ),
   );
 }
@@ -39,6 +42,8 @@ class TallyRoot extends StatefulWidget {
     required this.installId,
     required this.settings,
     required this.onboarded,
+    required this.theme,
+    required this.themeMode,
     super.key,
   });
 
@@ -46,6 +51,8 @@ class TallyRoot extends StatefulWidget {
   final String installId;
   final LedgerSettings settings;
   final bool onboarded;
+  final TallyTheme theme;
+  final ThemeMode themeMode;
 
   @override
   State<TallyRoot> createState() => _TallyRootState();
@@ -54,6 +61,16 @@ class TallyRoot extends StatefulWidget {
 class _TallyRootState extends State<TallyRoot> {
   late LedgerSettings _settings = widget.settings;
   late bool _onboarded = widget.onboarded;
+  late TallyTheme _theme = widget.theme;
+  late ThemeMode _mode = widget.themeMode;
+
+  void _setTheme(TallyTheme theme, ThemeMode mode) {
+    setState(() {
+      _theme = theme;
+      _mode = mode;
+    });
+    ThemePreference.save(theme, mode);
+  }
   late TallyController _controller = _build();
 
   TallyController _build() => TallyController(
@@ -72,15 +89,16 @@ class _TallyRootState extends State<TallyRoot> {
   Widget build(BuildContext context) => MaterialApp(
         title: 'Tally',
         debugShowCheckedModeBanner: false,
-        // Aurora is the default and the identity. The theme picker in Settings
-        // will let this be changed and persisted; until then it is fixed.
-        theme: TallyThemeBuilder.build(TallyTheme.aurora, Brightness.light),
-        darkTheme: TallyThemeBuilder.build(TallyTheme.aurora, Brightness.dark),
-        themeMode: ThemeMode.dark,
+        theme: TallyThemeBuilder.build(_theme, Brightness.light),
+        darkTheme: TallyThemeBuilder.build(_theme, Brightness.dark),
+        themeMode: _mode,
         home: _onboarded
             ? TallyApp(
                 key: ValueKey(_settings.hashCode),
                 controller: _controller,
+                theme: _theme,
+                themeMode: _mode,
+                onTheme: _setTheme,
               )
             : OnboardingFlow(
                 controller: _controller,

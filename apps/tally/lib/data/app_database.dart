@@ -1,4 +1,6 @@
 import 'package:drift_flutter/drift_flutter.dart';
+import 'package:flutter/material.dart' show ThemeMode;
+import 'package:tally_ui/tally_ui.dart' show TallyTheme;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:tally_data/tally_data.dart';
 import 'package:vitals_core/vitals_core.dart';
@@ -50,5 +52,36 @@ final class OnboardingState {
   static Future<void> markDone() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_key, true);
+  }
+}
+
+/// The chosen theme and brightness.
+///
+/// In preferences rather than the database because it describes this device's
+/// look rather than the user's data. A restored backup should not repaint the
+/// phone it landed on.
+final class ThemePreference {
+  const ThemePreference._();
+
+  static const _themeKey = 'tally.theme';
+  static const _modeKey = 'tally.themeMode';
+
+  static Future<(TallyTheme, ThemeMode)> load() async {
+    final prefs = await SharedPreferences.getInstance();
+    final theme = TallyTheme.values.firstWhere(
+      (t) => t.name == prefs.getString(_themeKey),
+      orElse: () => TallyTheme.aurora,
+    );
+    final mode = ThemeMode.values.firstWhere(
+      (m) => m.name == prefs.getString(_modeKey),
+      orElse: () => ThemeMode.dark,
+    );
+    return (theme, mode);
+  }
+
+  static Future<void> save(TallyTheme theme, ThemeMode mode) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_themeKey, theme.name);
+    await prefs.setString(_modeKey, mode.name);
   }
 }

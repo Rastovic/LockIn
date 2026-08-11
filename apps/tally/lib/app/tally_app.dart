@@ -1,4 +1,8 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:tally_engine/tally_engine.dart';
 import 'package:tally_ui/tally_ui.dart';
 
@@ -16,9 +20,18 @@ import '../platform/android_usage_source.dart';
 /// the bar from the start so the shape of the app does not change under the
 /// user later.
 class TallyApp extends StatefulWidget {
-  const TallyApp({required this.controller, super.key});
+  const TallyApp({
+    required this.controller,
+    required this.theme,
+    required this.themeMode,
+    required this.onTheme,
+    super.key,
+  });
 
   final TallyController controller;
+  final TallyTheme theme;
+  final ThemeMode themeMode;
+  final void Function(TallyTheme, ThemeMode) onTheme;
 
   @override
   State<TallyApp> createState() => _TallyAppState();
@@ -317,7 +330,67 @@ class _TallyAppState extends State<TallyApp> with WidgetsBindingObserver {
         },
       );
 
-  Widget _buildSettings() => WatchedAppsScreen(
+  bool _showGoals = false;
+
+  Widget _buildGoals() => GoalsScreen(
+        goals: c.goals,
+        onBack: () => setState(() => _showGoals = false),
+        onAdd: (scope) => _openGoalSheet(scope: scope),
+        onEdit: (goal) => _openGoalSheet(scope: goal.scope, existing: goal),
+        onAchieve: (goal) => c.achieveGoal(goal.id),
+      );
+
+  Future<void> _openGoalSheet({
+    required GoalScope scope,
+    Goal? existing,
+  }) async {
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (sheetContext) => GoalSheet(
+        scope: scope,
+        existing: existing,
+        onSave: (title, note) {
+          Navigator.of(sheetContext).pop();
+          c.saveGoal(
+            scope: scope,
+            title: title,
+            note: note,
+            existingId: existing?.id,
+          );
+        },
+        onDelete: existing == null
+            ? null
+            : () {
+                Navigator.of(sheetContext).pop();
+                c.deleteGoal(existing.id);
+              },
+      ),
+    );
+  }
+
+  /// Writes the numbers to a file and hands it to the system share sheet.
+  ///
+  /// Never uploaded anywhere: the file is written on the device and passed to
+  /// whatever the user picks, which is the same promise the whole app makes.
+  Future<void> _exportCsv() async {
+    final csv = await c.exportCsv(_period);
+    final dir = await getTemporaryDirectory();
+    final local = c.now.toLocal();
+    final name = 'tally-${local.year}-'
+        '${local.month.toString().padLeft(2, '0')}-'
+        '${local.day.toString().padLeft(2, '0')}.csv';
+    final file = File('${dir.path}/$name');
+    await file.writeAsString(csv);
+    await SharePlus.instance.share(
+      ShareParams(files: [XFile(file.path)], fileNameOverrides: [name]),
+    );
+  }
+
+  Widget _buildSettings() => _showGoals
+      ? _buildGoals()
+      : WatchedAppsScreen(
         apps: c.watchable,
         settings: c.settings,
         access: c.usageAccess,
@@ -330,6 +403,11 @@ class _TallyAppState extends State<TallyApp> with WidgetsBindingObserver {
           await Future<void>.delayed(const Duration(seconds: 1));
           await c.load();
         },
+        theme: widget.theme,
+        themeMode: widget.themeMode,
+        onTheme: widget.onTheme,
+        onOpenGoals: () => setState(() => _showGoals = true),
+        onExportCsv: _exportCsv,
       );
 
   Widget _buildTasks() => ManageTasksScreen(

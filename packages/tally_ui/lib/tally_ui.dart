@@ -8,6 +8,7 @@ library;
 
 export 'src/screens/balance_screen.dart';
 export 'src/screens/focus_screen.dart';
+export 'src/screens/goals_screen.dart';
 export 'src/screens/insights_screen.dart';
 export 'src/screens/onboarding_screen.dart';
 export 'src/screens/pool_sheet.dart';
