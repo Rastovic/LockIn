@@ -491,6 +491,33 @@ class TallyController extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Burns savings on something off-screen.
+  ///
+  /// Written as a treat row and then recomputed, so the engine applies its own
+  /// rule: the minutes leave the system entirely and cannot return as scroll
+  /// time under any sequence of transfers.
+  Future<void> treatYourself(String label, int seconds) async {
+    if (seconds <= 0) return;
+    await db.into(db.treats).insert(
+          TreatsCompanion.insert(
+            id: Ids.newId(),
+            updatedAt: now.millisecondsSinceEpoch,
+            installId: installId,
+            dayKey: dayKey,
+            tzOffsetMinutes: now.timeZoneOffset.inMinutes,
+            minutesBurned: (seconds / 60).floor(),
+            label: label,
+          ),
+        );
+    ledger = await _ledger.recomputeAndStore(
+      fromDay: addDays(dayKey, -30),
+      toDay: dayKey,
+      now: now,
+    );
+    await _pushSnapshot();
+    notifyListeners();
+  }
+
   // --- focus ---------------------------------------------------------------
 
   void startFocus({String? taskId, int minutes = 25}) {

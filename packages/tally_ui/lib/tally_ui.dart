@@ -14,6 +14,7 @@ export 'src/screens/manage_tasks_screen.dart';
 export 'src/screens/statement_screen.dart';
 export 'src/screens/sticker_screens.dart';
 export 'src/screens/task_sheet.dart';
+export 'src/screens/treat_sheet.dart';
 export 'src/screens/watched_apps_screen.dart';
 export 'src/screens/today_screen.dart';
 export 'src/theme/state_colors.dart';

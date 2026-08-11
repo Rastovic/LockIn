@@ -68,6 +68,7 @@ class _TallyAppState extends State<TallyApp> with WidgetsBindingObserver {
       return BalanceScreen(
         model: c.balanceModel,
         onClose: () => setState(() => _showBalance = false),
+        onTreat: c.balanceModel.savingsSeconds > 0 ? _openTreat : null,
       );
     }
 
@@ -143,6 +144,22 @@ class _TallyAppState extends State<TallyApp> with WidgetsBindingObserver {
         onOpenPool: _openPool,
         onOpenBalance: () => setState(() => _showBalance = true),
       );
+
+  /// Spending savings on something that is not a screen.
+  Future<void> _openTreat() async {
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (sheetContext) => TreatSheet(
+        savingsSeconds: c.balanceModel.savingsSeconds,
+        onTreat: (label, seconds) {
+          Navigator.of(sheetContext).pop();
+          c.treatYourself(label, seconds);
+        },
+      ),
+    );
+  }
 
   /// The pool: everything created and not yet planned.
   Future<void> _openPool() async {

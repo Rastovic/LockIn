@@ -749,3 +749,25 @@ spreadsheet does not make you guess.
 
 The sheet sits one tap from the statement rather than in a fifth tab. It is the
 same question - what happened - asked in the other currency.
+
+## The treat sheet is the only thing that pays out
+
+Without it the ledger only ever takes minutes away, and savings are a number
+that grows and does nothing. The plan calls it the counterweight to the whole
+app, and it is right: a ledger that never pays out is a scold with arithmetic.
+
+Three things stated rather than left to be discovered:
+
+- **The minutes are burned, not moved.** The confirmation says so in those
+  words, before the button. Someone who thinks the minutes went somewhere will
+  feel robbed the first time they look for them.
+- **The suggestions are deliberately ordinary and cheap** - lunch, a book, the
+  cinema. A list of expensive things would make the reward feel out of reach,
+  and the whole point is that it is not.
+- **The button only appears when there is something saved.** A treat button over
+  an empty pot is an invitation to nothing.
+
+The burn goes through the engine rather than around it: a treat row is written
+and the ledger recomputed, so the rule that treated minutes can never return as
+scroll time is enforced in the one place that already guarantees it, under a
+property test.

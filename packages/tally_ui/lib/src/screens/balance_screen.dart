@@ -70,11 +70,16 @@ class BalanceScreen extends StatelessWidget {
   const BalanceScreen({
     required this.model,
     this.onClose,
+    this.onTreat,
     super.key,
   });
 
   final BalanceScreenModel model;
   final VoidCallback? onClose;
+
+  /// Offered only when there is something saved. A treat button over an empty
+  /// pot is an invitation to nothing.
+  final VoidCallback? onTreat;
 
   @override
   Widget build(BuildContext context) {
@@ -175,6 +180,13 @@ class BalanceScreen extends StatelessWidget {
                 ],
               ),
             ),
+            if (onTreat != null) ...[
+              const SizedBox(height: 14),
+              _TreatButton(
+                savingsSeconds: model.savingsSeconds,
+                onTap: onTreat!,
+              ),
+            ],
             const SizedBox(height: 16),
             _StreakLine(
               current: model.solvencyStreak,
@@ -235,6 +247,45 @@ class _Stat extends StatelessWidget {
               style: text.titleLarge?.copyWith(color: color, fontSize: 20),
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+/// The way out of the app, and the point of saving at all.
+class _TreatButton extends StatelessWidget {
+  const _TreatButton({required this.savingsSeconds, required this.onTap});
+
+  final int savingsSeconds;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.tokens;
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Semantics(
+        button: true,
+        label: 'Treat yourself',
+        excludeSemantics: true,
+        child: GestureDetector(
+          onTap: onTap,
+          behavior: HitTestBehavior.opaque,
+          child: Container(
+            height: 46,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(999),
+              border: Border.all(color: tokens.states.savings),
+            ),
+            child: Text(
+              'Treat yourself',
+              style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                    color: tokens.states.savings,
+                  ),
+            ),
+          ),
         ),
       ),
     );
