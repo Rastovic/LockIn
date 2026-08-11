@@ -8,6 +8,7 @@
 /// `DeviceActivityMonitor` threshold callbacks. Neither is visible from here.
 library;
 
+export 'src/focus_run.dart';
 export 'src/ledger_engine.dart';
 export 'src/generated/library_data.dart';
 export 'src/library.dart';

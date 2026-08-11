@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:tally_engine/tally_engine.dart';
 import 'package:tally_ui/tally_ui.dart';
+import 'package:vitals_core/vitals_core.dart';
 
 import '../platform/android_usage_source.dart';
 import 'demo_data.dart';
@@ -11,10 +12,10 @@ import 'usage_spike_screen.dart';
 /// It exists because a design decision cannot be judged from a description, and
 /// running the app is the cheapest way to see one. **Play has nothing to do
 /// with testing** - this runs on the web, on a desktop window, on an emulator
-/// or on a phone over USB, and none of those involve a store.
+/// or on a phone, and none of those involve a store.
 ///
-/// The screens here are the shipping screens. Only the data source is
-/// different: a fixed Tuesday instead of a database.
+/// The screens here are the shipping screens, driven by the real engines. Only
+/// the data source differs: a fixed Tuesday instead of a database.
 class PreviewApp extends StatefulWidget {
   const PreviewApp({super.key});
 
@@ -26,12 +27,43 @@ class _PreviewAppState extends State<PreviewApp> {
   TallyTheme _theme = TallyTheme.aurora;
   Brightness _brightness = Brightness.dark;
   DemoState _state = DemoState.solvent;
-  bool _showSpike = false;
 
+  bool _showSpike = false;
+  FocusRun? _focus;
   List<PlanEntry> _plan = DemoDay.plan();
 
-  @override
-  Widget build(BuildContext context) {
+  DateTime get _now => DateTime.now().toUtc();
+
+  void _startFocus({String? taskId, int minutes = 25}) {
+    setState(() {
+      _focus = FocusRun(
+        id: Ids.newId(),
+        startedAt: _now,
+        planned: Duration(minutes: minutes),
+        taskId: taskId,
+      );
+    });
+  }
+
+  Widget _buildFocus(FocusRun run) {
+    final task = run.taskId == null
+        ? null
+        : DemoDay.tasks.where((t) => t.id == run.taskId).firstOrNull;
+
+    return FocusScreen(
+      run: run,
+      earnRatio: 1,
+      taskTitle: task?.title ?? 'Focus',
+      stickerId: task?.stickerId,
+      onPause: () => setState(() => _focus = run.pause(_now)),
+      onResume: () => setState(() => _focus = run.resume(_now)),
+      onExtend: (by) => setState(() => _focus = run.extend(by)),
+      onGiveUp: () => setState(() => _focus = null),
+      onComplete: () => setState(() => _focus = null),
+    );
+  }
+
+  Widget _buildToday() {
     final empty = _state == DemoState.empty;
     final view = DemoDay.planner.buildToday(
       dayKey: DemoDay.dayKey,
@@ -39,6 +71,68 @@ class _PreviewAppState extends State<PreviewApp> {
       plan: empty ? const [] : _plan,
       now: DemoDay.now,
     );
+
+    return TodayScreen(
+      model: TodayScreenModel(
+        view: view,
+        spendableSeconds: _state.spendableSeconds,
+        solvencyStreak: _state.streak,
+        dateLabel: 'Tue 11 August',
+        suggestion: empty ? null : DemoDay.suggestion(shippedLibrary),
+        graceNotice: _state.notice,
+      ),
+      onToggle: (entry) => setState(() {
+        _plan = entry.isDone
+            ? DemoDay.planner
+                .uncomplete(plan: _plan, stamps: const [], entryId: entry.id)
+                .plan
+            : DemoDay.planner
+                .complete(
+                  plan: _plan,
+                  entryId: entry.id,
+                  tasks: DemoDay.tasks,
+                  at: DemoDay.now,
+                  dayKey: DemoDay.dayKey,
+                )
+                .plan;
+      }),
+      onReorder: (from, to) => setState(() {
+        _plan = DemoDay.planner.reorder(
+          dayKey: DemoDay.dayKey,
+          plan: _plan,
+          fromIndex: from,
+          toIndex: to,
+        );
+      }),
+      onAcceptHabit: (habit) => setState(() {
+        _plan = DemoDay.planner.addToDay(
+          dayKey: DemoDay.dayKey,
+          plan: _plan,
+          taskIds: [habit.id],
+          source: PlanSource.habit,
+        );
+      }),
+      onStartFocus: (entry) {
+        final task =
+            DemoDay.tasks.where((t) => t.id == entry.taskId).firstOrNull;
+        _startFocus(taskId: task?.id, minutes: task?.estimateMinutes ?? 25);
+      },
+      onStartSession: _startFocus,
+      onOpenBalance: () {},
+      onOpenPool: () {},
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final Widget screen;
+    if (_showSpike) {
+      screen = const UsageSpikeScreen(source: AndroidUsageSource());
+    } else if (_focus != null) {
+      screen = _buildFocus(_focus!);
+    } else {
+      screen = _buildToday();
+    }
 
     return MaterialApp(
       title: 'Tally preview',
@@ -48,68 +142,19 @@ class _PreviewAppState extends State<PreviewApp> {
         theme: _theme,
         brightness: _brightness,
         state: _state,
+        showingSpike: _showSpike,
         onTheme: (t) => setState(() => _theme = t),
         onBrightness: (b) => setState(() => _brightness = b),
         onState: (s) => setState(() {
           _state = s;
           _plan = DemoDay.plan();
+          _focus = null;
         }),
-        showingSpike: _showSpike,
-        onToggleSpike: () => setState(() => _showSpike = !_showSpike),
-        child: _showSpike
-            ? const UsageSpikeScreen(source: AndroidUsageSource())
-            : TodayScreen(
-          model: TodayScreenModel(
-            view: view,
-            spendableSeconds: _state.spendableSeconds,
-            solvencyStreak: _state.streak,
-            dateLabel: 'Tue 11 August',
-            suggestion:
-                empty ? null : DemoDay.suggestion(shippedLibrary),
-            graceNotice: _state.notice,
-          ),
-          onToggle: (entry) => setState(() {
-            if (entry.isDone) {
-              _plan = DemoDay.planner
-                  .uncomplete(
-                    plan: _plan,
-                    stamps: const [],
-                    entryId: entry.id,
-                  )
-                  .plan;
-            } else {
-              _plan = DemoDay.planner
-                  .complete(
-                    plan: _plan,
-                    entryId: entry.id,
-                    tasks: DemoDay.tasks,
-                    at: DemoDay.now,
-                    dayKey: DemoDay.dayKey,
-                  )
-                  .plan;
-            }
-          }),
-          onReorder: (from, to) => setState(() {
-            _plan = DemoDay.planner.reorder(
-              dayKey: DemoDay.dayKey,
-              plan: _plan,
-              fromIndex: from,
-              toIndex: to,
-            );
-          }),
-          onAcceptHabit: (habit) => setState(() {
-            _plan = DemoDay.planner.addToDay(
-              dayKey: DemoDay.dayKey,
-              plan: _plan,
-              taskIds: [habit.id],
-              source: PlanSource.habit,
-            );
-          }),
-          onStartFocus: (_) {},
-          onOpenBalance: () {},
-          onOpenPool: () {},
-          onStartSession: () {},
-        ),
+        onToggleSpike: () => setState(() {
+          _showSpike = !_showSpike;
+          _focus = null;
+        }),
+        child: screen,
       ),
     );
   }
@@ -117,37 +162,38 @@ class _PreviewAppState extends State<PreviewApp> {
 
 /// Puts the screen in a phone-shaped frame with the switches beside it.
 ///
-/// On a narrow window the frame fills it, so this is also how the app looks on
-/// a real device.
+/// On a narrow window the frame fills it, which is also how the app looks on a
+/// real device.
 class _PreviewShell extends StatelessWidget {
   const _PreviewShell({
     required this.theme,
     required this.brightness,
     required this.state,
+    required this.showingSpike,
     required this.onTheme,
     required this.onBrightness,
     required this.onState,
-    required this.child,
     required this.onToggleSpike,
-    required this.showingSpike,
+    required this.child,
   });
 
   final TallyTheme theme;
   final Brightness brightness;
   final DemoState state;
+  final bool showingSpike;
   final ValueChanged<TallyTheme> onTheme;
   final ValueChanged<Brightness> onBrightness;
   final ValueChanged<DemoState> onState;
-  final Widget child;
   final VoidCallback onToggleSpike;
-  final bool showingSpike;
+  final Widget child;
 
   @override
   Widget build(BuildContext context) {
     final wide = MediaQuery.sizeOf(context).width > 760;
+
     if (!wide) {
       // On a phone there is no room for a side panel, so the spike screen is
-      // reached by a long press anywhere on the balance strip area.
+      // reached by a long press in the top-right corner.
       return Stack(
         children: [
           child,
@@ -164,22 +210,25 @@ class _PreviewShell extends StatelessWidget {
       );
     }
 
-    return Container(
+    return ColoredBox(
       color: const Color(0xFF14171C),
       child: SafeArea(
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            SizedBox(width: 250, child: _Controls(
-              theme: theme,
-              brightness: brightness,
-              state: state,
-              onTheme: onTheme,
-              onBrightness: onBrightness,
-              onState: onState,
-              onToggleSpike: onToggleSpike,
-              showingSpike: showingSpike,
-            )),
+            SizedBox(
+              width: 250,
+              child: _Controls(
+                theme: theme,
+                brightness: brightness,
+                state: state,
+                showingSpike: showingSpike,
+                onTheme: onTheme,
+                onBrightness: onBrightness,
+                onState: onState,
+                onToggleSpike: onToggleSpike,
+              ),
+            ),
             Expanded(
               child: Center(
                 child: Container(
@@ -219,30 +268,26 @@ class _Controls extends StatelessWidget {
     required this.theme,
     required this.brightness,
     required this.state,
+    required this.showingSpike,
     required this.onTheme,
     required this.onBrightness,
     required this.onState,
     required this.onToggleSpike,
-    required this.showingSpike,
   });
 
   final TallyTheme theme;
   final Brightness brightness;
   final DemoState state;
+  final bool showingSpike;
   final ValueChanged<TallyTheme> onTheme;
   final ValueChanged<Brightness> onBrightness;
   final ValueChanged<DemoState> onState;
   final VoidCallback onToggleSpike;
-  final bool showingSpike;
 
   @override
   Widget build(BuildContext context) {
     return DefaultTextStyle(
-      style: const TextStyle(
-        color: Color(0xFFE8ECF1),
-        fontSize: 13,
-        fontFamily: 'system-ui',
-      ),
+      style: const TextStyle(color: Color(0xFFE8ECF1), fontSize: 13),
       child: ListView(
         padding: const EdgeInsets.all(20),
         children: [
@@ -258,7 +303,11 @@ class _Controls extends StatelessWidget {
           const Text(
             'The shipping screens, driven by the real engines. '
             'Only the data source differs.',
-            style: TextStyle(color: Color(0xFF8B95A3), fontSize: 12, height: 1.4),
+            style: TextStyle(
+              color: Color(0xFF8B95A3),
+              fontSize: 12,
+              height: 1.4,
+            ),
           ),
           const SizedBox(height: 22),
           const _Label('Theme'),
@@ -293,9 +342,14 @@ class _Controls extends StatelessWidget {
           ),
           const SizedBox(height: 22),
           const Text(
-            'Rows tick, reorder on long press, and habits accept. '
-            'All of it runs through the real planner.',
-            style: TextStyle(color: Color(0xFF6C7787), fontSize: 11, height: 1.5),
+            'Rows tick, reorder on long press, habits accept, and the play '
+            'button starts a real focus session. All of it runs through the '
+            'real engines.',
+            style: TextStyle(
+              color: Color(0xFF6C7787),
+              fontSize: 11,
+              height: 1.5,
+            ),
           ),
         ],
       ),
@@ -305,6 +359,7 @@ class _Controls extends StatelessWidget {
 
 class _Label extends StatelessWidget {
   const _Label(this.text);
+
   final String text;
 
   @override

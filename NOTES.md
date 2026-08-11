@@ -500,3 +500,30 @@ For anything beyond that, use the phone. It is faster, it is the real target,
 and the usage spike is meaningless without real app usage to compare against.
 A release APK is at `apps/tally/build/app/outputs/flutter-apk/app-release.apk`
 and can be side-loaded directly.
+
+## A Semantics label on a container of text swallows itself
+
+Bitten twice now, so it is a pattern rather than an incident.
+`Semantics(button: true, label: ...)` wrapped around a subtree containing `Text`
+produces competing nodes, the parent's label never forms, and the control is
+unreachable by name. Widget tests find nothing - and neither would a screen
+reader.
+
+`excludeSemantics: true` is the fix wherever the label fully describes the
+control and the visible text is redundant with it. That is true of every button
+in this app: "Add 5 minutes" says more than "+5".
+
+## The focus timer is wall-clock, and that is not a detail
+
+`FocusRun` derives everything from `startedAt`, its pauses, and the instant it
+is asked about. The UI's one-second ticker decides *when* to repaint, never
+*what* the number is.
+
+A tick-accumulated timer would be wrong in both directions: Flutter stops
+delivering timer callbacks when the app is backgrounded, so a 25 minute block
+spent with the screen off would credit a fraction of it; and a timer that keeps
+firing while the phone sleeps can be made to credit more than was worked.
+
+Paused time is removed by **shortening the session span** handed to the ledger,
+rather than by passing the real end instant. The engine therefore credits only
+seconds actually focused and needs to know nothing about pausing.
