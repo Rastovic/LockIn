@@ -691,6 +691,77 @@ class TallyController extends ChangeNotifier {
     );
   }
 
+  /// What the user is actually like: when they start, what they focus on.
+  ///
+  /// Built from sessions rather than rollups, because the questions here are
+  /// about individual blocks - the hour one began, how long the longest ran -
+  /// which a day total cannot answer.
+  Future<InsightsModel> insights({int weeks = 8}) async {
+    final toDay = dayKey;
+    final fromDay = addDays(toDay, -(weeks * 7 - 1));
+
+    final rows = await (db.select(db.sessions)
+          ..where((t) => t.dayKey.isBetweenValues(fromDay, toDay))
+          ..where((t) => t.deletedAt.isNull()))
+        .get();
+
+    final hours = List<int>.filled(24, 0);
+    var phoneDown = 0;
+    var longest = 0;
+    final byWeek = <int, int>{};
+    final byTask = <String, int>{};
+
+    for (final row in rows) {
+      final seconds = (row.endedAt - row.startedAt) ~/ 1000;
+      if (seconds > longest) longest = seconds;
+      if (row.phoneDownVerified) phoneDown += seconds;
+
+      // The local hour, because "when do I start" is a question about the
+      // user's day rather than about UTC.
+      final startedLocal =
+          DateTime.fromMillisecondsSinceEpoch(row.startedAt).toLocal();
+      hours[startedLocal.hour] += 1;
+
+      final weekIndex = daysBetween(fromDay, row.dayKey) ~/ 7;
+      byWeek.update(weekIndex, (v) => v + seconds, ifAbsent: () => seconds);
+
+      final key = row.taskId ?? '';
+      byTask.update(key, (v) => v + seconds, ifAbsent: () => seconds);
+    }
+
+    final titles = {for (final task in tasks) task.id: task};
+    final rollups = await _rollups(fromDay, toDay);
+
+    return InsightsModel(
+      weeks: [
+        for (var i = 0; i < weeks; i++)
+          Bar(
+            // Counted back from now, so the rightmost bar is always this week.
+            label: i == weeks - 1 ? 'now' : '-${weeks - 1 - i}',
+            seconds: byWeek[i] ?? 0,
+          ),
+      ],
+      hourHistogram: hours,
+      byCategory: [
+        for (final entry in byTask.entries)
+          Slice(
+            label: titles[entry.key]?.title ?? 'Unattached focus',
+            seconds: entry.value,
+            stickerId: titles[entry.key]?.stickerId,
+          ),
+      ]..sort((a, b) => b.seconds.compareTo(a.seconds)),
+      phoneDownSeconds: phoneDown,
+      longestBlockSeconds: longest,
+      dreadCleared: tasks
+          .where((t) => t.kind == TaskKind.dread && t.lastCompletedAt != null)
+          .length,
+      emptyDays: rollups
+          .where((d) => d.earnedSeconds == 0 && d.spentSeconds == 0)
+          .length,
+      totalDays: rollups.length,
+    );
+  }
+
   /// Derives what has been unlocked, from history rather than from a flag.
   ///
   /// Recomputed every time, on the same rule as the ledger: a stored flag can

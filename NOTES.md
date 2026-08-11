@@ -771,3 +771,26 @@ The burn goes through the engine rather than around it: a treat row is written
 and the ledger recomputed, so the rule that treated minutes can never return as
 scroll time is enforced in the one place that already guarantees it, under a
 property test.
+
+## Insights answers a different question, and holds no opinions
+
+The statement answers "what happened". Insights answers "what am I actually
+like" - when you start, what you spend focus on, how much was phone-down.
+
+**Every figure is flat.** No targets, no streaks to protect, nothing to fall
+short of. A screen about your own patterns stops being useful the moment it
+starts having opinions about them, and "you start most often around 9pm" is an
+observation the app is in no position to grade.
+
+"Days with nothing logged" is stated without comment for the same reason. Plenty
+of them are days that simply did not need the app.
+
+Built from sessions rather than rollups, because these questions are about
+individual blocks - the hour one began, how long the longest ran - which a day
+total cannot answer. The hour histogram uses **local** time, since "when do I
+start" is a question about the user's day and not about UTC.
+
+Both charts are bar series, which is one of the three kinds section 4 of
+`DESIGN-SYSTEM.md` allows. The instruction there is explicit - "only three
+kinds, don't invent more" - so the histogram is a bar series with fewer labels
+rather than a new chart type.

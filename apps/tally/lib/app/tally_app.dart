@@ -185,7 +185,25 @@ class _TallyAppState extends State<TallyApp> with WidgetsBindingObserver {
         _StatsView.statement => _buildStatement(),
         _StatsView.stickers => _buildStickerSheet(),
         _StatsView.collection => _buildCollection(),
+        _StatsView.insights => _buildInsights(),
       };
+
+  Widget _buildInsights() => FutureBuilder<InsightsModel>(
+        future: c.insights(),
+        builder: (context, snapshot) {
+          final model = snapshot.data;
+          if (model == null) {
+            return Scaffold(
+              backgroundColor: context.tokens.bg,
+              body: const SizedBox(),
+            );
+          }
+          return InsightsScreen(
+            model: model,
+            onBack: () => setState(() => _statsView = _StatsView.statement),
+          );
+        },
+      );
 
   Widget _buildStickerSheet() => FutureBuilder<StickerSheetModel>(
         future: c.stickerSheet(),
@@ -242,6 +260,32 @@ class _TallyAppState extends State<TallyApp> with WidgetsBindingObserver {
               // The sheet is one tap from the statement rather than a fifth
               // tab: it is the same question - what happened - asked in the
               // other currency.
+              Positioned(
+                left: 16,
+                bottom: 16,
+                child: Semantics(
+                  button: true,
+                  label: 'Insights',
+                  excludeSemantics: true,
+                  child: GestureDetector(
+                    onTap: () =>
+                        setState(() => _statsView = _StatsView.insights),
+                    child: Container(
+                      height: 48,
+                      padding: const EdgeInsets.symmetric(horizontal: 18),
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(
+                        color: context.tokens.surfaceStrong,
+                        borderRadius: BorderRadius.circular(999),
+                      ),
+                      child: Text(
+                        'Insights',
+                        style: Theme.of(context).textTheme.bodyLarge,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
               Positioned(
                 right: 16,
                 bottom: 16,
@@ -344,4 +388,4 @@ class _TallyAppState extends State<TallyApp> with WidgetsBindingObserver {
 }
 
 /// Which face of the Stats tab is showing.
-enum _StatsView { statement, stickers, collection }
+enum _StatsView { statement, stickers, collection, insights }
