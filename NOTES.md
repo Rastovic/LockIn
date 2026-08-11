@@ -637,3 +637,39 @@ Two non-destructive rules, both matching how the schema already behaves:
 
 Apps sort watched-first, then by how much time they actually cost. Someone
 reopening this screen is usually looking for something they already picked.
+
+## Onboarding: the reason before the ask, every time
+
+This is the funnel the product depends on, and usage access is where trackers
+die - the plan budgets a 40-60% loss at that step. Two rules shape every screen:
+
+- **The reason is on screen before the ask.** A permission dialog that arrives
+  cold is the biggest cause of a refusal that never gets reversed. The usage
+  step answers the three things a reasonable person wants to know first:
+  nothing is uploaded, only the apps you pick, you can turn it off.
+- **Every step can be moved past, and the app says what skipping costs.** A
+  funnel that traps someone produces a grant they resent and an uninstall the
+  same week.
+
+The button says **"Open Settings"** rather than "Allow", because usage access is
+a special app access with no in-app dialog: the user is sent to a system screen
+to find a switch. Promising a dialog that never appears makes the app feel
+broken at the exact moment trust matters most.
+
+Refusing usage access skips the app picker entirely and goes straight to
+notifications. Showing an empty list would be a second dead end in a row.
+
+**Step order differs from the plan.** The plan lists "pick watched apps, grant
+usage access". The picker's value is showing each app's own last-week usage, and
+that data does not exist until access is granted - asking first would mean a
+bare list of names and then a second ask. Access comes first, with its reason
+before it.
+
+## flutter_local_notifications needs core library desugaring
+
+It uses `java.time`, which is absent on older Android versions. Desugaring
+backports it, and is preferable to raising `minSdk`: the phones that would drop
+off are exactly the cheap ones this audience owns.
+
+`isCoreLibraryDesugaringEnabled = true` plus a `coreLibraryDesugaring`
+dependency in `android/app/build.gradle.kts`.

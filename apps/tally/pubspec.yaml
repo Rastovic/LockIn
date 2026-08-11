@@ -18,6 +18,7 @@ dependencies:
   tally_data: ^0.1.0
   tally_engine: ^0.1.0
   tally_ui: ^0.1.0
+  vitals_notify: ^0.1.0
   vitals_core: ^0.1.0
 
 dev_dependencies:

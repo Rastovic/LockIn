@@ -31,3 +31,24 @@ final class InstallId {
     return fresh;
   }
 }
+
+/// Whether first-run onboarding has been finished.
+///
+/// Kept in preferences rather than the database, because it describes this
+/// install rather than the user's data: someone restoring a backup onto a new
+/// phone still needs to be walked through granting usage access there.
+final class OnboardingState {
+  const OnboardingState._();
+
+  static const _key = 'tally.onboarded';
+
+  static Future<bool> isDone() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool(_key) ?? false;
+  }
+
+  static Future<void> markDone() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_key, true);
+  }
+}

@@ -3,6 +3,7 @@ import 'package:tally_data/tally_data.dart';
 import 'package:tally_engine/tally_engine.dart';
 import 'package:tally_ui/tally_ui.dart';
 
+import 'app/onboarding_flow.dart';
 import 'app/tally_app.dart';
 import 'data/app_database.dart';
 import 'data/tally_controller.dart';
@@ -14,8 +15,16 @@ Future<void> main() async {
   final db = openTallyDatabase();
   final installId = await InstallId.load();
   final settings = await TallyController.loadSettings(db);
+  final onboarded = await OnboardingState.isDone();
 
-  runApp(TallyRoot(db: db, installId: installId, settings: settings));
+  runApp(
+    TallyRoot(
+      db: db,
+      installId: installId,
+      settings: settings,
+      onboarded: onboarded,
+    ),
+  );
 }
 
 /// Owns the controller so a settings change can rebuild it.
@@ -29,12 +38,14 @@ class TallyRoot extends StatefulWidget {
     required this.db,
     required this.installId,
     required this.settings,
+    required this.onboarded,
     super.key,
   });
 
   final TallyDatabase db;
   final String installId;
   final LedgerSettings settings;
+  final bool onboarded;
 
   @override
   State<TallyRoot> createState() => _TallyRootState();
@@ -42,6 +53,7 @@ class TallyRoot extends StatefulWidget {
 
 class _TallyRootState extends State<TallyRoot> {
   late LedgerSettings _settings = widget.settings;
+  late bool _onboarded = widget.onboarded;
   late TallyController _controller = _build();
 
   TallyController _build() => TallyController(
@@ -65,9 +77,17 @@ class _TallyRootState extends State<TallyRoot> {
         theme: TallyThemeBuilder.build(TallyTheme.aurora, Brightness.light),
         darkTheme: TallyThemeBuilder.build(TallyTheme.aurora, Brightness.dark),
         themeMode: ThemeMode.dark,
-        home: TallyApp(
-          key: ValueKey(_settings.hashCode),
-          controller: _controller,
-        ),
+        home: _onboarded
+            ? TallyApp(
+                key: ValueKey(_settings.hashCode),
+                controller: _controller,
+              )
+            : OnboardingFlow(
+                controller: _controller,
+                onDone: () async {
+                  await OnboardingState.markDone();
+                  if (mounted) setState(() => _onboarded = true);
+                },
+              ),
       );
 }
