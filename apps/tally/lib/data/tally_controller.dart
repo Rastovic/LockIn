@@ -39,6 +39,7 @@ class TallyController extends ChangeNotifier {
   final UsageSource? _usage;
 
   List<Task> tasks = const [];
+  List<AppSpend> spendByApp = const [];
   List<PlanEntry> plan = const [];
   Map<String, int> streaks = const {};
   LedgerResult? ledger;
@@ -63,6 +64,31 @@ class TallyController extends ChangeNotifier {
         dateLabel: _formatDate(now),
         suggestion: _suggestion(),
       );
+
+  /// The Balance screen, from the same recomputed result Today uses.
+  BalanceScreenModel get balanceModel {
+    final day = ledger?.days.isNotEmpty ?? false ? ledger!.days.last : null;
+    return BalanceScreenModel(
+      spendableSeconds: ledger?.spendableSeconds ?? 0,
+      earnedSeconds: day?.earnedSeconds ?? 0,
+      spentSeconds: day?.spentSeconds ?? 0,
+      savingsSeconds: ledger?.savingsSeconds ?? 0,
+      solvencyStreak: ledger?.currentSolvencyStreak ?? 0,
+      bestStreak: ledger?.bestSolvencyStreak ?? 0,
+      graceRemainingSeconds: ledger?.graceRemainingSeconds ?? 0,
+      unrepayableSeconds: day?.unrepayableSeconds ?? 0,
+      spendByApp: spendByApp,
+    );
+  }
+
+  /// Tasks not already planned into today.
+  List<Task> get pool {
+    final planned = {for (final entry in plan) entry.taskId};
+    return [
+      for (final task in tasks)
+        if (!task.isArchived && !planned.contains(task.id)) task,
+    ];
+  }
 
   ManageTasksModel get manage => ManageTasksModel(
         tasks: tasks,
@@ -107,6 +133,32 @@ class TallyController extends ChangeNotifier {
       toDay: dayKey,
       now: now,
     );
+    spendByApp = await _loadSpendByApp();
+  }
+
+  /// Today's spend per app, worst first.
+  ///
+  /// Labels come from `watched_apps` rather than from the platform, so an app
+  /// uninstalled since it was watched still has a name on the statement rather
+  /// than showing a bare package id.
+  Future<List<AppSpend>> _loadSpendByApp() async {
+    final rows = await (db.select(db.daySpend)
+          ..where((t) => t.dayKey.equals(dayKey))
+          ..where((t) => t.deletedAt.isNull()))
+        .get();
+    final watched = await db.select(db.watchedApps).get();
+    final labels = {for (final app in watched) app.packageName: app};
+
+    final spend = [
+      for (final row in rows)
+        AppSpend(
+          packageName: row.packageName,
+          label: labels[row.packageName]?.label ?? row.packageName,
+          seconds: row.seconds,
+          notInstalled: labels[row.packageName]?.notInstalled ?? false,
+        ),
+    ]..sort((a, b) => b.seconds.compareTo(a.seconds));
+    return spend;
   }
 
   Future<List<String>> _watchedPackages() async {

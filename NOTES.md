@@ -585,3 +585,29 @@ first release on the 3.x line.
 It is generated once into `shared_preferences` and kept. Regenerating it on a
 restore would make every row imported from the old phone look like it came from
 a different device, which is exactly the information a future merge depends on.
+
+## Balance and the pool
+
+Two rules on the Balance screen that are about honesty rather than layout:
+
+- **Grace is stated only while it is running.** A permanent line saying "5
+  minutes of grace" would read as an allowance rather than as the one-off
+  per-zero-crossing thing it is.
+- **Unrepayable overspend is shown separately from the debt.** Past the -60
+  floor the number owed stops growing while the real minutes keep being
+  recorded. Folding them together would misstate both: the balance would look
+  worse than what has to be repaid, or the overspend would vanish.
+
+The best streak is still shown when the current one is broken. It reads as a
+fact rather than a rebuke, and it is the number that says the streak is
+reachable again.
+
+Per-app labels come from `watched_apps` rather than from the platform, so an app
+uninstalled since it was watched still has a name on the statement instead of a
+bare package id.
+
+The pool sheet is **multi-select**: planning a day is one sitting, and closing
+and reopening a sheet per task turns a two minute job into a chore. The button
+names the count, so the tap is never a guess. Only stickers actually in use are
+offered as filters, because a row of all 24 would be mostly options returning
+nothing.

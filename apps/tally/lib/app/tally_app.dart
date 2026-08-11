@@ -28,6 +28,7 @@ class TallyApp extends StatefulWidget {
 class _TallyAppState extends State<TallyApp> with WidgetsBindingObserver {
   int _tab = 0;
   TaskKind _segment = TaskKind.habit;
+  bool _showBalance = false;
 
   TallyController get c => widget.controller;
 
@@ -62,6 +63,13 @@ class _TallyAppState extends State<TallyApp> with WidgetsBindingObserver {
   Widget build(BuildContext context) {
     if (c.loading) {
       return const Scaffold(body: SizedBox.shrink());
+    }
+
+    if (_showBalance) {
+      return BalanceScreen(
+        model: c.balanceModel,
+        onClose: () => setState(() => _showBalance = false),
+      );
     }
 
     if (c.focus case final run?) {
@@ -133,9 +141,26 @@ class _TallyAppState extends State<TallyApp> with WidgetsBindingObserver {
             c.addToToday([habit.id], source: PlanSource.habit),
         onAcceptSuggestion: (item) => _acceptSuggestion(item),
         onDismissSuggestion: (_) {},
-        onOpenPool: () => setState(() => _tab = 1),
-        onOpenBalance: () {},
+        onOpenPool: _openPool,
+        onOpenBalance: () => setState(() => _showBalance = true),
       );
+
+  /// The pool: everything created and not yet planned.
+  Future<void> _openPool() async {
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (sheetContext) => PoolSheet(
+        available: c.pool,
+        now: c.now,
+        onAdd: (ids) {
+          Navigator.of(sheetContext).pop();
+          c.addToToday(ids);
+        },
+      ),
+    );
+  }
 
   Widget _buildTasks() => ManageTasksScreen(
         model: c.manage,
