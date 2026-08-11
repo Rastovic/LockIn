@@ -611,3 +611,29 @@ and reopening a sheet per task turns a two minute job into a chore. The button
 names the count, so the tap is never a guess. Only stickers actually in use are
 offered as filters, because a row of all 24 would be mostly options returning
 nothing.
+
+## Watched apps owns the rules, and changing one recomputes everything
+
+The plan puts the earn ratio, the allowance, the caps and the day boundary on
+this screen rather than in Settings, so there is never a second place to look
+for why a number came out the way it did.
+
+Each rule is a row of **choices rather than a free number field**. Every option
+offered is one the ledger is known to behave sensibly under; a text box invites
+a value that makes the app quietly nonsensical.
+
+Changing a rule rebuilds the controller and recomputes the whole stored history
+rather than only today. The ledger is derived from these settings, so changing
+the earn rate changes what every past day was worth - leaving old days on the
+old rule would make the statement disagree with itself.
+
+Two non-destructive rules, both matching how the schema already behaves:
+
+- **Unwatching sets `removedAt`, it does not delete.** Future counting stops
+  from that moment; past statements keep what they already recorded.
+- **A watched app since uninstalled stays in the list, marked.** Dropping it
+  would silently stop counting something the user chose and leave its history
+  unexplained.
+
+Apps sort watched-first, then by how much time they actually cost. Someone
+reopening this screen is usually looking for something they already picked.

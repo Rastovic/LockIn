@@ -94,7 +94,7 @@ class _TallyAppState extends State<TallyApp> with WidgetsBindingObserver {
         0 => _buildToday(),
         1 => _buildTasks(),
         2 => const UsageSpikeScreen(source: AndroidUsageSource()),
-        _ => const _SettingsPlaceholder(),
+        _ => _buildSettings(),
       },
       bottomNavigationBar: NavigationBar(
         selectedIndex: _tab,
@@ -162,6 +162,21 @@ class _TallyAppState extends State<TallyApp> with WidgetsBindingObserver {
     );
   }
 
+  Widget _buildSettings() => WatchedAppsScreen(
+        apps: c.watchable,
+        settings: c.settings,
+        access: c.usageAccess,
+        onToggle: c.setWatching,
+        onSettings: c.updateSettings,
+        onGrantAccess: () async {
+          await const AndroidUsageSource().requestAccess();
+          // No callback when the user comes back from Settings, so the check
+          // runs again on the next resume as well as here.
+          await Future<void>.delayed(const Duration(seconds: 1));
+          await c.load();
+        },
+      );
+
   Widget _buildTasks() => ManageTasksScreen(
         model: c.manage,
         segment: _segment,
@@ -212,29 +227,6 @@ class _TallyAppState extends State<TallyApp> with WidgetsBindingObserver {
                 Navigator.of(sheetContext).pop();
                 c.deleteTask(existing.id);
               },
-      ),
-    );
-  }
-}
-
-class _SettingsPlaceholder extends StatelessWidget {
-  const _SettingsPlaceholder();
-
-  @override
-  Widget build(BuildContext context) {
-    final tokens = context.tokens;
-    return Scaffold(
-      backgroundColor: tokens.bg,
-      body: Center(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 40),
-          child: Text(
-            'Settings are not built yet. Theme, the numbers that drive the '
-            'ledger, notifications and backup all live here.',
-            style: Theme.of(context).textTheme.bodyMedium,
-            textAlign: TextAlign.center,
-          ),
-        ),
       ),
     );
   }

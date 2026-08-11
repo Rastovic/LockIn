@@ -1,3 +1,4 @@
+import 'package:drift/drift.dart' show Value;
 import 'package:flutter/foundation.dart';
 import 'package:tally_data/tally_data.dart';
 import 'package:tally_engine/tally_engine.dart';
@@ -40,6 +41,8 @@ class TallyController extends ChangeNotifier {
 
   List<Task> tasks = const [];
   List<AppSpend> spendByApp = const [];
+  List<WatchableApp> watchable = const [];
+  UsageAccess usageAccess = UsageAccess.denied;
   List<PlanEntry> plan = const [];
   Map<String, int> streaks = const {};
   LedgerResult? ledger;
@@ -105,12 +108,170 @@ class TallyController extends ChangeNotifier {
   /// happened while the app was away is worked out from stored rows rather
   /// than from anything the app was keeping in its head.
   Future<void> load() async {
+    usageAccess = await _usage?.access() ?? UsageAccess.unavailable;
     tasks = await _tasks.tasks();
     plan = await _tasks.planFor(dayKey);
     streaks = await _tasks.habitStreaks(dayKey: dayKey);
     await _reconcile();
+    await loadWatchable();
     loading = false;
     notifyListeners();
+  }
+
+  /// The installed-app list, merged with what is already watched.
+  ///
+  /// A watched app that has since been uninstalled stays in the list, marked,
+  /// rather than vanishing: dropping it would silently stop counting something
+  /// the user chose and leave its history unexplained.
+  Future<void> loadWatchable() async {
+    final stored = await db.select(db.watchedApps).get();
+    final watchedByPackage = {
+      for (final row in stored)
+        if (row.deletedAt == null) row.packageName: row,
+    };
+
+    final installed = usageAccess == UsageAccess.granted
+        ? await _usage?.installedApps() ?? const <InstalledApp>[]
+        : const <InstalledApp>[];
+
+    final merged = <String, WatchableApp>{};
+    for (final app in installed) {
+      merged[app.packageName] = WatchableApp(
+        packageName: app.packageName,
+        label: app.label,
+        recentSeconds: app.recentSeconds,
+        watching: watchedByPackage[app.packageName]?.watching ?? false,
+      );
+    }
+    for (final row in watchedByPackage.values) {
+      if (merged.containsKey(row.packageName)) continue;
+      merged[row.packageName] = WatchableApp(
+        packageName: row.packageName,
+        label: row.label,
+        recentSeconds: 0,
+        watching: row.watching,
+        notInstalled: true,
+      );
+    }
+
+    // Watched first, then by how much time they actually cost. Someone
+    // revisiting this screen is usually looking for something they already
+    // picked.
+    watchable = merged.values.toList()
+      ..sort((a, b) {
+        if (a.watching != b.watching) return a.watching ? -1 : 1;
+        return b.recentSeconds.compareTo(a.recentSeconds);
+      });
+  }
+
+  /// Starts or stops counting an app.
+  ///
+  /// Removing is never destructive: `removedAt` stops future counting from this
+  /// moment only, and past statements keep the spend they already recorded.
+  Future<void> setWatching(WatchableApp app, bool watching) async {
+    final existing = await (db.select(db.watchedApps)
+          ..where((t) => t.packageName.equals(app.packageName)))
+        .getSingleOrNull();
+    final stamp = now.millisecondsSinceEpoch;
+
+    if (existing == null) {
+      await db.into(db.watchedApps).insert(
+            WatchedAppsCompanion.insert(
+              id: Ids.newId(),
+              updatedAt: stamp,
+              installId: installId,
+              packageName: app.packageName,
+              label: app.label,
+              addedAt: stamp,
+              watching: Value(watching),
+              notInstalled: Value(app.notInstalled),
+            ),
+          );
+    } else {
+      await (db.update(db.watchedApps)
+            ..where((t) => t.packageName.equals(app.packageName)))
+          .write(
+        WatchedAppsCompanion(
+          watching: Value(watching),
+          updatedAt: Value(stamp),
+          removedAt: Value(watching ? null : stamp),
+        ),
+      );
+    }
+
+    await loadWatchable();
+    await _reconcile();
+    notifyListeners();
+  }
+
+  /// Changes a ledger rule and recomputes everything under the new one.
+  ///
+  /// The whole history is recomputed rather than only today, because the rules
+  /// are inputs to a derived ledger: changing the earn rate changes what every
+  /// past day was worth, and leaving old days on the old rule would make the
+  /// statement disagree with itself.
+  Future<void> updateSettings(LedgerSettings next) async {
+    await _saveSettings(next);
+    onSettingsChanged?.call(next);
+    notifyListeners();
+  }
+
+  /// Called with the new settings so the app can rebuild its controller.
+  void Function(LedgerSettings)? onSettingsChanged;
+
+  Future<void> _saveSettings(LedgerSettings next) async {
+    Future<void> put(String key, String value) async {
+      final existing = await (db.select(db.settings)
+            ..where((t) => t.key.equals(key)))
+          .getSingleOrNull();
+      if (existing == null) {
+        await db.into(db.settings).insert(
+              SettingsCompanion.insert(
+                id: Ids.newId(),
+                updatedAt: now.millisecondsSinceEpoch,
+                installId: installId,
+                key: key,
+                value: value,
+              ),
+            );
+      } else {
+        await (db.update(db.settings)..where((t) => t.key.equals(key))).write(
+          SettingsCompanion(
+            value: Value(value),
+            updatedAt: Value(now.millisecondsSinceEpoch),
+          ),
+        );
+      }
+    }
+
+    await put('earnRatio', '${next.earnRatio}');
+    await put('dailyAllowanceMinutes', '${next.dailyAllowanceMinutes}');
+    await put('dailyEarnCapMinutes', '${next.dailyEarnCapMinutes ?? -1}');
+    await put('rolloverCapMinutes', '${next.rolloverCapMinutes}');
+    await put('dayBoundaryHour', '${next.dayBoundaryHour}');
+  }
+
+  /// Reads the stored rules, falling back to the defaults.
+  static Future<LedgerSettings> loadSettings(TallyDatabase db) async {
+    final rows = await db.select(db.settings).get();
+    final values = {for (final row in rows) row.key: row.value};
+
+    int? asInt(String key) => int.tryParse(values[key] ?? '');
+    const defaults = LedgerSettings();
+    final cap = asInt('dailyEarnCapMinutes');
+
+    return LedgerSettings(
+      earnRatio:
+          double.tryParse(values['earnRatio'] ?? '') ?? defaults.earnRatio,
+      dailyAllowanceMinutes:
+          asInt('dailyAllowanceMinutes') ?? defaults.dailyAllowanceMinutes,
+      dailyEarnCapMinutes: cap == null
+          ? defaults.dailyEarnCapMinutes
+          : (cap < 0 ? null : cap),
+      rolloverCapMinutes:
+          asInt('rolloverCapMinutes') ?? defaults.rolloverCapMinutes,
+      dayBoundaryHour: asInt('dayBoundaryHour') ?? defaults.dayBoundaryHour,
+    );
   }
 
   /// Pulls spend from the platform, then recomputes.
