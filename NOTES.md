@@ -443,3 +443,44 @@ golden set and a third of the contrast surface to maintain.
 
 None of these were visible in a passing test suite. All three came from looking
 at a picture.
+
+## The native usage spike
+
+`apps/tally/android/.../UsageReader.kt` reads `UsageStatsManager.queryEvents`
+and returns closed, merged foreground spans over one method channel.
+`lib/platform/android_usage_source.dart` is the only file in the app that knows
+Android exists, behind the `UsageSource` interface in `tally_engine`.
+
+Two things are deliberately done in Kotlin rather than Dart:
+
+- **Malformed event handling.** Unpaired resumes, orphan pauses, repeated
+  resumes and out-of-order events are all normal input. Handling them at the
+  source means the iOS implementation is not obliged to reproduce Android's
+  quirks.
+- **Merging overlapping spans.** Picture-in-picture puts two watched apps in
+  front at once, and a minute of the user's life is one minute however many
+  apps were on screen. Doing it in the source makes it a guarantee every
+  implementation owes rather than a step a caller can forget.
+
+`UsageSource` is shaped around the question - what did this user spend, which
+apps can I offer - rather than around `queryEvents`, because iOS cannot answer
+the second question at all and an interface shaped like `UsageStatsManager`
+would have to be torn up to add it.
+
+Every channel failure is answered rather than thrown. A tracker whose numbers
+vanish because a call went wrong is worse than one that reports nothing.
+
+**The spike is written and the APK builds, but it has not been run.** Nothing
+about it is proven until the numbers are held next to Digital Wellbeing on a
+real phone, which is what `UsageSpikeScreen` exists for.
+
+## The emulator needs an x86_64 image on this machine
+
+`flutter doctor` reports `darwin-x64`: this is an Intel Mac. An arm64 system
+image installs happily and then fails at launch with "Avd's CPU Architecture
+'arm64' is not supported by the QEMU2 emulator on x86_64 host". Check the host
+architecture before choosing an image.
+
+An emulator is useful for layout and for permission flows. It is **not** useful
+for the usage spike: there is no real app usage on a fresh emulator to compare
+against, so the numbers are all zero and prove nothing.

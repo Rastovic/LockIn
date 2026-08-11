@@ -1,4 +1,30 @@
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <!-- Usage access is a *special* app access, not a runtime permission: there
+         is no in-app dialog, and the user grants it in system Settings. It is
+         declared here so AppOpsManager can be asked about it, and it needs the
+         tools:ignore because the linter assumes only system apps want it.
+
+         Play's permissions declaration form covers high-risk runtime
+         permissions such as SMS and Call Log; this is not on that list. The
+         real Play gate for this app is the foreground service type. See the
+         Phase 1 policy check in apps/13-tally/PLAN.md. -->
+    <uses-permission
+        android:name="android.permission.PACKAGE_USAGE_STATS"
+        tools:ignore="ProtectedPermissions" />
+
+    <!-- Android 11+ hides the installed-app list unless the app says why it
+         needs it. The watched-app picker shows launchable apps with their own
+         recent usage, so the worst offenders sort to the top and the choice is
+         informed rather than guessed. -->
+    <queries>
+        <intent>
+            <action android:name="android.intent.action.MAIN" />
+            <category android:name="android.intent.category.LAUNCHER" />
+        </intent>
+    </queries>
+
     <application
         android:label="tally"
         android:name="${applicationName}"

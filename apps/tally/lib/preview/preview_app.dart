@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:tally_engine/tally_engine.dart';
 import 'package:tally_ui/tally_ui.dart';
 
+import '../platform/android_usage_source.dart';
 import 'demo_data.dart';
+import 'usage_spike_screen.dart';
 
 /// A harness for looking at the real screens before any of this ships.
 ///
@@ -24,6 +26,7 @@ class _PreviewAppState extends State<PreviewApp> {
   TallyTheme _theme = TallyTheme.aurora;
   Brightness _brightness = Brightness.dark;
   DemoState _state = DemoState.solvent;
+  bool _showSpike = false;
 
   List<PlanEntry> _plan = DemoDay.plan();
 
@@ -51,7 +54,11 @@ class _PreviewAppState extends State<PreviewApp> {
           _state = s;
           _plan = DemoDay.plan();
         }),
-        child: TodayScreen(
+        showingSpike: _showSpike,
+        onToggleSpike: () => setState(() => _showSpike = !_showSpike),
+        child: _showSpike
+            ? const UsageSpikeScreen(source: AndroidUsageSource())
+            : TodayScreen(
           model: TodayScreenModel(
             view: view,
             spendableSeconds: _state.spendableSeconds,
@@ -121,6 +128,8 @@ class _PreviewShell extends StatelessWidget {
     required this.onBrightness,
     required this.onState,
     required this.child,
+    required this.onToggleSpike,
+    required this.showingSpike,
   });
 
   final TallyTheme theme;
@@ -130,11 +139,30 @@ class _PreviewShell extends StatelessWidget {
   final ValueChanged<Brightness> onBrightness;
   final ValueChanged<DemoState> onState;
   final Widget child;
+  final VoidCallback onToggleSpike;
+  final bool showingSpike;
 
   @override
   Widget build(BuildContext context) {
     final wide = MediaQuery.sizeOf(context).width > 760;
-    if (!wide) return child;
+    if (!wide) {
+      // On a phone there is no room for a side panel, so the spike screen is
+      // reached by a long press anywhere on the balance strip area.
+      return Stack(
+        children: [
+          child,
+          Positioned(
+            top: 0,
+            right: 0,
+            child: GestureDetector(
+              onLongPress: onToggleSpike,
+              behavior: HitTestBehavior.opaque,
+              child: const SizedBox(width: 72, height: 72),
+            ),
+          ),
+        ],
+      );
+    }
 
     return Container(
       color: const Color(0xFF14171C),
@@ -149,6 +177,8 @@ class _PreviewShell extends StatelessWidget {
               onTheme: onTheme,
               onBrightness: onBrightness,
               onState: onState,
+              onToggleSpike: onToggleSpike,
+              showingSpike: showingSpike,
             )),
             Expanded(
               child: Center(
@@ -192,6 +222,8 @@ class _Controls extends StatelessWidget {
     required this.onTheme,
     required this.onBrightness,
     required this.onState,
+    required this.onToggleSpike,
+    required this.showingSpike,
   });
 
   final TallyTheme theme;
@@ -200,6 +232,8 @@ class _Controls extends StatelessWidget {
   final ValueChanged<TallyTheme> onTheme;
   final ValueChanged<Brightness> onBrightness;
   final ValueChanged<DemoState> onState;
+  final VoidCallback onToggleSpike;
+  final bool showingSpike;
 
   @override
   Widget build(BuildContext context) {
@@ -250,6 +284,13 @@ class _Controls extends StatelessWidget {
               selected: state == s,
               onTap: () => onState(s),
             ),
+          const SizedBox(height: 18),
+          const _Label('Native'),
+          _Choice(
+            label: showingSpike ? 'Back to Today' : 'Usage spike',
+            selected: showingSpike,
+            onTap: onToggleSpike,
+          ),
           const SizedBox(height: 22),
           const Text(
             'Rows tick, reorder on long press, and habits accept. '
