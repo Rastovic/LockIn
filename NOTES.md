@@ -859,3 +859,45 @@ governs that - so nobody is dropped.
 Flutter's generated root gradle file forces evaluation there, and an
 `afterEvaluate` registered after it throws "Cannot run
 Project.afterEvaluate(Action) when the project is already evaluated."
+
+## Bug audit before first full day of use (2026-08-11)
+
+Two real defects, both found by reading the riskiest seams rather than by a
+failing test, which is the point: neither had a test that could have caught it.
+
+**Unwatching an app erased what it had already cost that day.** `_storeSpend`
+cleared every `spend_spans` row for today and re-inserted only what
+`_watchedPackages()` returned, and that getter filters on `watching`. So
+unwatching an app at 3pm deleted its morning, and the balance jumped up. The
+schema documents the opposite rule in a comment directly above the table:
+"Removing an app is not destructive: removedAt stops future counting from that
+moment only, and historical spend stays on past statements." Fixed by clearing
+only the packages being re-read. Three regression tests in
+`tally_data/test/spend_retention_test.dart`, including one that recomputes the
+ledger and asserts the unwatched app's minutes still count.
+
+Worth naming the shape of this: the invariant was written down, in the right
+place, in plain words, and the code still contradicted it. A comment is not an
+enforcement mechanism. The test is.
+
+**A running focus block did not survive process death.** `focus` was an
+in-memory field. The wall-clock design means backgrounding is safe, which is
+what made this easy to miss - it survives the case you would actually test by
+hand. But an OS kill mid-block lost the whole session, and on a cheap phone that
+is routine. The 45 minutes really were spent; the app just forgot. Now persisted
+to preferences (`FocusStore`) on every transition and restored in `load()`.
+
+Preferences rather than the database on purpose: a block in progress is this
+device's transient state, it means nothing on another phone, and it must not
+travel in a backup - the same reasoning that keeps `usage_checkpoints` out of
+the archive. A restore is stale after 12 hours: something went wrong, and
+showing a stale countdown is worse than dropping it quietly. A malformed record
+costs the block, never a crash on launch.
+
+**Shipping the APK: macOS firewall, not the code.** The phone's cable is
+charge-only, so the APK goes over the LAN. The server was listening and
+loopback answered, but the LAN IP timed out. Not a bind or a network problem:
+the firewall has Homebrew's python at "Block incoming connections" while
+`/usr/bin/python3` is allowed. Same command, different binary, works. Checked
+rather than guessed, because the guess would have been "turn the firewall off",
+which is a security setting and not mine to change.

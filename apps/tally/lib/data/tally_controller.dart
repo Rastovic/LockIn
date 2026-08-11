@@ -7,6 +7,7 @@ import 'package:vitals_archive/vitals_archive.dart';
 import 'package:vitals_core/vitals_core.dart';
 
 import '../platform/android_usage_source.dart';
+import 'app_database.dart';
 
 /// Holds the app's state and writes every change straight through.
 ///
@@ -111,6 +112,9 @@ class TallyController extends ChangeNotifier {
   /// happened while the app was away is worked out from stored rows rather
   /// than from anything the app was keeping in its head.
   Future<void> load() async {
+    // Restored before anything else, so a block that was running when the
+    // process died is on screen again rather than silently lost.
+    focus ??= await FocusStore.load();
     usageAccess = await _usage?.access() ?? UsageAccess.unavailable;
     tasks = await _tasks.tasks();
     plan = await _tasks.planFor(dayKey);
@@ -290,7 +294,7 @@ class TallyController extends ChangeNotifier {
         to: now,
         packages: watched,
       );
-      await _storeSpend(spans);
+      await _storeSpend(spans, watched.toSet());
     }
 
     ledger = await _ledger.recomputeAndStore(
@@ -358,16 +362,23 @@ class TallyController extends ChangeNotifier {
     ];
   }
 
-  /// Replaces today's stored spans with what the platform just reported.
+  /// Replaces today's stored spans for the packages just re-read.
   ///
-  /// Replaced rather than appended: the source returns the full window every
-  /// time, so appending would double-count on every single reconcile.
-  Future<void> _storeSpend(List<UsageSpan> spans) async {
+  /// Replaced rather than appended: the source returns the whole window every
+  /// time, so appending would double-count on every reconcile.
+  ///
+  /// **Only the packages being refreshed are cleared.** Wiping the whole day
+  /// meant that unwatching an app at 3pm deleted the time it had already cost
+  /// that day, and the balance jumped up - which contradicts the rule that
+  /// removing an app stops future counting and leaves history alone.
+  Future<void> _storeSpend(List<UsageSpan> spans, Set<String> packages) async {
     final stamp = now.millisecondsSinceEpoch;
     final offset = now.timeZoneOffset.inMinutes;
 
     await db.transaction(() async {
-      await (db.delete(db.spendSpans)..where((t) => t.dayKey.equals(dayKey)))
+      await (db.delete(db.spendSpans)
+            ..where((t) => t.dayKey.equals(dayKey))
+            ..where((t) => t.packageName.isIn(packages)))
           .go();
       for (final span in spans) {
         if (span.seconds <= 0) continue;
@@ -529,23 +540,36 @@ class TallyController extends ChangeNotifier {
       planned: Duration(minutes: minutes),
       taskId: taskId,
     );
+    _saveFocus();
     notifyListeners();
   }
 
   void pauseFocus() {
     focus = focus?.pause(now);
+    _saveFocus();
     notifyListeners();
   }
 
   void resumeFocus() {
     focus = focus?.resume(now);
+    _saveFocus();
     notifyListeners();
   }
 
   void extendFocus(Duration by) {
     focus = focus?.extend(by);
+    _saveFocus();
     notifyListeners();
   }
+
+  /// Keeps a running block across process death.
+  ///
+  /// The wall-clock design already survives backgrounding, but not the OS
+  /// reclaiming the process - and on the cheap phones this audience owns that
+  /// happens constantly. Losing a 45 minute block because Android needed the
+  /// memory is the worst failure this app has, because the time really was
+  /// spent.
+  Future<void> _saveFocus() => FocusStore.save(focus);
 
   /// Ends the block and banks whatever was worked.
   ///
@@ -555,6 +579,7 @@ class TallyController extends ChangeNotifier {
   Future<void> endFocus() async {
     final run = focus?.finish(now);
     focus = null;
+    await FocusStore.clear();
     if (run == null) {
       notifyListeners();
       return;
