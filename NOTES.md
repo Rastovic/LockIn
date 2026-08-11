@@ -484,3 +484,19 @@ architecture before choosing an image.
 An emulator is useful for layout and for permission flows. It is **not** useful
 for the usage spike: there is no real app usage on a fresh emulator to compare
 against, so the numbers are all zero and prove nothing.
+
+## The emulator is not worth fighting on this machine
+
+An x86_64 image boots, but with `swiftshader_indirect` software rendering it
+takes four minutes to boot and `adb shell` hangs under load. A debug APK sat on
+the Flutter splash indefinitely; the package service eventually stopped
+responding entirely.
+
+What it did establish, which is worth having: **the APK builds, installs and
+launches on Android** - `topResumedActivity` confirmed `com.jelena.tally/.MainActivity`.
+So the Kotlin links, the manifest is valid and the app starts.
+
+For anything beyond that, use the phone. It is faster, it is the real target,
+and the usage spike is meaningless without real app usage to compare against.
+A release APK is at `apps/tally/build/app/outputs/flutter-apk/app-release.apk`
+and can be side-loaded directly.
