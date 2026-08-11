@@ -9,3 +9,4 @@ export 'src/backup.dart';
 export 'src/database.dart';
 export 'src/ledger_repository.dart';
 export 'src/tables.dart';
+export 'src/task_repository.dart';

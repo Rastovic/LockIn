@@ -552,3 +552,36 @@ decorative, and there is a test on each.
 
 The segment chips carry counts for the same reason: without them, learning
 whether anything is in the other three lists costs three taps.
+
+## Persistence: nothing lives only in memory
+
+`TallyController` writes every mutation through to the database before telling
+the UI about it. A planner that loses your day because the OS reclaimed the
+process is worse than no planner.
+
+It reloads on `AppLifecycleState.resumed` as well as on open, because the ledger
+is derived: whatever happened while the app was away, including a day rolling
+over at 04:00, is worked out from stored rows rather than from anything held in
+memory.
+
+Two rules that are easy to get wrong and are tested:
+
+- **Stored spend for a day is replaced, never appended.** The usage source
+  returns the whole window on every call, so appending would double-count on
+  every reconcile - and reconciles run constantly.
+- **Habit streaks are derived from the plan, not stored.** A stored counter
+  drifts; a derived one cannot. Today not being ticked yet does not break a
+  streak, because the day is still running and counting otherwise would punish
+  someone for opening the app in the morning.
+
+## drift_flutter had to be 0.3.x
+
+`drift_flutter` 0.2.x pins `sqlite3 ^2.4.6` while `tally_data` already needs
+`^3.4.0`, and one shared workspace resolution cannot satisfy both. 0.3.0 is the
+first release on the 3.x line.
+
+## The install id must survive a restore
+
+It is generated once into `shared_preferences` and kept. Regenerating it on a
+restore would make every row imported from the old phone look like it came from
+a different device, which is exactly the information a future merge depends on.
