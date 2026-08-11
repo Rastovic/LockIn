@@ -420,12 +420,20 @@ other. The left cluster is now one `Expanded` Row with `mainAxisSize.min`, so
 its internal spacing is fixed and only the gap before the streak pill absorbs
 leftover width. Overflow safety is unchanged.
 
-**2. The glow was a blurred rectangle inside a clipping Stack**, so its soft
-edge became a hard one and it read as a green box rather than a halo. It is now
-a `RadialGradient`, which falls off in every direction by construction, cannot
-be clipped into a box shape, and does not need its own composited layer on
-every frame. The Stack also sets `clipBehavior: Clip.none`, because the halo is
-deliberately larger than the strip.
+**2. The glow took three attempts, and each failure was informative.**
+
+A blurred rectangle inside a clipping Stack turns its soft edge into a hard one,
+so it read as a green box rather than a halo. Letting it escape with
+`Clip.none` then put a haze outside the widget's own bounds, visible past the
+phone frame.
+
+A plain `RadialGradient` sized to the strip drew a small blob instead of a band,
+because **`RadialGradient.radius` is a fraction of the box's shortest side** -
+at 64 tall, a radius of 0.5 is 32 pixels however wide the box is.
+
+The shape that works: a true circle that fades to nothing at its own edge,
+scaled on one axis. Soft on every side, contained inside the strip, and no
+composited blur layer per frame.
 
 **3. Graphite was cut.** Seen next to Aurora it was the same theme with a
 different neutral. A theme picker earns its place by making the app feel

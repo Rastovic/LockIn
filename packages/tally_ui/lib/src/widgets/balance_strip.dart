@@ -63,20 +63,17 @@ class BalanceStrip extends StatelessWidget {
           // Grows rather than overflows when the user raises text size. The
           // design system requires Dynamic Type to 200%, and a fixed height
           // here clipped the streak pill long before that.
-          constraints: const BoxConstraints(minHeight: 56),
+          constraints: const BoxConstraints(minHeight: 64),
           child: Stack(
             alignment: Alignment.centerLeft,
-            // The glow is wider and taller than the strip on purpose, so it
-            // has to be allowed out. Clipped, its soft edge becomes a hard one
-            // and the halo reads as a green rectangle.
-            clipBehavior: Clip.none,
             children: [
-              // Centred on the number rather than starting at the edge: it is
-              // the number's halo, and an offset one reads as a smear across
-              // the top of the screen.
+              // Sized to sit **inside** the strip. Letting it escape put a
+              // haze outside the widget's own bounds, and a radial gradient
+              // needs no room to spare: it already fades to nothing at its
+              // edges, so containing it costs no softness.
               Positioned(
-                left: -70,
-                child: StateGlow(color: color, width: 240, height: 120),
+                left: -56,
+                child: StateGlow(color: color, width: 230, height: 64),
               ),
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 18),
@@ -137,17 +134,23 @@ class BalanceStrip extends StatelessWidget {
 
 /// The soft state-coloured halo behind the balance.
 ///
-/// A radial gradient rather than a blurred rectangle. A blur needs its own
-/// composited layer on every frame, and the moment anything clips it the soft
-/// edge becomes a hard one - which is exactly what happened when it sat inside
-/// a Stack. A gradient falls off in every direction by construction, costs
-/// nothing to composite, and cannot be clipped into a box shape.
+/// A circular gradient stretched horizontally, rather than a blurred rectangle.
+///
+/// Two things forced this shape. A blur needs its own composited layer every
+/// frame and turns into a hard-edged box the moment anything clips it, which is
+/// what happened inside the Stack. And `RadialGradient.radius` is a fraction of
+/// the box's **shortest** side, so asking for a wide band directly gives a small
+/// circle instead.
+///
+/// Drawing a true circle that fades to nothing at its own edge, then scaling it
+/// on one axis, gives a wide band that is soft on every side and needs no room
+/// outside the strip.
 class StateGlow extends StatelessWidget {
   const StateGlow({
     required this.color,
     required this.width,
     required this.height,
-    this.opacity = 0.34,
+    this.opacity = 0.5,
     super.key,
   });
 
@@ -155,24 +158,34 @@ class StateGlow extends StatelessWidget {
   final double width;
   final double height;
 
-  /// Peak alpha at the centre. Low on purpose: this is a tint that tells you
-  /// the state before you read the number, not a light source.
+  /// Peak alpha at the centre. This is a tint that tells you the state before
+  /// you read the number, not a light source.
   final double opacity;
 
   @override
   Widget build(BuildContext context) => IgnorePointer(
-        child: Container(
+        child: SizedBox(
           width: width,
           height: height,
-          decoration: BoxDecoration(
-            gradient: RadialGradient(
-              radius: 0.5,
-              colors: [
-                color.withValues(alpha: opacity),
-                color.withValues(alpha: opacity * 0.45),
-                color.withValues(alpha: 0),
-              ],
-              stops: const [0.0, 0.45, 1.0],
+          child: Center(
+            child: Transform(
+              alignment: Alignment.center,
+              transform: Matrix4.diagonal3Values(width / height, 1, 1),
+              child: Container(
+                width: height,
+                height: height,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: RadialGradient(
+                    colors: [
+                      color.withValues(alpha: opacity),
+                      color.withValues(alpha: opacity * 0.5),
+                      color.withValues(alpha: 0),
+                    ],
+                    stops: const [0.0, 0.42, 1.0],
+                  ),
+                ),
+              ),
             ),
           ),
         ),
