@@ -5,6 +5,8 @@ import 'package:tally_engine/tally_engine.dart';
 import 'package:tally_ui/tally_ui.dart';
 import 'package:vitals_core/vitals_core.dart';
 
+import '../platform/android_usage_source.dart';
+
 /// Holds the app's state and writes every change straight through.
 ///
 /// **Nothing is held only in memory.** A planner app that loses your day
@@ -295,6 +297,30 @@ class TallyController extends ChangeNotifier {
       now: now,
     );
     spendByApp = await _loadSpendByApp();
+    await _pushSnapshot();
+  }
+
+  /// Tells the watcher where the balance stands.
+  ///
+  /// Pushed after every recompute, so the service's starting point is never
+  /// more stale than the last time the app was open. It is also what stops the
+  /// service running at all when nothing is being watched.
+  Future<void> _pushSnapshot() async {
+    final source = _usage;
+    if (source is! AndroidUsageSource) return;
+
+    final watched = await _watchedPackages();
+    await source.updateSnapshot(
+      spendableSeconds: ledger?.spendableSeconds ?? 0,
+      graceSeconds: ledger?.graceRemainingSeconds ?? 0,
+      asOf: now,
+      packages: watched,
+      dayKey: dayKey,
+      notificationsEnabled: true,
+    );
+    await source.setWatching(
+      active: watched.isNotEmpty && usageAccess == UsageAccess.granted,
+    );
   }
 
   /// Today's spend per app, worst first.

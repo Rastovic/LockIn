@@ -86,6 +86,52 @@ final class AndroidUsageSource implements UsageSource {
     }
   }
 
+  /// Hands the watcher the authoritative balance and when it was true.
+  ///
+  /// The service subtracts usage since [asOf] and nothing more, which is what
+  /// keeps the rules in one place: Dart owns the ledger, the service owns only
+  /// the timing of a notice.
+  Future<void> updateSnapshot({
+    required int spendableSeconds,
+    required int graceSeconds,
+    required DateTime asOf,
+    required List<String> packages,
+    required String dayKey,
+    required bool notificationsEnabled,
+  }) async {
+    try {
+      await channel.invokeMethod<void>('updateSnapshot', {
+        'spendableSeconds': spendableSeconds,
+        'graceSeconds': graceSeconds,
+        'asOfMillis': asOf.millisecondsSinceEpoch,
+        'packages': packages,
+        'dayKey': dayKey,
+        'notificationsEnabled': notificationsEnabled,
+      });
+    } on PlatformException {
+      // The watcher is an optimisation. Losing it costs a nudge, never a
+      // number.
+    } on MissingPluginException {
+      // No implementation on this platform, which is the web preview.
+    }
+  }
+
+  /// Starts the watcher, or stops it when there is nothing to watch.
+  ///
+  /// Stopping when nothing is watched matters: a permanent notification for a
+  /// user who never picked an app is an intrusion with no payoff.
+  Future<void> setWatching({required bool active}) async {
+    try {
+      await channel.invokeMethod<void>(
+        active ? 'startWatching' : 'stopWatching',
+      );
+    } on PlatformException {
+      // Same reasoning as above.
+    } on MissingPluginException {
+      // Same reasoning as above.
+    }
+  }
+
   @override
   Future<List<InstalledApp>> installedApps({int recentDays = 7}) async {
     try {

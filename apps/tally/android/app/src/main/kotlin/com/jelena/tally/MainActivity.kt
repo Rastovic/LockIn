@@ -68,6 +68,33 @@ class MainActivity : FlutterActivity() {
                     )
                 }
 
+                // Dart writes the authoritative balance here; the service only
+                // subtracts usage since. See BalanceSnapshot.
+                "updateSnapshot" -> {
+                    BalanceSnapshot(applicationContext).write(
+                        spendable = call.argument<Int>("spendableSeconds") ?: 0,
+                        grace = call.argument<Int>("graceSeconds") ?: 0,
+                        asOf = call.argument<Long>("asOfMillis")
+                            ?: System.currentTimeMillis(),
+                        packages = (call.argument<List<String>>("packages")
+                            ?: emptyList()).toSet(),
+                        day = call.argument<String>("dayKey") ?: "",
+                        notify = call.argument<Boolean>("notificationsEnabled")
+                            ?: true,
+                    )
+                    result.success(null)
+                }
+
+                "startWatching" -> {
+                    WatcherService.start(applicationContext)
+                    result.success(null)
+                }
+
+                "stopWatching" -> {
+                    WatcherService.stop(applicationContext)
+                    result.success(null)
+                }
+
                 else -> result.notImplemented()
             }
         }

@@ -693,3 +693,37 @@ A focus session with no task attached still appears, as "Unattached focus".
 Hiding it would make the earned column disagree with the where-it-came-from
 breakdown, and a statement that does not add up is worse than one with an
 awkward row in it.
+
+## The watcher delivers notices, it does not keep the count
+
+`BalanceSnapshot` is the seam that makes the plan's architecture rule real.
+Dart recomputes the authoritative balance from stored rows and writes it, with
+the instant it was true. `WatcherService` subtracts usage since that instant and
+nothing more.
+
+The consequence is the one the plan wants: an OEM battery manager can kill the
+service for six hours and the numbers are still exactly right the moment the app
+is opened. Only the nudge was missed - a degraded experience rather than a
+broken product.
+
+Details that matter more than they look:
+
+- **Nudges fire on the crossing, not on the state.** A service polling every
+  fifteen seconds would otherwise send "balance empty" a hundred times. Each of
+  the three is also marked sent per day, so a restart mid-debt does not re-send
+  everything already passed.
+- **Polling backs off hard.** Fifteen seconds only while something is actually
+  being spent; two minutes otherwise. A tracker that eats the battery gets
+  uninstalled whatever its numbers say.
+- **The service stops when nothing is watched.** A permanent notification for
+  someone who never picked an app is an intrusion with no payoff.
+- **`START_STICKY` and a boot receiver.** "Stopped tracking after a reboot" is
+  the most common one-star review in this category.
+- **A failed poll never takes the service down.** The next one may succeed, and
+  the app's numbers do not depend on this running at all.
+
+The `specialUse` declaration is written honestly and states the narrow claim:
+the service exists to deliver a notice at the time it is useful, not to do the
+counting. That is also the argument a Play reviewer will weigh, and the Phase 1
+fallback stands if it is refused - drop the service, poll on WorkManager's
+15-minute floor, lose the timely nudge, keep every number correct.
