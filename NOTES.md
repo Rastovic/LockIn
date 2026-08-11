@@ -727,3 +727,25 @@ the service exists to deliver a notice at the time it is useful, not to do the
 counting. That is also the argument a Play reviewer will weigh, and the Phase 1
 fallback stands if it is refused - drop the service, poll on WorkManager's
 15-minute floor, lose the timely nudge, keep every number correct.
+
+## The sticker sheet closes a promise the app was quietly breaking
+
+Stamps were being written on every completion and shown nowhere. The whole
+"completion pays a sticker rather than a minute" design was invisible, which
+makes ticking a task feel like it does nothing - the exact impression the
+separation of currencies exists to avoid.
+
+The sheet is a page that fills. **No score, no target, no percentage**: adding
+one would turn it into another number to fall short of, and the page is already
+the feedback.
+
+Unlocks are derived from history on every open rather than stored as flags,
+matching the ledger's rule. A restored backup rebuilds the right collection from
+imported rows rather than trusting a boolean written by an older version.
+
+Locked stickers show as silhouettes with their rule in plain words. No mystery
+unlocks: this app's voice is a friend with a spreadsheet, and a friend with a
+spreadsheet does not make you guess.
+
+The sheet sits one tap from the statement rather than in a fifth tab. It is the
+same question - what happened - asked in the other currency.

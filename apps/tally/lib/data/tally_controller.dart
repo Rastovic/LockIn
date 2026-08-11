@@ -630,6 +630,134 @@ class TallyController extends ChangeNotifier {
     );
   }
 
+  /// This month's stamps.
+  Future<StickerSheetModel> stickerSheet() async {
+    final local = now.toLocal();
+    final first = '${local.year.toString().padLeft(4, '0')}-'
+        '${local.month.toString().padLeft(2, '0')}-01';
+    final daysInMonth = DateTime(local.year, local.month + 1, 0).day;
+    final last = addDays(first, daysInMonth - 1);
+
+    final rows = await (db.select(db.stickerStamps)
+          ..where((t) => t.dayKey.isBetweenValues(first, last))
+          ..where((t) => t.deletedAt.isNull())
+          ..orderBy([(t) => OrderingTerm(expression: t.stampedAt)]))
+        .get();
+
+    return StickerSheetModel(
+      monthLabel: '${_months[local.month - 1]} ${local.year}',
+      daysInMonth: daysInMonth,
+      daysElapsed: local.day,
+      stamps: [
+        for (final row in rows)
+          StickerStamp(
+            id: row.id,
+            dayKey: row.dayKey,
+            stickerId: row.stickerId,
+            taskId: row.taskId,
+            at: DateTime.fromMillisecondsSinceEpoch(
+              row.stampedAt,
+              isUtc: true,
+            ),
+          ),
+      ],
+    );
+  }
+
+  /// Derives what has been unlocked, from history rather than from a flag.
+  ///
+  /// Recomputed every time, on the same rule as the ledger: a stored flag can
+  /// drift, and a restored backup has to rebuild the right collection from the
+  /// imported rows rather than trusting a boolean written by an older version.
+  Future<UnlockContext> unlockContext() async {
+    final sessions = await (db.select(db.sessions)
+          ..where((t) => t.deletedAt.isNull()))
+        .get();
+    final rollups = await db.select(db.dayLedger).get();
+    final treatRows = await (db.select(db.treats)
+          ..where((t) => t.deletedAt.isNull()))
+        .get();
+    final meta = await db.select(db.appMeta).getSingleOrNull();
+
+    var longestSession = 0;
+    var phoneDown = 0;
+    var longestPhoneDown = 0;
+    var earlyBird = false;
+    var nightOwl = false;
+    var phoneDownMorning = false;
+    var phoneDownNight = false;
+
+    for (final row in sessions) {
+      final seconds = (row.endedAt - row.startedAt) ~/ 1000;
+      final minutes = seconds ~/ 60;
+      if (minutes > longestSession) longestSession = minutes;
+
+      final startLocal =
+          DateTime.fromMillisecondsSinceEpoch(row.startedAt).toLocal();
+      if (startLocal.hour < 7) earlyBird = true;
+      if (startLocal.hour >= 22) nightOwl = true;
+
+      if (row.phoneDownVerified) {
+        phoneDown++;
+        if (minutes > longestPhoneDown) longestPhoneDown = minutes;
+        if (startLocal.hour < 9) phoneDownMorning = true;
+        if (startLocal.hour >= 21) phoneDownNight = true;
+      }
+    }
+
+    var bestStreak = 0;
+    var run = 0;
+    var largestDebtCleared = 0;
+    final sorted = rollups.toList()
+      ..sort((a, b) => a.dayKey.compareTo(b.dayKey));
+    for (final day in sorted) {
+      run = day.solvent ? run + 1 : 0;
+      if (run > bestStreak) bestStreak = run;
+      final cleared = day.allowanceToDebtSeconds ~/ 60;
+      if (cleared > largestDebtCleared) largestDebtCleared = cleared;
+    }
+
+    var peakSavings = 0;
+    for (final day in sorted) {
+      final saved = day.closingSavingsSeconds ~/ 60;
+      if (saved > peakSavings) peakSavings = saved;
+    }
+
+    var largestTreat = 0;
+    for (final treat in treatRows) {
+      if (treat.minutesBurned > largestTreat) {
+        largestTreat = treat.minutesBurned;
+      }
+    }
+
+    final installedAt = meta == null
+        ? now
+        : DateTime.fromMillisecondsSinceEpoch(meta.installedAt, isUtc: true);
+
+    final dread = tasks.where((t) => t.kind == TaskKind.dread).toList();
+    final clearedDread =
+        dread.where((t) => t.lastCompletedAt != null).length;
+
+    return UnlockContext(
+      bestSolvencyStreak: bestStreak,
+      largestDebtClearedMinutes: largestDebtCleared,
+      phoneDownBlocks: phoneDown,
+      longestPhoneDownMinutes: longestPhoneDown,
+      phoneDownBefore9am: phoneDownMorning,
+      phoneDownAfter9pm: phoneDownNight,
+      treatCount: treatRows.length,
+      largestTreatMinutes: largestTreat,
+      peakSavingsMinutes: peakSavings,
+      dreadCleared: clearedDread,
+      sessionCount: sessions.length,
+      longestSessionMinutes: longestSession,
+      startedBefore7am: earlyBird,
+      startedAfter10pm: nightOwl,
+      bestHabitStreak: streaks.values.fold(0, (m, v) => v > m ? v : m),
+      daysSinceInstall: now.difference(installedAt).inDays,
+    );
+  }
+
   /// Stored rollups for a range, with missing days filled in as zero rows.
   ///
   /// The heatmap and every run-length calculation need one cell per day, so a

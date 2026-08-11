@@ -162,8 +162,50 @@ class _TallyAppState extends State<TallyApp> with WidgetsBindingObserver {
   }
 
   StatementPeriod _period = StatementPeriod.week;
+  _StatsView _statsView = _StatsView.statement;
 
-  Widget _buildStats() => FutureBuilder<StatementModel>(
+  Widget _buildStats() => switch (_statsView) {
+        _StatsView.statement => _buildStatement(),
+        _StatsView.stickers => _buildStickerSheet(),
+        _StatsView.collection => _buildCollection(),
+      };
+
+  Widget _buildStickerSheet() => FutureBuilder<StickerSheetModel>(
+        future: c.stickerSheet(),
+        builder: (context, snapshot) {
+          final model = snapshot.data;
+          if (model == null) {
+            return Scaffold(
+              backgroundColor: context.tokens.bg,
+              body: const SizedBox(),
+            );
+          }
+          return StickerSheetScreen(
+            model: model,
+            onOpenCollection: () =>
+                setState(() => _statsView = _StatsView.collection),
+          );
+        },
+      );
+
+  Widget _buildCollection() => FutureBuilder<UnlockContext>(
+        future: c.unlockContext(),
+        builder: (context, snapshot) {
+          final unlock = snapshot.data;
+          if (unlock == null) {
+            return Scaffold(
+              backgroundColor: context.tokens.bg,
+              body: const SizedBox(),
+            );
+          }
+          return StickerCollectionScreen(
+            context_: unlock,
+            onClose: () => setState(() => _statsView = _StatsView.stickers),
+          );
+        },
+      );
+
+  Widget _buildStatement() => FutureBuilder<StatementModel>(
         // Rebuilt on every period change and every controller notification,
         // so a session finished on Today is reflected here without a manual
         // refresh.
@@ -174,9 +216,42 @@ class _TallyAppState extends State<TallyApp> with WidgetsBindingObserver {
           if (model == null) {
             return Scaffold(backgroundColor: context.tokens.bg, body: const SizedBox());
           }
-          return StatementScreen(
-            model: model,
-            onPeriod: (period) => setState(() => _period = period),
+          return Stack(
+            children: [
+              StatementScreen(
+                model: model,
+                onPeriod: (period) => setState(() => _period = period),
+              ),
+              // The sheet is one tap from the statement rather than a fifth
+              // tab: it is the same question - what happened - asked in the
+              // other currency.
+              Positioned(
+                right: 16,
+                bottom: 16,
+                child: Semantics(
+                  button: true,
+                  label: 'Sticker sheet',
+                  excludeSemantics: true,
+                  child: GestureDetector(
+                    onTap: () =>
+                        setState(() => _statsView = _StatsView.stickers),
+                    child: Container(
+                      height: 48,
+                      padding: const EdgeInsets.symmetric(horizontal: 18),
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(
+                        color: context.tokens.surfaceStrong,
+                        borderRadius: BorderRadius.circular(999),
+                      ),
+                      child: Text(
+                        'Stickers',
+                        style: Theme.of(context).textTheme.bodyLarge,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
           );
         },
       );
@@ -250,3 +325,6 @@ class _TallyAppState extends State<TallyApp> with WidgetsBindingObserver {
     );
   }
 }
+
+/// Which face of the Stats tab is showing.
+enum _StatsView { statement, stickers, collection }
