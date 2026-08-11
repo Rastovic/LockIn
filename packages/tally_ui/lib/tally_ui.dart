@@ -7,6 +7,8 @@
 library;
 
 export 'src/screens/focus_screen.dart';
+export 'src/screens/manage_tasks_screen.dart';
+export 'src/screens/task_sheet.dart';
 export 'src/screens/today_screen.dart';
 export 'src/theme/state_colors.dart';
 export 'src/theme/tally_theme.dart';

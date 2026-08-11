@@ -527,3 +527,28 @@ firing while the phone sleeps can be made to credit more than was worked.
 Paused time is removed by **shortening the session span** handed to the ledger,
 rather than by passing the real end instant. The engine therefore credits only
 seconds actually focused and needs to know nothing about pausing.
+
+## Two harness lessons from the task sheet
+
+**The default test viewport is landscape 800x600.** That is not a shape this app
+ever runs in, and a bottom sheet behaves nothing like it does on a phone -
+controls land off-screen, taps miss, and `ensureVisible` does not do what you
+expect. Sheet tests now set a 390x844 viewport, and the failures went away
+because the sheet was finally being asked the question it was designed for.
+
+**A sheet must scroll.** The task sheet is taller than a small phone once the
+keyboard is up, and a sheet that clips its own save button is unusable. It is a
+`SingleChildScrollView` capped at 90% of screen height. Found by a test, but it
+would have been found by the first user with a small phone.
+
+## Manage Tasks: the empty states carry the explanation
+
+The four task kinds are the part of this app most likely to confuse, and there
+is no tutorial. The only place the difference can be explained is each
+segment's empty state, so each one says what its list is *for*: daily tasks
+carry a streak, project tasks have no deadlines, avoided things count the days,
+and one-offs carry nothing. Those strings are load-bearing rather than
+decorative, and there is a test on each.
+
+The segment chips carry counts for the same reason: without them, learning
+whether anything is in the other three lists costs three taps.
