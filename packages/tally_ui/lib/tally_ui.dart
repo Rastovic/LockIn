@@ -6,6 +6,7 @@
 /// hardcode a colour - `theme_test.dart` asserts that over the widget tree.
 library;
 
+export 'src/screens/backup_sheet.dart';
 export 'src/screens/balance_screen.dart';
 export 'src/screens/focus_screen.dart';
 export 'src/screens/goals_screen.dart';

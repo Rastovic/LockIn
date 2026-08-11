@@ -12,6 +12,7 @@ dependencies:
   flutter:
     sdk: flutter
   tally_engine: ^0.1.0
+  vitals_archive: ^0.1.0
   vitals_core: ^0.1.0
 
 dev_dependencies:

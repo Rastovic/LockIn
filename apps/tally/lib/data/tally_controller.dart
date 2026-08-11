@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:tally_data/tally_data.dart';
 import 'package:tally_engine/tally_engine.dart';
 import 'package:tally_ui/tally_ui.dart';
+import 'package:vitals_archive/vitals_archive.dart';
 import 'package:vitals_core/vitals_core.dart';
 
 import '../platform/android_usage_source.dart';
@@ -750,6 +751,52 @@ class TallyController extends ChangeNotifier {
       GoalsCompanion(deletedAt: Value(stamp), updatedAt: Value(stamp)),
     );
     await loadGoals();
+  }
+
+  /// Builds the backup archive.
+  Future<Uint8List> exportArchive({required String appVersion}) =>
+      TallyBackup(db).export(
+        appVersion: appVersion,
+        installId: installId,
+        exportedAtMillis: now.millisecondsSinceEpoch,
+        timezone: DateTime.now().timeZoneName,
+        dayBoundaryHour: settings.dayBoundaryHour,
+      );
+
+  /// Reads an archive without writing anything, so the user can be shown what
+  /// they are about to replace.
+  ({ImportPreview? preview, ArchiveError? error}) previewArchive(
+    Uint8List bytes,
+  ) {
+    final read = const ArchiveReader().read(
+      bytes,
+      appSchemaVersion: db.schemaVersion,
+    );
+    if (read.error != null) return (preview: null, error: read.error);
+    return (
+      preview: const ImportPlanner().preview(read.contents!),
+      error: null,
+    );
+  }
+
+  /// Restores, then checks the imported history by recomputing it.
+  ///
+  /// The verification is what makes a restore trustworthy, and in an app that
+  /// already recomputes it is free: it exercises the exporter, the importer and
+  /// the engine at once on the user's real data.
+  Future<({ImportVerification? verification, ArchiveError? error})>
+      restoreArchive(Uint8List bytes) async {
+    final result = await TallyBackup(db).import(bytes);
+    if (result.error != null) {
+      return (verification: null, error: result.error);
+    }
+
+    final verification = await _ledger.verifyImported(now: now);
+
+    // Usage checkpoints never travel, so reconciliation restarts from this
+    // moment on this device. Everything before is frozen history.
+    await load();
+    return (verification: verification, error: null);
   }
 
   /// The numbers as a spreadsheet, for the period shown.

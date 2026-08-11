@@ -2,7 +2,9 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:vitals_archive/vitals_archive.dart';
 import 'package:tally_engine/tally_engine.dart';
 import 'package:tally_ui/tally_ui.dart';
 
@@ -370,6 +372,102 @@ class _TallyAppState extends State<TallyApp> with WidgetsBindingObserver {
     );
   }
 
+  bool _backupBusy = false;
+
+  Future<void> _openBackup() async {
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (sheetContext) => BackupSheet(
+        busy: _backupBusy,
+        onExport: () async {
+          Navigator.of(sheetContext).pop();
+          await _exportArchive();
+        },
+        onRestore: () async {
+          Navigator.of(sheetContext).pop();
+          await _restoreArchive();
+        },
+      ),
+    );
+  }
+
+  /// Writes the archive and hands it to the system share sheet.
+  ///
+  /// Sharing rather than saving to a fixed folder: the user picks Drive, email
+  /// or a file manager, which means the backup ends up somewhere they will
+  /// actually look for it, and no storage permission is needed.
+  Future<void> _exportArchive() async {
+    final bytes = await c.exportArchive(appVersion: '0.1.0');
+    final dir = await getTemporaryDirectory();
+    final name = ArchiveManifest.fileNameFor(
+      appSlug: 'tally',
+      exportedAtLocal: c.now.toLocal(),
+    );
+    final file = File('${dir.path}/$name');
+    await file.writeAsBytes(bytes);
+    await SharePlus.instance.share(
+      ShareParams(files: [XFile(file.path)], fileNameOverrides: [name]),
+    );
+  }
+
+  /// Picks a file, shows what is in it, and only then writes anything.
+  Future<void> _restoreArchive() async {
+    final picked = await FilePicker.platform.pickFiles(withData: true);
+    final bytes = picked?.files.singleOrNull?.bytes;
+    if (bytes == null || !mounted) return;
+
+    final read = c.previewArchive(bytes);
+    if (read.error != null) {
+      await _showRestoreResult(error: read.error);
+      return;
+    }
+
+    if (!mounted) return;
+    final confirmed = await showModalBottomSheet<bool>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      // Deliberately not dismissible by tapping away: this is the last point
+      // before a year of history is replaced.
+      isDismissible: false,
+      builder: (sheetContext) => RestoreConfirmSheet(
+        preview: read.preview!,
+        onConfirm: () => Navigator.of(sheetContext).pop(true),
+        onCancel: () => Navigator.of(sheetContext).pop(false),
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+
+    setState(() => _backupBusy = true);
+    final result = await c.restoreArchive(bytes);
+    if (!mounted) return;
+    setState(() => _backupBusy = false);
+
+    await _showRestoreResult(
+      verification: result.verification,
+      error: result.error,
+    );
+  }
+
+  Future<void> _showRestoreResult({
+    ImportVerification? verification,
+    ArchiveError? error,
+  }) async {
+    if (!mounted) return;
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (sheetContext) => RestoreResultSheet(
+        verification: verification,
+        error: error,
+        onClose: () => Navigator.of(sheetContext).pop(),
+      ),
+    );
+  }
+
   /// Writes the numbers to a file and hands it to the system share sheet.
   ///
   /// Never uploaded anywhere: the file is written on the device and passed to
@@ -408,6 +506,7 @@ class _TallyAppState extends State<TallyApp> with WidgetsBindingObserver {
         onTheme: widget.onTheme,
         onOpenGoals: () => setState(() => _showGoals = true),
         onExportCsv: _exportCsv,
+        onOpenBackup: _openBackup,
       );
 
   Widget _buildTasks() => ManageTasksScreen(

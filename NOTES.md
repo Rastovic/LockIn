@@ -824,3 +824,38 @@ Third instance of the drift row-name collision: `Goals` generates `Goal`, which
 clashed with the domain type. `@DataClassName('GoalRow')`, same as `TreatRow`
 and `TaskRow` before it. Worth doing pre-emptively on any new table whose name
 has a domain twin.
+
+## Backup and restore, and the confirmation that guards it
+
+The format, reader and verification were built and tested weeks before this UI.
+What this adds is the flow, and the flow is the risky part: this is the screen
+where a misunderstanding costs someone a year of history.
+
+- **Nothing is written until the user has seen what is in the file.** The
+  confirmation states the counts, the date range, which device made it, and
+  that it replaces everything. It is not dismissible by tapping away.
+- **A refused file says "nothing on this phone was changed."** That is the
+  reassurance that actually matters after a failed restore.
+- **Rows that could not be read are named before confirming**, not discovered as
+  a gap later.
+- **After a restore the imported history is verified by recomputation**, and the
+  result is shown rather than logged. It exercises the exporter, the importer
+  and the engine at once on real data, and it is free in an app that already
+  recomputes.
+
+Export shares rather than saving to a fixed folder: the user picks Drive, email
+or a file manager, so the backup lands somewhere they will actually look for it,
+and no storage permission is needed.
+
+## Two Android build lessons
+
+**file_picker forced compileSdk 36.** It pulls in
+`flutter_plugin_android_lifecycle`, which requires compiling against API 36, and
+the failure surfaces in the *plugin's* module rather than the app's. Raising
+`compileSdk` changes nothing about which devices the app runs on - `minSdk`
+governs that - so nobody is dropped.
+
+**The subprojects hook has to come before `evaluationDependsOn(":app")`.**
+Flutter's generated root gradle file forces evaluation there, and an
+`afterEvaluate` registered after it throws "Cannot run
+Project.afterEvaluate(Action) when the project is already evaluated."

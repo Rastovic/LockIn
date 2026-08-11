@@ -60,6 +60,7 @@ class WatchedAppsScreen extends StatelessWidget {
     this.onTheme,
     this.onOpenGoals,
     this.onExportCsv,
+    this.onOpenBackup,
     super.key,
   });
 
@@ -79,6 +80,7 @@ class WatchedAppsScreen extends StatelessWidget {
   final void Function(TallyTheme, ThemeMode)? onTheme;
   final VoidCallback? onOpenGoals;
   final Future<void> Function()? onExportCsv;
+  final VoidCallback? onOpenBackup;
 
   int get _watchedCount => apps.where((a) => a.watching).length;
 
@@ -273,6 +275,15 @@ class WatchedAppsScreen extends StatelessWidget {
                       label: 'Goals',
                       detail: 'Year and someday. They never join a day.',
                       onTap: onOpenGoals!,
+                    ),
+                  if (onOpenBackup != null)
+                    _LinkRow(
+                      label: 'Backup and restore',
+                      // Named as the thing that moves you to a new phone,
+                      // because that is when someone comes looking for it.
+                      detail: 'One file that carries everything to a new '
+                          'phone.',
+                      onTap: onOpenBackup!,
                     ),
                   if (onExportCsv != null)
                     _LinkRow(
