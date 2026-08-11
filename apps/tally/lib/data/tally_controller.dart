@@ -1,4 +1,4 @@
-import 'package:drift/drift.dart' show Value;
+import 'package:drift/drift.dart';
 import 'package:flutter/foundation.dart';
 import 'package:tally_data/tally_data.dart';
 import 'package:tally_engine/tally_engine.dart';
@@ -515,6 +515,142 @@ class TallyController extends ChangeNotifier {
       );
     }
     notifyListeners();
+  }
+
+  /// Builds a statement for [period], with the period before it to compare
+  /// against.
+  ///
+  /// Reads stored `day_ledger` rows rather than recomputing, which is what
+  /// keeps a year view fast. The comparison period is the same length
+  /// immediately before, so "vs before" always means a like-for-like span.
+  Future<StatementModel> statement(StatementPeriod period) async {
+    final toDay = dayKey;
+    final fromDay = addDays(toDay, -(period.days - 1));
+    final prevTo = addDays(fromDay, -1);
+    final prevFrom = addDays(prevTo, -(period.days - 1));
+
+    final rollups = await _rollups(fromDay, toDay);
+    final previous = await _rollups(prevFrom, prevTo);
+
+    final spend = await (db.select(db.daySpend)
+          ..where((t) => t.dayKey.isBetweenValues(fromDay, toDay))
+          ..where((t) => t.deletedAt.isNull()))
+        .get();
+    final watched = await db.select(db.watchedApps).get();
+    final labels = {for (final app in watched) app.packageName: app};
+
+    final byApp = <String, int>{};
+    for (final row in spend) {
+      byApp.update(
+        row.packageName,
+        (v) => v + row.seconds,
+        ifAbsent: () => row.seconds,
+      );
+    }
+
+    final sessions = await (db.select(db.sessions)
+          ..where((t) => t.dayKey.isBetweenValues(fromDay, toDay))
+          ..where((t) => t.deletedAt.isNull()))
+        .get();
+    final byTask = <String, int>{};
+    for (final row in sessions) {
+      final key = row.taskId ?? '';
+      byTask.update(
+        key,
+        (v) => v + (row.endedAt - row.startedAt) ~/ 1000,
+        ifAbsent: () => (row.endedAt - row.startedAt) ~/ 1000,
+      );
+    }
+    final titles = {for (final task in tasks) task.id: task};
+
+    final treatRows = await (db.select(db.treats)
+          ..where((t) => t.dayKey.isBetweenValues(fromDay, toDay))
+          ..where((t) => t.deletedAt.isNull()))
+        .get();
+
+    return StatementModel(
+      period: period,
+      days: rollups,
+      previousEarnedSeconds:
+          previous.fold(0, (a, d) => a + d.earnedSeconds),
+      previousSpentSeconds: previous.fold(0, (a, d) => a + d.spentSeconds),
+      savingsSeconds: ledger?.savingsSeconds ?? 0,
+      spendByApp: [
+        for (final entry in byApp.entries)
+          AppSpendLine(
+            label: labels[entry.key]?.label ?? entry.key,
+            seconds: entry.value,
+            notInstalled: labels[entry.key]?.notInstalled ?? false,
+          ),
+      ]..sort((a, b) => b.seconds.compareTo(a.seconds)),
+      earnByTask: [
+        for (final entry in byTask.entries)
+          TaskEarn(
+            // A session with no task is still time focused, and hiding it
+            // would make the two columns disagree.
+            title: titles[entry.key]?.title ?? 'Unattached focus',
+            seconds: entry.value,
+            stickerId: titles[entry.key]?.stickerId,
+          ),
+      ]..sort((a, b) => b.seconds.compareTo(a.seconds)),
+      treats: [
+        for (final row in treatRows)
+          TreatTaken(
+            label: row.label,
+            minutesBurned: row.minutesBurned,
+            dayKey: row.dayKey,
+          ),
+      ],
+    );
+  }
+
+  /// Stored rollups for a range, with missing days filled in as zero rows.
+  ///
+  /// The heatmap and every run-length calculation need one cell per day, so a
+  /// gap has to be a zero rather than an absence.
+  Future<List<DayRollup>> _rollups(String fromDay, String toDay) async {
+    final rows = await (db.select(db.dayLedger)
+          ..where((t) => t.dayKey.isBetweenValues(fromDay, toDay))
+          ..where((t) => t.deletedAt.isNull()))
+        .get();
+    final byDay = {for (final row in rows) row.dayKey: row};
+
+    return [
+      for (final key in dayKeyRange(fromDay, toDay))
+        if (byDay[key] case final row?)
+          DayRollup(
+            dayKey: row.dayKey,
+            allowanceGrantedSeconds: row.allowanceGrantedSeconds,
+            allowanceToDebtSeconds: row.allowanceToDebtSeconds,
+            earnedSeconds: row.earnedSeconds,
+            earnCappedSeconds: row.earnCappedSeconds,
+            spentSeconds: row.spentSeconds,
+            graceUsedSeconds: row.graceUsedSeconds,
+            unrepayableSeconds: row.unrepayableSeconds,
+            closingBalanceSeconds: row.closingBalanceSeconds,
+            closingSavingsSeconds: row.closingSavingsSeconds,
+            overflowToSavingsSeconds: row.overflowToSavingsSeconds,
+            treatedSeconds: row.treatedSeconds,
+            solvent: row.solvent,
+          )
+        else
+          DayRollup(
+            dayKey: key,
+            allowanceGrantedSeconds: 0,
+            allowanceToDebtSeconds: 0,
+            earnedSeconds: 0,
+            earnCappedSeconds: 0,
+            spentSeconds: 0,
+            graceUsedSeconds: 0,
+            unrepayableSeconds: 0,
+            closingBalanceSeconds: 0,
+            closingSavingsSeconds: 0,
+            overflowToSavingsSeconds: 0,
+            treatedSeconds: 0,
+            // A day with nothing recorded closed at zero, which is solvent.
+            solvent: true,
+          ),
+    ];
   }
 
   // --- helpers -------------------------------------------------------------

@@ -4,7 +4,6 @@ import 'package:tally_ui/tally_ui.dart';
 
 import '../data/tally_controller.dart';
 import '../platform/android_usage_source.dart';
-import '../preview/usage_spike_screen.dart';
 
 /// The app.
 ///
@@ -93,7 +92,7 @@ class _TallyAppState extends State<TallyApp> with WidgetsBindingObserver {
       body: switch (_tab) {
         0 => _buildToday(),
         1 => _buildTasks(),
-        2 => const UsageSpikeScreen(source: AndroidUsageSource()),
+        2 => _buildStats(),
         _ => _buildSettings(),
       },
       bottomNavigationBar: NavigationBar(
@@ -161,6 +160,26 @@ class _TallyAppState extends State<TallyApp> with WidgetsBindingObserver {
       ),
     );
   }
+
+  StatementPeriod _period = StatementPeriod.week;
+
+  Widget _buildStats() => FutureBuilder<StatementModel>(
+        // Rebuilt on every period change and every controller notification,
+        // so a session finished on Today is reflected here without a manual
+        // refresh.
+        key: ValueKey('${_period.name}-${c.plan.length}-${c.tasks.length}'),
+        future: c.statement(_period),
+        builder: (context, snapshot) {
+          final model = snapshot.data;
+          if (model == null) {
+            return Scaffold(backgroundColor: context.tokens.bg, body: const SizedBox());
+          }
+          return StatementScreen(
+            model: model,
+            onPeriod: (period) => setState(() => _period = period),
+          );
+        },
+      );
 
   Widget _buildSettings() => WatchedAppsScreen(
         apps: c.watchable,

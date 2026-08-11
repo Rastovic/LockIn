@@ -673,3 +673,23 @@ off are exactly the cheap ones this audience owns.
 
 `isCoreLibraryDesugaringEnabled = true` plus a `coreLibraryDesugaring`
 dependency in `android/app/build.gradle.kts`.
+
+## The statement reads rollups, never raw events
+
+A year view is 365 indexed rows rather than a scan over every session and span.
+That is the whole reason `day_ledger` exists as a stored derived table.
+
+Missing days are filled in as zero rows rather than left absent. The heatmap
+needs one cell per day, and every run-length calculation - longest solvent run,
+streaks - breaks silently if a gap is treated as "no day" instead of "a day with
+nothing in it". A day with nothing recorded closed at zero, which is solvent.
+
+Every figure carries a comparison against the same-length period immediately
+before, because a number with nothing to compare it to is trivia. "Spent" and
+"earned" colour their change in opposite directions: more earned is good, more
+spent is not.
+
+A focus session with no task attached still appears, as "Unattached focus".
+Hiding it would make the earned column disagree with the where-it-came-from
+breakdown, and a statement that does not add up is worse than one with an
+awkward row in it.
