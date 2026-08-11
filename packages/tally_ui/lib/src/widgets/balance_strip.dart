@@ -1,3 +1,5 @@
+import 'dart:ui';
+
 import 'package:flutter/material.dart';
 
 import '../theme/state_colors.dart';
@@ -63,7 +65,7 @@ class BalanceStrip extends StatelessWidget {
           // Grows rather than overflows when the user raises text size. The
           // design system requires Dynamic Type to 200%, and a fixed height
           // here clipped the streak pill long before that.
-          constraints: const BoxConstraints(minHeight: 64),
+          constraints: const BoxConstraints(minHeight: 60),
           child: Stack(
             alignment: Alignment.centerLeft,
             children: [
@@ -71,9 +73,20 @@ class BalanceStrip extends StatelessWidget {
               // haze outside the widget's own bounds, and a radial gradient
               // needs no room to spare: it already fades to nothing at its
               // edges, so containing it costs no softness.
+              // Centred on the whole left cluster - dot, number, unit - whose
+              // midpoint sits near x=68. A blur spreads symmetrically but the
+              // left half is clipped at the screen edge, so a band positioned
+              // by its rectangle alone ends up looking pushed to the right.
+              // The offset here is chosen from where the band *reads*, not
+              // from where the rectangle starts.
               Positioned(
-                left: -56,
-                child: StateGlow(color: color, width: 230, height: 64),
+                left: -18,
+                child: StateGlow(
+                  color: color,
+                  width: 148,
+                  height: 66,
+                  blur: 20,
+                ),
               ),
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 18),
@@ -132,60 +145,41 @@ class BalanceStrip extends StatelessWidget {
   }
 }
 
-/// The soft state-coloured halo behind the balance.
+/// The state-coloured field behind the balance.
 ///
-/// A circular gradient stretched horizontally, rather than a blurred rectangle.
+/// A blurred rounded rectangle, which reads as a defined band rather than a
+/// diffuse haze. That shape was chosen at review over a softer radial falloff.
 ///
-/// Two things forced this shape. A blur needs its own composited layer every
-/// frame and turns into a hard-edged box the moment anything clips it, which is
-/// what happened inside the Stack. And `RadialGradient.radius` is a fraction of
-/// the box's **shortest** side, so asking for a wide band directly gives a small
-/// circle instead.
-///
-/// Drawing a true circle that fades to nothing at its own edge, then scaling it
-/// on one axis, gives a wide band that is soft on every side and needs no room
-/// outside the strip.
+/// It is deliberately **centred on the number**, not anchored to the screen
+/// edge. Anchored, the band's mass sits to the right of the figure it belongs
+/// to and reads as a smear across the top of the screen rather than as that
+/// number's own glow.
 class StateGlow extends StatelessWidget {
   const StateGlow({
     required this.color,
     required this.width,
     required this.height,
     this.opacity = 0.5,
+    this.blur = 26,
     super.key,
   });
 
   final Color color;
   final double width;
   final double height;
-
-  /// Peak alpha at the centre. This is a tint that tells you the state before
-  /// you read the number, not a light source.
   final double opacity;
+  final double blur;
 
   @override
   Widget build(BuildContext context) => IgnorePointer(
-        child: SizedBox(
-          width: width,
-          height: height,
-          child: Center(
-            child: Transform(
-              alignment: Alignment.center,
-              transform: Matrix4.diagonal3Values(width / height, 1, 1),
-              child: Container(
-                width: height,
-                height: height,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  gradient: RadialGradient(
-                    colors: [
-                      color.withValues(alpha: opacity),
-                      color.withValues(alpha: opacity * 0.5),
-                      color.withValues(alpha: 0),
-                    ],
-                    stops: const [0.0, 0.42, 1.0],
-                  ),
-                ),
-              ),
+        child: ImageFiltered(
+          imageFilter: ImageFilter.blur(sigmaX: blur, sigmaY: blur),
+          child: Container(
+            width: width,
+            height: height,
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: opacity),
+              borderRadius: BorderRadius.circular(height),
             ),
           ),
         ),
