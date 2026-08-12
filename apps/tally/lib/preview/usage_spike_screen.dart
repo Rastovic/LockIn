@@ -192,14 +192,14 @@ class _AccessCard extends StatelessWidget {
         ),
       UsageAccess.denied => (
           'Usage access not granted',
-          'Tally cannot see any spending until this is on. Everything else '
+          'lockIn cannot see any spending until this is on. Everything else '
               'in the app still works.',
           tokens.states.low,
         ),
       UsageAccess.unavailable => (
           'No usage API on this platform',
           'Expected in the web preview. On a phone this means the OEM removed '
-              'it, which is a device Tally cannot support.',
+              'it, which is a device lockIn cannot support.',
           tokens.states.borrowing,
         ),
     };

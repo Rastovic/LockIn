@@ -74,6 +74,35 @@ Future<void> tapScrolled(WidgetTester tester, String label) async {
   await tester.pump();
 }
 
+/// Opens the kind dropdown and picks an entry.
+///
+/// The overlay it opens lives outside the sheet's scroll view, so the item has
+/// to be tapped after a settle rather than scrolled to.
+Future<void> pickKind(WidgetTester tester, String label) async {
+  await tester.ensureVisible(find.byType(DropdownButton<TaskKind>));
+  await tester.pumpAndSettle();
+  await tester.tap(find.byType(DropdownButton<TaskKind>));
+  await tester.pumpAndSettle();
+  await tester.tap(find.text(label).last);
+  await tester.pumpAndSettle();
+}
+
+/// Spins the estimate wheel to a value.
+///
+/// Driven through the wheel's own controller rather than a drag. A drag lands
+/// in a gesture arena with the sheet's scroll view and the outcome depends on
+/// pixel distances, which makes the test about Flutter's arena rather than
+/// about whether picking an estimate saves it.
+Future<void> spinEstimate(WidgetTester tester, int minutes) async {
+  final wheel = find.byType(ListWheelScrollView);
+  await tester.ensureVisible(wheel);
+  await tester.pumpAndSettle();
+  final controller = tester.widget<ListWheelScrollView>(wheel).controller!
+      as FixedExtentScrollController;
+  controller.jumpToItem(EstimateOptions.all.indexOf(minutes));
+  await tester.pumpAndSettle();
+}
+
 void main() {
   group('the four segments', () {
     testWidgets('each shows only its own kind', (tester) async {
@@ -271,8 +300,8 @@ void main() {
         wrap(Scaffold(body: TaskSheet(onSave: (d) => saved = d))),
       );
 
-      await tester.enterText(find.byType(TextField), 'Clean the flat');
-      await tapScrolled(tester, 'Avoiding');
+      await tester.enterText(find.byType(TextField).first, 'Clean the flat');
+      await pickKind(tester, 'Avoiding');
       await tapScrolled(tester, 'Add task');
 
       expect(saved?.title, 'Clean the flat');
@@ -295,7 +324,7 @@ void main() {
       await tester.pumpWidget(
         wrap(Scaffold(body: TaskSheet(onSave: (_) => saves++))),
       );
-      await tester.enterText(find.byType(TextField), '   ');
+      await tester.enterText(find.byType(TextField).first, '   ');
       await tester.pump();
       await tapScrolled(tester, 'Add task');
       expect(saves, 0);
@@ -310,7 +339,7 @@ void main() {
       );
       expect(find.bySemanticsLabel('Monday'), findsNothing);
 
-      await tapScrolled(tester, 'Daily');
+      await pickKind(tester, 'Daily');
       expect(find.bySemanticsLabel('Monday'), findsOneWidget);
     });
 
@@ -321,11 +350,11 @@ void main() {
         wrap(Scaffold(body: TaskSheet(onSave: (d) => saved = d))),
       );
 
-      await tester.enterText(find.byType(TextField), 'Piano');
-      await tapScrolled(tester, 'Daily');
+      await tester.enterText(find.byType(TextField).first, 'Piano');
+      await pickKind(tester, 'Daily');
       await tapScrolled(tester, 'Tuesday');
       await tapScrolled(tester, 'Thursday');
-      await tapScrolled(tester, '20 minutes');
+      await spinEstimate(tester, 20);
       await tapScrolled(tester, 'Add task');
 
       expect(saved?.habitWeekdays, {2, 4});
@@ -340,29 +369,70 @@ void main() {
       await tester.pumpWidget(
         wrap(Scaffold(body: TaskSheet(onSave: (_) {}))),
       );
-      for (final minutes in [5, 10, 15, 20, 30, 45, 60]) {
+      for (final minutes in EstimateOptions.all) {
         expect(
           minutes,
           greaterThanOrEqualTo(settings.minEarnBlockMinutes),
           reason: '$minutes',
         );
-        expect(find.bySemanticsLabel('$minutes minutes'), findsOneWidget);
       }
+      // Nothing under the floor is offered at all, so the wheel cannot
+      // produce a task whose own estimate could never earn.
+      expect(EstimateOptions.all.first, settings.minEarnBlockMinutes);
     });
 
-    testWidgets('tapping a chosen estimate again clears it', (tester) async {
+    testWidgets('the estimate can be cleared once set', (tester) async {
+      // A wheel always rests on something, so there is no "spin it back to
+      // nothing". Clearing has to be its own explicit tap.
       TaskDraft? saved;
       usePhoneViewport(tester);
       await tester.pumpWidget(
         wrap(Scaffold(body: TaskSheet(onSave: (d) => saved = d))),
       );
-      await tester.enterText(find.byType(TextField), 'Something');
-      await tester.tap(find.bySemanticsLabel('20 minutes'));
-      await tester.pump();
-      await tester.tap(find.bySemanticsLabel('20 minutes'));
-      await tester.pump();
+      await tester.enterText(find.byType(TextField).first, 'Something');
+      await spinEstimate(tester, 20);
+      await tapScrolled(tester, 'Clear estimate');
       await tapScrolled(tester, 'Add task');
       expect(saved?.estimateMinutes, isNull);
+    });
+
+    testWidgets('the description is saved and is optional', (tester) async {
+      TaskDraft? saved;
+      usePhoneViewport(tester);
+      await tester.pumpWidget(
+        wrap(Scaffold(body: TaskSheet(onSave: (d) => saved = d))),
+      );
+      await tester.enterText(find.byType(TextField).first, 'Call the vet');
+      await tapScrolled(tester, 'Add task');
+      expect(saved?.note, isNull, reason: 'blank stays null, not ""');
+
+      await tester.pumpWidget(
+        wrap(Scaffold(body: TaskSheet(onSave: (d) => saved = d))),
+      );
+      await tester.enterText(find.byType(TextField).first, 'Call the vet');
+      await tester.enterText(find.byType(TextField).last, 'Booster is due.');
+      await tapScrolled(tester, 'Add task');
+      expect(saved?.note, 'Booster is due.');
+    });
+
+    testWidgets('the kind defaults to where create was tapped',
+        (tester) async {
+      TaskDraft? saved;
+      usePhoneViewport(tester);
+      await tester.pumpWidget(
+        wrap(
+          Scaffold(
+            body: TaskSheet(
+              initialKind: TaskKind.projectTask,
+              onSave: (d) => saved = d,
+            ),
+          ),
+        ),
+      );
+      await tester.enterText(find.byType(TextField).first, 'Draft the intro');
+      await tapScrolled(tester, 'Add task');
+      // Tapping create inside Projects means the kind is already answered.
+      expect(saved?.kind, TaskKind.projectTask);
     });
 
     testWidgets('editing loads what was there and offers delete',

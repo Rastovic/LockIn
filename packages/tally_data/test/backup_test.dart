@@ -347,7 +347,13 @@ void main() {
 
       expect(contents.manifest.installId, install);
       expect(contents.manifest.dayBoundaryHour, 4);
-      expect(contents.manifest.schemaVersion, 1);
+      // Whatever the schema is at, not a number written down twice. The
+      // literal 1 here had to be edited the first time the schema grew, which
+      // is a test asserting its own copy of a constant.
+      expect(
+        contents.manifest.schemaVersion,
+        TallyDatabase.currentSchemaVersion,
+      );
 
       // Every travelling row carries the merge keys, which is what makes this
       // file a sync payload rather than only a backup.

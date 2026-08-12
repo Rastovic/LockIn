@@ -276,7 +276,7 @@ class WatchedAppsScreen extends StatelessWidget {
                     ),
                     _RuleChoice(
                       title: 'Light or dark',
-                      detail: 'Following the system means Tally changes when '
+                      detail: 'Following the system means lockIn changes when '
                           'your phone does.',
                       options: const {
                         'Dark': ThemeMode.dark,
@@ -552,11 +552,11 @@ class _AccessCard extends StatelessWidget {
     final (title, body) = switch (access) {
       UsageAccess.unavailable => (
           'This device cannot report app usage',
-          'Tally works as a planner and a focus timer, but the spending half '
+          'lockIn works as a planner and a focus timer, but the spending half '
               'of it needs an API this device does not have.',
         ),
       _ => (
-          'Tally needs usage access to see what you spend',
+          'lockIn needs usage access to see what you spend',
           'Android grants this in Settings rather than in the app. Nothing is '
               'sent anywhere: the numbers are read on the phone and stay on '
               'it. Without it, the plan and the timer still work.',

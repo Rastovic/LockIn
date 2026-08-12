@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Sampled from the artwork, so the adaptive icon's two
+         layers cannot show a seam between them. -->
+    <color name="ic_launcher_background">#CDC4F5</color>
+</resources>

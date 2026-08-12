@@ -133,7 +133,7 @@ final class ArchiveReader {
         contents: null,
         error: const ArchiveError(
           ArchiveRejection.malformed,
-          'This file is not a Tally backup.',
+          'This file is not a lockIn backup.',
         ),
       );
     }

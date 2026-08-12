@@ -34,7 +34,7 @@ class TallyDatabase extends _$TallyDatabase {
   TallyDatabase(super.e);
 
   /// Bumped for every schema change, and written into every archive manifest.
-  static const currentSchemaVersion = 1;
+  static const currentSchemaVersion = 2;
 
   @override
   int get schemaVersion => currentSchemaVersion;
@@ -49,6 +49,13 @@ class TallyDatabase extends _$TallyDatabase {
           // Migration steps land here as the schema grows. Each one must be
           // additive or explicitly lossy with a note, because this chain also
           // carries a two-year-old backup forward on restore.
+          //
+          // 1 -> 2: tasks gain an optional note. Additive and nullable, so
+          // every existing row is already valid at the new version and there
+          // is nothing to backfill.
+          if (from < 2) {
+            await m.addColumn(tasks, tasks.note);
+          }
           await _createIndexes();
         },
         beforeOpen: (details) async {

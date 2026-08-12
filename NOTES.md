@@ -971,3 +971,75 @@ scrolls.
 network, new DHCP lease. Checked `ipconfig getifaddr` rather than reusing the
 address that worked once, which is the same class of mistake as reusing a build
 output without checking it was rebuilt.
+
+## Task sheet rework, and the app gets a name (2026-08-12)
+
+**The kind is now a dropdown, and it is usually already right.** It was four
+chips, which read as a filter rather than a field and cost a full row to offer
+three options nobody was choosing between: tapping "new task" inside Projects
+already answers the question. A closed control states the answer in one line.
+The kind still inherits from wherever create was tapped, and there is now a
+test saying so rather than an assumption.
+
+**Title and description are separate fields.** The old hint for a project task
+was "Write the introduction", which was meant as an example of a *title* and
+was read as an instruction to write a description. That is a fair reading of a
+lone text box with a sentence in it. There is now a labelled title and a
+four-line description underneath, and the hint has somewhere to be a hint
+about. The description is `tasks.note`, schema 1 to 2, nullable and additive.
+
+Nothing reads the note. That is deliberate and worth keeping deliberate: a
+notes field that starts driving behaviour becomes a second, worse task system
+inside the first one.
+
+**How long is a wheel.** Seven chips became a wheel from 5 to 120 minutes,
+which reads as one continuous quantity rather than seven unrelated buttons. The
+floor still holds - nothing under five minutes is offered, because a shorter
+estimate would describe a task whose own plan could never earn - and the test
+now asserts the floor against the list instead of restating it.
+
+Two real bugs surfaced building it. The wheel's `FixedExtentScrollController`
+was constructed in `build`, so every spin rebuilt the sheet, which built a
+fresh controller, which reset the wheel mid-gesture; it survived a flick and
+dropped the value under a precise drag. And the save button's enabled state was
+driven by `markNeedsBuild` on the title field's own element, which rebuilds the
+field and not the button above it - it worked only while the field *was* the
+whole widget and broke the moment it grew a label. The controller now lives in
+the state and the sheet listens to the title properly.
+
+The wheel test drives the controller rather than dragging. A drag lands in a
+gesture arena with the sheet's scroll view and the result depends on pixel
+distances, which makes the test about Flutter's arena rather than about whether
+picking an estimate saves it.
+
+**Choose a sticker is one control now.** It was a small label with a quiet
+"Choose" pushed to the far right, which read as two unrelated things. Same size
+as before, because size was never the problem: nothing marked it as pressable.
+It carries the accent only while empty - once a sticker is picked, the sticker
+is the colour on that row and a tinted button beside it would compete with the
+thing it just set.
+
+**The app is called lockIn.** User-facing strings only. The applicationId, the
+drift filename, the package names and the archive's `appSlug` all stay
+`tally`: changing an applicationId orphans every installed copy, and changing
+`appSlug` would make the reader refuse every backup already written. A rename
+that reaches the wire format is a rename that loses data.
+
+**The icon took four passes, and the proof sheet is why.** Rendering the
+foreground under circle, squircle and square masks caught each failure that
+reading the code would not have:
+
+1. The art bounding box came out as the entire tile, because the rounded
+   corners fade through every colour between the tile and its cream ground, so
+   an edge-inclusive scan calls the corners "art".
+2. Cut to the tile, the cream corners rode along into the foreground and
+   appeared as four white notches inside every mask.
+3. Masking the corners transparent left a faint ring: the artwork carries a
+   soft highlight just inside its border, which no amount of colour matching
+   between the two layers could hide.
+4. Cropped inside that highlight, with the background sampled from the artwork
+   rather than eyeballed, the seam is gone.
+
+Then the circle mask clipped the speech bubble at 74% and the foreground went
+back to the documented 66% band. Four rounds of "it looks fine in the file" and
+none of them survived being drawn under a mask.

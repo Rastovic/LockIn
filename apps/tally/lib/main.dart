@@ -87,7 +87,7 @@ class _TallyRootState extends State<TallyRoot> {
 
   @override
   Widget build(BuildContext context) => MaterialApp(
-        title: 'Tally',
+        title: 'lockIn',
         debugShowCheckedModeBanner: false,
         theme: TallyThemeBuilder.build(_theme, Brightness.light),
         darkTheme: TallyThemeBuilder.build(_theme, Brightness.dark),

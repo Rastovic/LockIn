@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  The launcher icon on API 26 and above.
+
+  Two layers, because the launcher applies its own mask and the shape is not
+  ours to choose: circle, squircle, rounded square and teardrop all crop this
+  differently. The background carries the tile colour to the edge so no mask
+  can reveal a corner, and the artwork sits inside the central band that every
+  mask is guaranteed to keep.
+-->
+<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
+    <background android:drawable="@color/ic_launcher_background" />
+    <foreground android:drawable="@mipmap/ic_launcher_foreground" />
+</adaptive-icon>

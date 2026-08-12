@@ -9,6 +9,7 @@ final class TaskDraft {
   const TaskDraft({
     required this.kind,
     required this.title,
+    this.note,
     this.stickerId,
     this.estimateMinutes,
     this.habitWeekdays = const {},
@@ -16,6 +17,10 @@ final class TaskDraft {
 
   final TaskKind kind;
   final String title;
+
+  /// The longer version, or null. Nothing in the ledger reads it.
+  final String? note;
+
   final String? stickerId;
   final int? estimateMinutes;
   final Set<int> habitWeekdays;
@@ -61,13 +66,34 @@ class _TaskSheetState extends State<TaskSheet> {
   );
   late String? _sticker = widget.existing?.stickerId;
   late int? _estimate = widget.existing?.estimateMinutes;
+  late final _note = TextEditingController(text: widget.existing?.note ?? '');
+
+  @override
+  void initState() {
+    super.initState();
+    // The save button is disabled until there is a title, so the sheet itself
+    // has to rebuild as the title is typed. This used to be a markNeedsBuild
+    // on the field's own element, which rebuilt the field and not the button
+    // above it - it happened to work only while the field was the whole
+    // widget, and stopped the moment the field grew a label.
+    _title.addListener(_onTitleChanged);
+  }
+
+  void _onTitleChanged() {
+    final canSave = _title.text.trim().isNotEmpty;
+    if (canSave != _canSave) setState(() => _canSave = canSave);
+  }
+
+  late bool _canSave = (widget.existing?.title ?? '').trim().isNotEmpty;
   late Set<int> _weekdays = {...?widget.existing?.habitWeekdays};
 
   bool _pickingSticker = false;
 
   @override
   void dispose() {
+    _title.removeListener(_onTitleChanged);
     _title.dispose();
+    _note.dispose();
     super.dispose();
   }
 
@@ -76,6 +102,7 @@ class _TaskSheetState extends State<TaskSheet> {
       kind: _kind,
       title: _title.text.trim(),
       stickerId: _sticker,
+      note: _note.text.trim().isEmpty ? null : _note.text.trim(),
       estimateMinutes: _estimate,
       habitWeekdays: _kind == TaskKind.habit ? _weekdays : const {},
     );
@@ -126,6 +153,8 @@ class _TaskSheetState extends State<TaskSheet> {
               ),
               const SizedBox(height: 16),
               _TitleField(controller: _title, kind: _kind),
+              const SizedBox(height: 10),
+              _NoteField(controller: _note, kind: _kind),
               const SizedBox(height: 16),
               _StickerRow(
                 selected: _sticker,
@@ -140,9 +169,7 @@ class _TaskSheetState extends State<TaskSheet> {
               const SizedBox(height: 16),
               _EstimateRow(
                 selected: _estimate,
-                onPick: (minutes) => setState(
-                  () => _estimate = _estimate == minutes ? null : minutes,
-                ),
+                onPick: (minutes) => setState(() => _estimate = minutes),
               ),
               // Only habits are scheduled. A dread task has no week dots because
               // the whole point of it is that it has no schedule.
@@ -159,7 +186,7 @@ class _TaskSheetState extends State<TaskSheet> {
               const SizedBox(height: 24),
               _SaveButton(
                 label: editing ? 'Save' : 'Add task',
-                enabled: _title.text.trim().isNotEmpty,
+                enabled: _canSave,
                 onTap: _save,
               ),
               if (editing && widget.onDelete != null) ...[
@@ -195,6 +222,14 @@ class _TaskSheetState extends State<TaskSheet> {
   }
 }
 
+/// The kind, as a dropdown.
+///
+/// Was four chips. They read as a filter rather than a field, and they cost a
+/// full row of the sheet to show three options nobody was choosing between:
+/// the kind is nearly always already correct, because it is inherited from
+/// wherever "new task" was tapped. A closed control states that answer in one
+/// line and gets out of the way, which is what a field that is usually right
+/// should do.
 class _KindPicker extends StatelessWidget {
   const _KindPicker({required this.selected, required this.onChanged});
 
@@ -209,41 +244,72 @@ class _KindPicker extends StatelessWidget {
     TaskKind.oneoff: 'Someday',
   };
 
+  /// What each kind actually does, since the label alone does not say.
+  static const detail = {
+    TaskKind.habit: 'on a rhythm, carries a streak',
+    TaskKind.projectTask: 'part of something bigger',
+    TaskKind.dread: 'counts the days you put it off',
+    TaskKind.oneoff: 'kept until you plan it',
+  };
+
   @override
   Widget build(BuildContext context) {
     final tokens = context.tokens;
-    return Wrap(
-      spacing: 8,
-      runSpacing: 8,
+    final text = Theme.of(context).textTheme;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        for (final entry in labels.entries)
-          Semantics(
-            button: true,
-            selected: selected == entry.key,
-            label: entry.value,
-            excludeSemantics: true,
-            child: GestureDetector(
-              onTap: () => onChanged(entry.key),
-              behavior: HitTestBehavior.opaque,
-              child: Container(
-                height: 40,
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                alignment: Alignment.center,
-                decoration: BoxDecoration(
-                  color: selected == entry.key
-                      ? tokens.states.solvent
-                      : tokens.surface,
-                  borderRadius: BorderRadius.circular(999),
-                ),
-                child: Text(
-                  entry.value,
-                  style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                    color: selected == entry.key ? tokens.bg : tokens.inkMuted,
+        Text('KIND', style: text.labelSmall),
+        const SizedBox(height: 8),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14),
+          decoration: BoxDecoration(
+            color: tokens.surface,
+            borderRadius: BorderRadius.circular(14),
+          ),
+          child: DropdownButtonHideUnderline(
+            child: DropdownButton<TaskKind>(
+              value: selected,
+              isExpanded: true,
+              // Two lines per item. The default 48 clips the detail line by
+              // three pixels, which shows up as an overflow stripe.
+              itemHeight: 58,
+              borderRadius: BorderRadius.circular(14),
+              dropdownColor: Color.alphaBlend(tokens.surfaceStrong, tokens.bg),
+              icon: Icon(Icons.expand_more, color: tokens.inkFaint, size: 20),
+              style: text.bodyLarge?.copyWith(color: tokens.ink),
+              onChanged: (kind) => kind == null ? null : onChanged(kind),
+              // The closed field shows the label alone. The detail belongs in
+              // the open list, where a choice is actually being made.
+              selectedItemBuilder: (context) => [
+                for (final entry in labels.entries)
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text(entry.value, style: text.bodyLarge),
                   ),
-                ),
-              ),
+              ],
+              items: [
+                for (final entry in labels.entries)
+                  DropdownMenuItem(
+                    value: entry.key,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(entry.value, style: text.bodyLarge),
+                        Text(
+                          detail[entry.key]!,
+                          style: text.labelMedium
+                              ?.copyWith(color: tokens.inkFaint),
+                        ),
+                      ],
+                    ),
+                  ),
+              ],
             ),
           ),
+        ),
       ],
     );
   }
@@ -256,6 +322,11 @@ class _TitleField extends StatelessWidget {
   final TaskKind kind;
 
   /// A hint per kind, written as the user would say it out loud.
+  ///
+  /// These are examples of a **title**, and were read as an instruction to
+  /// write a description - "Write the introduction" looked like a prompt
+  /// rather than a sample task. With a labelled description field underneath,
+  /// the hint has somewhere to be a hint about.
   static const hints = {
     TaskKind.habit: 'Piano, 20 minutes',
     TaskKind.projectTask: 'Write the introduction',
@@ -266,7 +337,13 @@ class _TitleField extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final tokens = context.tokens;
-    return TextField(
+    final text = Theme.of(context).textTheme;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('TITLE', style: text.labelSmall),
+        const SizedBox(height: 8),
+        TextField(
       controller: controller,
       autofocus: true,
       textCapitalization: TextCapitalization.sentences,
@@ -286,15 +363,90 @@ class _TitleField extends StatelessWidget {
           vertical: 14,
         ),
       ),
-      onChanged: (_) {
-        // Rebuilds the sheet so the save button enables as soon as there is a
-        // title, rather than only after the field loses focus.
-        (context as Element).markNeedsBuild();
-      },
+        ),
+      ],
     );
   }
 }
 
+/// The longer version, under the title.
+///
+/// Four lines tall rather than one, because a field the height of a title
+/// invites a title-length answer, and this one exists for the sentences that
+/// did not fit. Optional everywhere, and nothing reads it: it holds what the
+/// task involves or why it has been sitting there, and no part of the ledger
+/// is allowed to care.
+class _NoteField extends StatelessWidget {
+  const _NoteField({required this.controller, required this.kind});
+
+  final TextEditingController controller;
+  final TaskKind kind;
+
+  static const hints = {
+    TaskKind.habit: 'Scales first, then the piece.',
+    TaskKind.projectTask: 'Two paragraphs on why the study was run.',
+    TaskKind.dread: 'Kitchen and the pile by the door.',
+    TaskKind.oneoff: 'The one on the high street, they open at nine.',
+  };
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.tokens;
+    final text = Theme.of(context).textTheme;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Text('DESCRIPTION', style: text.labelSmall),
+            const SizedBox(width: 6),
+            Text(
+              'optional',
+              style: text.labelSmall?.copyWith(color: tokens.inkFaint),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        TextField(
+          controller: controller,
+          minLines: 4,
+          maxLines: 6,
+          textCapitalization: TextCapitalization.sentences,
+          keyboardType: TextInputType.multiline,
+          style: text.bodyLarge,
+          cursorColor: tokens.states.solvent,
+          decoration: InputDecoration(
+            hintText: hints[kind],
+            hintStyle: text.bodyMedium,
+            filled: true,
+            fillColor: tokens.surface,
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(14),
+              borderSide: BorderSide.none,
+            ),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 14,
+              vertical: 14,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// Choosing a sticker.
+///
+/// Was a small "STICKER" label with a quiet "Choose" pushed to the far right,
+/// which read as two unrelated things and disappeared into the sheet. It is
+/// now one control that says what it does, at the same size as before: the
+/// problem was never that it was too small, it was that nothing marked it as
+/// something you could press.
+///
+/// It carries the accent only while **nothing is chosen**. Once a sticker is
+/// picked the sticker itself is the colour on that row, and a tinted button
+/// beside it would compete with the thing it just set.
 class _StickerRow extends StatelessWidget {
   const _StickerRow({
     required this.selected,
@@ -310,117 +462,240 @@ class _StickerRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final tokens = context.tokens;
     final text = Theme.of(context).textTheme;
+    final empty = selected == null;
+    final accent = tokens.states.solvent;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          children: [
-            Text('STICKER', style: text.labelSmall),
-            const Spacer(),
-            Semantics(
-              button: true,
-              label: expanded ? 'Close sticker picker' : 'Choose a sticker',
-              excludeSemantics: true,
-              child: GestureDetector(
-                onTap: onToggle,
-                behavior: HitTestBehavior.opaque,
-                child: SizedBox(
-                  height: 44,
-                  child: Row(
-                    children: [
-                      if (selected != null) StickerChip(stickerId: selected!),
-                      const SizedBox(width: 8),
-                      Text(
-                        selected == null ? 'Choose' : 'Change',
-                        style: text.bodyMedium,
-                      ),
-                    ],
-                  ),
+        Semantics(
+          button: true,
+          expanded: expanded,
+          label: empty ? 'Choose a sticker' : 'Change sticker',
+          excludeSemantics: true,
+          child: GestureDetector(
+            onTap: onToggle,
+            behavior: HitTestBehavior.opaque,
+            child: Container(
+              height: 52,
+              padding: const EdgeInsets.symmetric(horizontal: 14),
+              decoration: BoxDecoration(
+                color: empty
+                    ? accent.withValues(alpha: 0.14)
+                    : tokens.surface,
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(
+                  color: empty ? accent.withValues(alpha: 0.5) : tokens.surface,
                 ),
               ),
+              child: Row(
+                children: [
+                  if (!empty) ...[
+                    StickerChip(stickerId: selected!),
+                    const SizedBox(width: 10),
+                  ],
+                  Text(
+                    empty ? 'Choose a sticker' : 'Change sticker',
+                    style: text.bodyLarge?.copyWith(
+                      color: empty ? accent : tokens.ink,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const Spacer(),
+                  Icon(
+                    expanded ? Icons.expand_less : Icons.expand_more,
+                    size: 20,
+                    color: empty ? accent : tokens.inkFaint,
+                  ),
+                ],
+              ),
             ),
-          ],
+          ),
         ),
         if (expanded)
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              for (final sticker in StickerCatalog.base)
-                Semantics(
-                  button: true,
-                  label: sticker.id,
-                  excludeSemantics: true,
-                  child: GestureDetector(
-                    onTap: () => onPick(sticker.id),
-                    behavior: HitTestBehavior.opaque,
-                    child: StickerChip(stickerId: sticker.id, size: 38),
+          Padding(
+            padding: const EdgeInsets.only(top: 10),
+            child: Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                for (final sticker in StickerCatalog.base)
+                  Semantics(
+                    button: true,
+                    label: sticker.id,
+                    excludeSemantics: true,
+                    child: GestureDetector(
+                      onTap: () => onPick(sticker.id),
+                      behavior: HitTestBehavior.opaque,
+                      child: StickerChip(stickerId: sticker.id, size: 38),
+                    ),
                   ),
-                ),
-            ],
+              ],
+            ),
           ),
       ],
     );
   }
 }
 
-class _EstimateRow extends StatelessWidget {
+/// What the estimate wheel offers.
+///
+/// Public so a test can assert the floor rather than restating the list, which
+/// is how a list and its rule drift apart.
+final class EstimateOptions {
+  const EstimateOptions._();
+
+  /// **Nothing below the five minute earning floor is offered.** An estimate
+  /// under it would describe a task whose own plan could never earn a minute.
+  static const all = <int>[
+    5, 10, 15, 20, 25, 30, 40, 45, 50, 60, 75, 90, 105, 120,
+  ];
+}
+
+/// How long, as a wheel.
+///
+/// Was a row of chips at 5, 10, 15, 20, 30, 45 and 60. The wheel covers the
+/// same ground plus everything up to two hours without a row of chips that
+/// wraps onto three lines, and reads as one continuous quantity rather than
+/// seven unrelated buttons.
+///
+/// **Nothing below five minutes is offered**, including "none": five is the
+/// earning floor, so a shorter estimate would describe a task whose own plan
+/// could never earn a minute. Clearing it is a separate, explicit tap.
+class _EstimateRow extends StatefulWidget {
   const _EstimateRow({required this.selected, required this.onPick});
 
   final int? selected;
-  final ValueChanged<int> onPick;
 
-  /// Every option is at or above the five minute earning floor, so the sheet
-  /// cannot produce a task whose own estimate could never earn.
-  static const options = [5, 10, 15, 20, 30, 45, 60];
+  /// Null clears the estimate.
+  final ValueChanged<int?> onPick;
+
+  static const options = EstimateOptions.all;
+
+  @override
+  State<_EstimateRow> createState() => _EstimateRowState();
+}
+
+class _EstimateRowState extends State<_EstimateRow> {
+  static const options = EstimateOptions.all;
+
+  /// Owned by the state, not built in [build].
+  ///
+  /// It was built inline, which meant every spin rebuilt the sheet, which
+  /// built a fresh controller, which reset the wheel mid-gesture. The wheel
+  /// looked like it worked by hand - a flick lands somewhere - and reliably
+  /// dropped the value under a precise drag.
+  late final _controller = FixedExtentScrollController(
+    // Rests on 15 when nothing is chosen: a middling estimate rather than the
+    // shortest one, so the wheel does not nudge every task towards five.
+    initialItem: widget.selected == null
+        ? options.indexOf(15)
+        : options.indexOf(widget.selected!),
+  );
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  void didUpdateWidget(_EstimateRow old) {
+    super.didUpdateWidget(old);
+    // Only when something outside the wheel changed the value, such as Clear.
+    final target = widget.selected;
+    if (target != null &&
+        _controller.hasClients &&
+        _controller.selectedItem != options.indexOf(target)) {
+      _controller.jumpToItem(options.indexOf(target));
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     final tokens = context.tokens;
     final text = Theme.of(context).textTheme;
+    final selected = widget.selected;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('HOW LONG', style: text.labelSmall),
-        const SizedBox(height: 8),
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
+        Row(
           children: [
-            for (final minutes in options)
+            Text('HOW LONG', style: text.labelSmall),
+            const Spacer(),
+            if (selected != null)
               Semantics(
                 button: true,
-                selected: selected == minutes,
-                label: '$minutes minutes',
+                label: 'Clear estimate',
                 excludeSemantics: true,
                 child: GestureDetector(
-                  onTap: () => onPick(minutes),
+                  onTap: () => widget.onPick(null),
                   behavior: HitTestBehavior.opaque,
-                  child: Container(
-                    height: 40,
-                    constraints: const BoxConstraints(minWidth: 52),
-                    alignment: Alignment.center,
-                    decoration: BoxDecoration(
-                      color: selected == minutes
-                          ? tokens.states.solvent
-                          : tokens.surface,
-                      borderRadius: BorderRadius.circular(999),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 6,
+                      vertical: 4,
                     ),
                     child: Text(
-                      '${minutes}m',
-                      style: text.bodyLarge?.copyWith(
-                        color: selected == minutes
-                            ? tokens.bg
-                            : tokens.inkMuted,
-                      ),
+                      'Clear',
+                      style: text.labelMedium?.copyWith(color: tokens.inkMuted),
                     ),
                   ),
                 ),
               ),
           ],
+        ),
+        const SizedBox(height: 8),
+        Container(
+          height: 116,
+          decoration: BoxDecoration(
+            color: tokens.surface,
+            borderRadius: BorderRadius.circular(14),
+          ),
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              // The selection sits still and the numbers move through it,
+              // which is what makes a wheel readable at a glance.
+              Container(
+                height: 38,
+                margin: const EdgeInsets.symmetric(horizontal: 12),
+                decoration: BoxDecoration(
+                  color: tokens.surfaceStrong,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
+              Semantics(
+                label: selected == null
+                    ? 'How long, nothing chosen'
+                    : 'How long, $selected minutes',
+                excludeSemantics: true,
+                child: ListWheelScrollView.useDelegate(
+                  itemExtent: 38,
+                  diameterRatio: 1.6,
+                  physics: const FixedExtentScrollPhysics(),
+                  controller: _controller,
+                  onSelectedItemChanged: (i) => widget.onPick(options[i]),
+                  childDelegate: ListWheelChildBuilderDelegate(
+                    childCount: options.length,
+                    builder: (context, i) => Center(
+                      child: Text(
+                        '${options[i]} min',
+                        style: text.bodyLarge?.copyWith(
+                          color: options[i] == selected
+                              ? tokens.ink
+                              : tokens.inkFaint,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       ],
     );

@@ -80,6 +80,15 @@ class $TasksTable extends Tasks with TableInfo<$TasksTable, TaskRow> {
     type: DriftSqlType.string,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _noteMeta = const VerificationMeta('note');
+  @override
+  late final GeneratedColumn<String> note = GeneratedColumn<String>(
+    'note',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _stickerIdMeta = const VerificationMeta(
     'stickerId',
   );
@@ -166,6 +175,7 @@ class $TasksTable extends Tasks with TableInfo<$TasksTable, TaskRow> {
     installId,
     kind,
     title,
+    note,
     stickerId,
     estimateMinutes,
     projectId,
@@ -228,6 +238,12 @@ class $TasksTable extends Tasks with TableInfo<$TasksTable, TaskRow> {
       );
     } else if (isInserting) {
       context.missing(_titleMeta);
+    }
+    if (data.containsKey('note')) {
+      context.handle(
+        _noteMeta,
+        note.isAcceptableOrUnknown(data['note']!, _noteMeta),
+      );
     }
     if (data.containsKey('sticker_id')) {
       context.handle(
@@ -315,6 +331,10 @@ class $TasksTable extends Tasks with TableInfo<$TasksTable, TaskRow> {
         DriftSqlType.string,
         data['${effectivePrefix}title'],
       )!,
+      note: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}note'],
+      ),
       stickerId: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}sticker_id'],
@@ -378,6 +398,14 @@ class TaskRow extends DataClass implements Insertable<TaskRow> {
   /// `habit` / `projectTask` / `dread` / `oneoff`.
   final String kind;
   final String title;
+
+  /// The longer version, when the title is not enough on its own.
+  ///
+  /// Optional and unstructured on purpose. It holds what the task actually
+  /// involves, or why it has been sitting there, and nothing in the ledger
+  /// reads it: notes that start driving behaviour turn into a second, worse
+  /// task system inside the first one.
+  final String? note;
   final String? stickerId;
   final int? estimateMinutes;
   final String? projectId;
@@ -394,6 +422,7 @@ class TaskRow extends DataClass implements Insertable<TaskRow> {
     required this.installId,
     required this.kind,
     required this.title,
+    this.note,
     this.stickerId,
     this.estimateMinutes,
     this.projectId,
@@ -413,6 +442,9 @@ class TaskRow extends DataClass implements Insertable<TaskRow> {
     map['install_id'] = Variable<String>(installId);
     map['kind'] = Variable<String>(kind);
     map['title'] = Variable<String>(title);
+    if (!nullToAbsent || note != null) {
+      map['note'] = Variable<String>(note);
+    }
     if (!nullToAbsent || stickerId != null) {
       map['sticker_id'] = Variable<String>(stickerId);
     }
@@ -443,6 +475,7 @@ class TaskRow extends DataClass implements Insertable<TaskRow> {
       installId: Value(installId),
       kind: Value(kind),
       title: Value(title),
+      note: note == null && nullToAbsent ? const Value.absent() : Value(note),
       stickerId: stickerId == null && nullToAbsent
           ? const Value.absent()
           : Value(stickerId),
@@ -475,6 +508,7 @@ class TaskRow extends DataClass implements Insertable<TaskRow> {
       installId: serializer.fromJson<String>(json['installId']),
       kind: serializer.fromJson<String>(json['kind']),
       title: serializer.fromJson<String>(json['title']),
+      note: serializer.fromJson<String?>(json['note']),
       stickerId: serializer.fromJson<String?>(json['stickerId']),
       estimateMinutes: serializer.fromJson<int?>(json['estimateMinutes']),
       projectId: serializer.fromJson<String?>(json['projectId']),
@@ -494,6 +528,7 @@ class TaskRow extends DataClass implements Insertable<TaskRow> {
       'installId': serializer.toJson<String>(installId),
       'kind': serializer.toJson<String>(kind),
       'title': serializer.toJson<String>(title),
+      'note': serializer.toJson<String?>(note),
       'stickerId': serializer.toJson<String?>(stickerId),
       'estimateMinutes': serializer.toJson<int?>(estimateMinutes),
       'projectId': serializer.toJson<String?>(projectId),
@@ -511,6 +546,7 @@ class TaskRow extends DataClass implements Insertable<TaskRow> {
     String? installId,
     String? kind,
     String? title,
+    Value<String?> note = const Value.absent(),
     Value<String?> stickerId = const Value.absent(),
     Value<int?> estimateMinutes = const Value.absent(),
     Value<String?> projectId = const Value.absent(),
@@ -525,6 +561,7 @@ class TaskRow extends DataClass implements Insertable<TaskRow> {
     installId: installId ?? this.installId,
     kind: kind ?? this.kind,
     title: title ?? this.title,
+    note: note.present ? note.value : this.note,
     stickerId: stickerId.present ? stickerId.value : this.stickerId,
     estimateMinutes: estimateMinutes.present
         ? estimateMinutes.value
@@ -545,6 +582,7 @@ class TaskRow extends DataClass implements Insertable<TaskRow> {
       installId: data.installId.present ? data.installId.value : this.installId,
       kind: data.kind.present ? data.kind.value : this.kind,
       title: data.title.present ? data.title.value : this.title,
+      note: data.note.present ? data.note.value : this.note,
       stickerId: data.stickerId.present ? data.stickerId.value : this.stickerId,
       estimateMinutes: data.estimateMinutes.present
           ? data.estimateMinutes.value
@@ -572,6 +610,7 @@ class TaskRow extends DataClass implements Insertable<TaskRow> {
           ..write('installId: $installId, ')
           ..write('kind: $kind, ')
           ..write('title: $title, ')
+          ..write('note: $note, ')
           ..write('stickerId: $stickerId, ')
           ..write('estimateMinutes: $estimateMinutes, ')
           ..write('projectId: $projectId, ')
@@ -591,6 +630,7 @@ class TaskRow extends DataClass implements Insertable<TaskRow> {
     installId,
     kind,
     title,
+    note,
     stickerId,
     estimateMinutes,
     projectId,
@@ -609,6 +649,7 @@ class TaskRow extends DataClass implements Insertable<TaskRow> {
           other.installId == this.installId &&
           other.kind == this.kind &&
           other.title == this.title &&
+          other.note == this.note &&
           other.stickerId == this.stickerId &&
           other.estimateMinutes == this.estimateMinutes &&
           other.projectId == this.projectId &&
@@ -625,6 +666,7 @@ class TasksCompanion extends UpdateCompanion<TaskRow> {
   final Value<String> installId;
   final Value<String> kind;
   final Value<String> title;
+  final Value<String?> note;
   final Value<String?> stickerId;
   final Value<int?> estimateMinutes;
   final Value<String?> projectId;
@@ -640,6 +682,7 @@ class TasksCompanion extends UpdateCompanion<TaskRow> {
     this.installId = const Value.absent(),
     this.kind = const Value.absent(),
     this.title = const Value.absent(),
+    this.note = const Value.absent(),
     this.stickerId = const Value.absent(),
     this.estimateMinutes = const Value.absent(),
     this.projectId = const Value.absent(),
@@ -656,6 +699,7 @@ class TasksCompanion extends UpdateCompanion<TaskRow> {
     required String installId,
     required String kind,
     required String title,
+    this.note = const Value.absent(),
     this.stickerId = const Value.absent(),
     this.estimateMinutes = const Value.absent(),
     this.projectId = const Value.absent(),
@@ -677,6 +721,7 @@ class TasksCompanion extends UpdateCompanion<TaskRow> {
     Expression<String>? installId,
     Expression<String>? kind,
     Expression<String>? title,
+    Expression<String>? note,
     Expression<String>? stickerId,
     Expression<int>? estimateMinutes,
     Expression<String>? projectId,
@@ -693,6 +738,7 @@ class TasksCompanion extends UpdateCompanion<TaskRow> {
       if (installId != null) 'install_id': installId,
       if (kind != null) 'kind': kind,
       if (title != null) 'title': title,
+      if (note != null) 'note': note,
       if (stickerId != null) 'sticker_id': stickerId,
       if (estimateMinutes != null) 'estimate_minutes': estimateMinutes,
       if (projectId != null) 'project_id': projectId,
@@ -711,6 +757,7 @@ class TasksCompanion extends UpdateCompanion<TaskRow> {
     Value<String>? installId,
     Value<String>? kind,
     Value<String>? title,
+    Value<String?>? note,
     Value<String?>? stickerId,
     Value<int?>? estimateMinutes,
     Value<String?>? projectId,
@@ -727,6 +774,7 @@ class TasksCompanion extends UpdateCompanion<TaskRow> {
       installId: installId ?? this.installId,
       kind: kind ?? this.kind,
       title: title ?? this.title,
+      note: note ?? this.note,
       stickerId: stickerId ?? this.stickerId,
       estimateMinutes: estimateMinutes ?? this.estimateMinutes,
       projectId: projectId ?? this.projectId,
@@ -758,6 +806,9 @@ class TasksCompanion extends UpdateCompanion<TaskRow> {
     }
     if (title.present) {
       map['title'] = Variable<String>(title.value);
+    }
+    if (note.present) {
+      map['note'] = Variable<String>(note.value);
     }
     if (stickerId.present) {
       map['sticker_id'] = Variable<String>(stickerId.value);
@@ -795,6 +846,7 @@ class TasksCompanion extends UpdateCompanion<TaskRow> {
           ..write('installId: $installId, ')
           ..write('kind: $kind, ')
           ..write('title: $title, ')
+          ..write('note: $note, ')
           ..write('stickerId: $stickerId, ')
           ..write('estimateMinutes: $estimateMinutes, ')
           ..write('projectId: $projectId, ')
@@ -9795,6 +9847,7 @@ typedef $$TasksTableCreateCompanionBuilder =
       required String installId,
       required String kind,
       required String title,
+      Value<String?> note,
       Value<String?> stickerId,
       Value<int?> estimateMinutes,
       Value<String?> projectId,
@@ -9812,6 +9865,7 @@ typedef $$TasksTableUpdateCompanionBuilder =
       Value<String> installId,
       Value<String> kind,
       Value<String> title,
+      Value<String?> note,
       Value<String?> stickerId,
       Value<int?> estimateMinutes,
       Value<String?> projectId,
@@ -9858,6 +9912,11 @@ class $$TasksTableFilterComposer
 
   ColumnFilters<String> get title => $composableBuilder(
     column: $table.title,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get note => $composableBuilder(
+    column: $table.note,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -9936,6 +9995,11 @@ class $$TasksTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get note => $composableBuilder(
+    column: $table.note,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get stickerId => $composableBuilder(
     column: $table.stickerId,
     builder: (column) => ColumnOrderings(column),
@@ -9998,6 +10062,9 @@ class $$TasksTableAnnotationComposer
 
   GeneratedColumn<String> get title =>
       $composableBuilder(column: $table.title, builder: (column) => column);
+
+  GeneratedColumn<String> get note =>
+      $composableBuilder(column: $table.note, builder: (column) => column);
 
   GeneratedColumn<String> get stickerId =>
       $composableBuilder(column: $table.stickerId, builder: (column) => column);
@@ -10063,6 +10130,7 @@ class $$TasksTableTableManager
                 Value<String> installId = const Value.absent(),
                 Value<String> kind = const Value.absent(),
                 Value<String> title = const Value.absent(),
+                Value<String?> note = const Value.absent(),
                 Value<String?> stickerId = const Value.absent(),
                 Value<int?> estimateMinutes = const Value.absent(),
                 Value<String?> projectId = const Value.absent(),
@@ -10078,6 +10146,7 @@ class $$TasksTableTableManager
                 installId: installId,
                 kind: kind,
                 title: title,
+                note: note,
                 stickerId: stickerId,
                 estimateMinutes: estimateMinutes,
                 projectId: projectId,
@@ -10095,6 +10164,7 @@ class $$TasksTableTableManager
                 required String installId,
                 required String kind,
                 required String title,
+                Value<String?> note = const Value.absent(),
                 Value<String?> stickerId = const Value.absent(),
                 Value<int?> estimateMinutes = const Value.absent(),
                 Value<String?> projectId = const Value.absent(),
@@ -10110,6 +10180,7 @@ class $$TasksTableTableManager
                 installId: installId,
                 kind: kind,
                 title: title,
+                note: note,
                 stickerId: stickerId,
                 estimateMinutes: estimateMinutes,
                 projectId: projectId,

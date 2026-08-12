@@ -28,6 +28,7 @@ final class Task {
     required this.kind,
     required this.title,
     required this.createdAt,
+    this.note,
     this.stickerId,
     this.estimateMinutes,
     this.projectId,
@@ -40,6 +41,14 @@ final class Task {
   final TaskKind kind;
   final String title;
   final DateTime createdAt;
+
+  /// The longer version, when the title is not enough on its own.
+  ///
+  /// Nothing in the ledger reads it. It is there to hold what the task
+  /// involves or why it has been sitting untouched, and deliberately has no
+  /// effect on anything: notes that start driving behaviour become a second,
+  /// worse task system inside the first one.
+  final String? note;
 
   /// The category sticker, or null. **Most tasks will have none**, so an
   /// unstickered task must look deliberate rather than broken.
@@ -71,6 +80,8 @@ final class Task {
 
   Task copyWith({
     String? title,
+    String? note,
+    bool clearNote = false,
     String? stickerId,
     bool clearSticker = false,
     int? estimateMinutes,
@@ -85,6 +96,7 @@ final class Task {
         kind: kind,
         title: title ?? this.title,
         createdAt: createdAt,
+        note: clearNote ? null : (note ?? this.note),
         stickerId: clearSticker ? null : (stickerId ?? this.stickerId),
         estimateMinutes:
             clearEstimate ? null : (estimateMinutes ?? this.estimateMinutes),

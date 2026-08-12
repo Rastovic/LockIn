@@ -23,6 +23,14 @@ class Tasks extends Table with PortableTable {
 
   TextColumn get title => text().withLength(min: 1, max: 200)();
 
+  /// The longer version, when the title is not enough on its own.
+  ///
+  /// Optional and unstructured on purpose. It holds what the task actually
+  /// involves, or why it has been sitting there, and nothing in the ledger
+  /// reads it: notes that start driving behaviour turn into a second, worse
+  /// task system inside the first one.
+  TextColumn get note => text().nullable()();
+
   TextColumn get stickerId => text().nullable()();
 
   IntColumn get estimateMinutes => integer().nullable()();
