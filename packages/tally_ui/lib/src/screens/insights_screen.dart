@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../format/durations.dart';
+
 import '../theme/tally_theme_data.dart';
 import '../widgets/sticker_chip.dart';
 
@@ -223,7 +225,7 @@ class _Body extends StatelessWidget {
   }
 
   static String _hm(int seconds) {
-    final minutes = (seconds / 60).round();
+    final minutes = wholeMinutes(seconds);
     if (minutes < 60) return '${minutes}m';
     return '${minutes ~/ 60}h ${minutes % 60}m';
   }
@@ -383,7 +385,7 @@ class _SliceLine extends StatelessWidget {
                 ),
               ),
               Text(
-                '${(slice.seconds / 60).round()}m',
+                '${wholeMinutes(slice.seconds)}m',
                 style: text.labelMedium,
               ),
             ],

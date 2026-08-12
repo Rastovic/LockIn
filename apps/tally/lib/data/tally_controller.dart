@@ -74,7 +74,12 @@ class TallyController extends ChangeNotifier {
 
   /// The Balance screen, from the same recomputed result Today uses.
   BalanceScreenModel get balanceModel {
-    final day = ledger?.days.isNotEmpty ?? false ? ledger!.days.last : null;
+    final days = ledger?.days ?? const [];
+    final day = days.isNotEmpty ? days.last : null;
+    // What yesterday closed at, which is what today opened with.
+    final opening = days.length > 1
+        ? days[days.length - 2].closingBalanceSeconds
+        : 0;
     return BalanceScreenModel(
       spendableSeconds: ledger?.spendableSeconds ?? 0,
       earnedSeconds: day?.earnedSeconds ?? 0,
@@ -85,6 +90,9 @@ class TallyController extends ChangeNotifier {
       graceRemainingSeconds: ledger?.graceRemainingSeconds ?? 0,
       unrepayableSeconds: day?.unrepayableSeconds ?? 0,
       spendByApp: spendByApp,
+      openingSeconds: opening,
+      allowanceSeconds: day?.allowanceGrantedSeconds ?? 0,
+      graceUsedSeconds: day?.graceUsedSeconds ?? 0,
     );
   }
 
@@ -342,6 +350,29 @@ class TallyController extends ChangeNotifier {
     final watched = await db.select(db.watchedApps).get();
     final labels = {for (final app in watched) app.packageName: app};
 
+    // The stretches behind each total, so the number can be checked rather
+    // than believed. These are the same rows the ledger recomputes from.
+    final spans = await (db.select(db.spendSpans)
+          ..where((t) => t.dayKey.equals(dayKey))
+          ..where((t) => t.deletedAt.isNull())
+          ..orderBy([(t) => OrderingTerm.asc(t.startedAt)]))
+        .get();
+    final sessions = <String, List<AppSession>>{};
+    for (final span in spans) {
+      sessions.putIfAbsent(span.packageName, () => []).add(
+            AppSession(
+              startedAt: DateTime.fromMillisecondsSinceEpoch(
+                span.startedAt,
+                isUtc: true,
+              ),
+              endedAt: DateTime.fromMillisecondsSinceEpoch(
+                span.endedAt,
+                isUtc: true,
+              ),
+            ),
+          );
+    }
+
     final spend = [
       for (final row in rows)
         AppSpend(
@@ -349,6 +380,7 @@ class TallyController extends ChangeNotifier {
           label: labels[row.packageName]?.label ?? row.packageName,
           seconds: row.seconds,
           notInstalled: labels[row.packageName]?.notInstalled ?? false,
+          sessions: sessions[row.packageName] ?? const [],
         ),
     ]..sort((a, b) => b.seconds.compareTo(a.seconds));
     return spend;

@@ -55,7 +55,9 @@ void main() {
         (tester) async {
       await tester.pumpWidget(wrap(BalanceScreen(model: balance())));
 
-      expect(find.text('42'), findsOneWidget);
+      // Twice: the headline figure, and the total line of the sum that
+      // explains it. Both are the same number by design.
+      expect(find.text('42'), findsNWidgets(2));
       expect(find.text('minutes left today'), findsOneWidget);
       expect(find.text('55'), findsOneWidget, reason: 'earned');
       expect(find.text('43'), findsOneWidget, reason: 'spent');
@@ -67,7 +69,7 @@ void main() {
       await tester.pumpWidget(
         wrap(BalanceScreen(model: balance(spendable: -1080, streak: 0))),
       );
-      expect(find.text('−18'), findsOneWidget);
+      expect(find.text('−18'), findsNWidgets(2));
       expect(find.text('minutes borrowed'), findsOneWidget);
       // The best is still stated when the current streak is gone. It is a
       // fact rather than a rebuke, and it is the number that says the streak
@@ -101,7 +103,7 @@ void main() {
           ),
         ),
       );
-      expect(find.text('−60'), findsOneWidget);
+      expect(find.text('−60'), findsNWidgets(2));
       expect(find.textContaining('30 minutes went unrecorded'), findsOneWidget);
     });
 

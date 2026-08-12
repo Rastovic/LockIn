@@ -67,6 +67,10 @@ final class TallyTokens extends ThemeExtension<TallyTokens> {
 
   Color colorFor(BalanceState state) => states.of(state);
 
+  /// The colour for the blurred field behind the balance, which is not always
+  /// the colour of the number in front of it. See [StateColors.borrowingGlow].
+  Color glowFor(BalanceState state) => states.glowFor(state);
+
   @override
   TallyTokens copyWith({
     TallyTheme? theme,
@@ -185,6 +189,11 @@ final class TallyTokens extends ThemeExtension<TallyTokens> {
       low: Color(0xFF8A5605),
       borrowing: Color(0xFFB81E1E),
       savings: Color(0xFF6741C4),
+      // Blurred behind the balance, #B81E1E composites to #DC8A8B - brick,
+      // and muddy against a pink theme. This tint composites to #F8ABBC and
+      // sits 68 units from the solvent glow where the dark red sat 64, so the
+      // pinker choice also tells the two states apart slightly better.
+      borrowingGlow: Color(0xFFF0607F),
     ),
   );
 }

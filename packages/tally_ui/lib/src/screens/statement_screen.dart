@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+
+import '../format/durations.dart';
 import 'package:tally_engine/tally_engine.dart';
 
 import '../theme/tally_theme_data.dart';
@@ -344,8 +346,8 @@ class _Figure extends StatelessWidget {
   Widget build(BuildContext context) {
     final tokens = context.tokens;
     final text = Theme.of(context).textTheme;
-    final minutes = (seconds / 60).floor();
-    final changeMinutes = (change / 60).round();
+    final minutes = wholeMinutes(seconds);
+    final changeMinutes = wholeMinutes(change);
 
     return Expanded(
       child: Container(
@@ -400,7 +402,7 @@ class _NetLine extends StatelessWidget {
   Widget build(BuildContext context) {
     final tokens = context.tokens;
     final text = Theme.of(context).textTheme;
-    final minutes = (seconds / 60).floor();
+    final minutes = wholeMinutes(seconds);
     final positive = minutes >= 0;
 
     return Container(
@@ -454,7 +456,7 @@ class _Heatmap extends StatelessWidget {
         for (final day in days)
           Semantics(
             label: '${day.dayKey}: '
-                '${(day.spentSeconds / 60).round()} minutes spent',
+                '${wholeMinutes(day.spentSeconds)} minutes spent',
             excludeSemantics: true,
             child: Container(
               width: 14,
@@ -522,7 +524,7 @@ class _BarLine extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                 ),
               ),
-              Text('${(seconds / 60).round()}m', style: text.labelMedium),
+              Text('${wholeMinutes(seconds)}m', style: text.labelMedium),
             ],
           ),
           const SizedBox(height: 5),
@@ -582,7 +584,7 @@ class _SavingsBlock extends StatelessWidget {
   Widget build(BuildContext context) {
     final tokens = context.tokens;
     final text = Theme.of(context).textTheme;
-    final minutes = (savingsSeconds / 60).floor();
+    final minutes = wholeMinutes(savingsSeconds);
 
     return Container(
       padding: const EdgeInsets.all(16),

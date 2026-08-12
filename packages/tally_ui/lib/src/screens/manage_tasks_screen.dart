@@ -26,11 +26,18 @@ final class ManageTasksModel {
 
 /// Manage Tasks.
 ///
-/// **Four segments, because these are genuinely different objects.** A habit
+/// **Four kinds, because these are genuinely different objects.** A habit
 /// carries a streak, a project task stacks sessions, a dread task counts the
 /// days it has been avoided, and a one-off carries nothing at all. Flattening
-/// them into one list is what makes task apps confusing, so the split is the
-/// screen's whole structure.
+/// them into one undifferentiated list is what makes task apps confusing, so
+/// the split is the screen's structure.
+///
+/// There is also an **All** segment, added after a day of real use: knowing
+/// which of four buckets something was filed under is a poor way to find it
+/// again, and checking four tabs to answer "what do I actually have" is worse.
+/// All keeps the kinds visible as **headed groups** rather than dissolving
+/// them, so it answers the "everything at once" question without giving up the
+/// distinction the rest of the screen is built on.
 class ManageTasksScreen extends StatelessWidget {
   const ManageTasksScreen({
     required this.model,
@@ -44,8 +51,11 @@ class ManageTasksScreen extends StatelessWidget {
   });
 
   final ManageTasksModel model;
-  final TaskKind segment;
-  final ValueChanged<TaskKind> onSegment;
+
+  /// The kind being shown, or null for All.
+  final TaskKind? segment;
+
+  final ValueChanged<TaskKind?> onSegment;
 
   final VoidCallback? onCreate;
   final void Function(Task task)? onEdit;
@@ -63,7 +73,21 @@ class ManageTasksScreen extends StatelessWidget {
 
   List<Task> get _visible => [
         for (final task in model.tasks)
-          if (task.kind == segment && !task.isArchived) task,
+          if (!task.isArchived && (segment == null || task.kind == segment))
+            task,
+      ];
+
+  /// The All view, in kind order, with empty kinds left out.
+  List<(TaskKind, List<Task>)> get _grouped => [
+        for (final kind in TaskKind.values)
+          if (model.tasks.any((t) => t.kind == kind && !t.isArchived))
+            (
+              kind,
+              [
+                for (final task in model.tasks)
+                  if (task.kind == kind && !task.isArchived) task,
+              ],
+            ),
       ];
 
   @override
@@ -97,37 +121,24 @@ class ManageTasksScreen extends StatelessWidget {
                       .where((t) => t.kind == kind && !t.isArchived)
                       .length,
               },
+              allCount: model.tasks.where((t) => !t.isArchived).length,
               onChanged: onSegment,
             ),
             Expanded(
               child: visible.isEmpty
                   ? _EmptySegment(kind: segment)
-                  : ListView.builder(
-                      padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
-                      itemCount: visible.length,
-                      itemBuilder: (context, index) {
-                        final task = visible[index];
-                        return Padding(
-                          padding: const EdgeInsets.only(bottom: 6),
-                          child: GestureDetector(
-                            onTap: () => onEdit?.call(task),
-                            behavior: HitTestBehavior.opaque,
-                            child: TaskRow(
-                              title: task.title,
-                              done: false,
-                              showGrip: false,
-                              stickerId: task.stickerId,
-                              estimateMinutes: task.estimateMinutes,
-                              subtitle: _subtitleFor(task),
-                              onToggle: model.plannedToday.contains(task.id)
-                                  ? null
-                                  : () => onAddToToday?.call(task),
-                              onStartFocus: () => onStartFocus?.call(task),
-                            ),
-                          ),
-                        );
-                      },
-                    ),
+                  : segment == null
+                      ? _AllList(
+                          groups: _grouped,
+                          labels: _labels,
+                          buildRow: _row,
+                        )
+                      : ListView.builder(
+                          padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
+                          itemCount: visible.length,
+                          itemBuilder: (context, index) =>
+                              _row(context, visible[index]),
+                        ),
             ),
             _CreateButton(label: _createLabel, onTap: onCreate),
             const SizedBox(height: 12),
@@ -137,11 +148,32 @@ class ManageTasksScreen extends StatelessWidget {
     );
   }
 
+  Widget _row(BuildContext context, Task task) => Padding(
+        padding: const EdgeInsets.only(bottom: 6),
+        child: GestureDetector(
+          onTap: () => onEdit?.call(task),
+          behavior: HitTestBehavior.opaque,
+          child: TaskRow(
+            title: task.title,
+            done: false,
+            showGrip: false,
+            stickerId: task.stickerId,
+            estimateMinutes: task.estimateMinutes,
+            subtitle: _subtitleFor(task),
+            onToggle: model.plannedToday.contains(task.id)
+                ? null
+                : () => onAddToToday?.call(task),
+            onStartFocus: () => onStartFocus?.call(task),
+          ),
+        ),
+      );
+
   String get _createLabel => switch (segment) {
         TaskKind.habit => 'New daily task',
         TaskKind.projectTask => 'New project task',
         TaskKind.dread => 'Add something you are avoiding',
         TaskKind.oneoff => 'New task',
+        null => 'New task',
       };
 
   /// The one line each kind earns, and nothing more.
@@ -171,18 +203,54 @@ class ManageTasksScreen extends StatelessWidget {
   }
 }
 
+/// The All view: every kind, still in its own headed group.
+class _AllList extends StatelessWidget {
+  const _AllList({
+    required this.groups,
+    required this.labels,
+    required this.buildRow,
+  });
+
+  final List<(TaskKind, List<Task>)> groups;
+  final Map<TaskKind, String> labels;
+  final Widget Function(BuildContext, Task) buildRow;
+
+  @override
+  Widget build(BuildContext context) {
+    final text = Theme.of(context).textTheme;
+
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
+      children: [
+        for (final (kind, tasks) in groups) ...[
+          Padding(
+            padding: const EdgeInsets.fromLTRB(8, 10, 8, 8),
+            child: Text(
+              '${labels[kind]!.toUpperCase()}  ${tasks.length}',
+              style: text.labelSmall,
+            ),
+          ),
+          for (final task in tasks) buildRow(context, task),
+        ],
+      ],
+    );
+  }
+}
+
 class _Segments extends StatelessWidget {
   const _Segments({
     required this.selected,
     required this.labels,
     required this.counts,
+    required this.allCount,
     required this.onChanged,
   });
 
-  final TaskKind selected;
+  final TaskKind? selected;
   final Map<TaskKind, String> labels;
   final Map<TaskKind, int> counts;
-  final ValueChanged<TaskKind> onChanged;
+  final int allCount;
+  final ValueChanged<TaskKind?> onChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -193,7 +261,10 @@ class _Segments extends StatelessWidget {
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(horizontal: 16),
         children: [
-          for (final entry in labels.entries) ...[
+          for (final entry in <MapEntry<TaskKind?, String>>[
+            const MapEntry(null, 'All'),
+            ...labels.entries,
+          ]) ...[
             Semantics(
               button: true,
               selected: selected == entry.key,
@@ -215,7 +286,8 @@ class _Segments extends StatelessWidget {
                   child: Text(
                     // The count sits in the chip so the shape of the whole
                     // task list is readable without opening each segment.
-                    '${entry.value} ${counts[entry.key] ?? 0}',
+                    '${entry.value} '
+                        '${entry.key == null ? allCount : counts[entry.key] ?? 0}',
                     style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                           color: selected == entry.key
                               ? tokens.bg
@@ -240,7 +312,8 @@ class _Segments extends StatelessWidget {
 class _EmptySegment extends StatelessWidget {
   const _EmptySegment({required this.kind});
 
-  final TaskKind kind;
+  /// Null is the All segment, which is only empty when nothing exists at all.
+  final TaskKind? kind;
 
   static const _copy = {
     TaskKind.habit: (
@@ -268,7 +341,12 @@ class _EmptySegment extends StatelessWidget {
   Widget build(BuildContext context) {
     final tokens = context.tokens;
     final text = Theme.of(context).textTheme;
-    final (title, detail) = _copy[kind]!;
+    final (title, detail) = kind == null
+        ? (
+            'No tasks yet',
+            'Anything you add shows up here, whichever kind it is.',
+          )
+        : _copy[kind]!;
 
     return Center(
       child: Padding(

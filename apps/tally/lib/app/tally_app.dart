@@ -41,7 +41,12 @@ class TallyApp extends StatefulWidget {
 
 class _TallyAppState extends State<TallyApp> with WidgetsBindingObserver {
   int _tab = 0;
-  TaskKind _segment = TaskKind.habit;
+  /// Which task kind the Tasks tab is filtered to, or null for All.
+  ///
+  /// Opens on All: after a day of real use, landing on one of four buckets and
+  /// having to guess which one a task was filed under is the wrong first
+  /// impression of the screen.
+  TaskKind? _segment;
   bool _showBalance = false;
 
   TallyController get c => widget.controller;
@@ -196,12 +201,48 @@ class _TallyAppState extends State<TallyApp> with WidgetsBindingObserver {
   StatementPeriod _period = StatementPeriod.week;
   _StatsView _statsView = _StatsView.statement;
 
-  Widget _buildStats() => switch (_statsView) {
-        _StatsView.statement => _buildStatement(),
-        _StatsView.stickers => _buildStickerSheet(),
-        _StatsView.collection => _buildCollection(),
-        _StatsView.insights => _buildInsights(),
-      };
+  /// The Stats tab: one switcher, three faces, and the collection behind
+  /// Stickers.
+  ///
+  /// Statement, Insights and Stickers used to be two pills floating at the
+  /// bottom of the Statement in a Stack. The list scrolled underneath them, so
+  /// they sat on top of whatever text happened to be at the bottom of the
+  /// screen - and being findable only by scrolling to the end of a list is a
+  /// poor way to expose a third of the tab. A switcher at the top costs the
+  /// same space, never covers content, and shows what else is there before you
+  /// have read anything.
+  Widget _buildStats() {
+    if (_statsView == _StatsView.collection) return _buildCollection();
+
+    return Scaffold(
+      backgroundColor: context.tokens.bg,
+      body: Column(
+        children: [
+          SafeArea(
+            bottom: false,
+            child: _StatsSwitcher(
+              selected: _statsView,
+              onChanged: (view) => setState(() => _statsView = view),
+            ),
+          ),
+          Expanded(
+            // The switcher already consumed the status bar inset. Without
+            // this the sub-screen's own SafeArea adds it a second time and
+            // opens a gap the height of the notch under the switcher.
+            child: MediaQuery.removePadding(
+              context: context,
+              removeTop: true,
+              child: switch (_statsView) {
+                _StatsView.stickers => _buildStickerSheet(),
+                _StatsView.insights => _buildInsights(),
+                _ => _buildStatement(),
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 
   Widget _buildInsights() => FutureBuilder<InsightsModel>(
         future: c.insights(),
@@ -213,10 +254,7 @@ class _TallyAppState extends State<TallyApp> with WidgetsBindingObserver {
               body: const SizedBox(),
             );
           }
-          return InsightsScreen(
-            model: model,
-            onBack: () => setState(() => _statsView = _StatsView.statement),
-          );
+          return InsightsScreen(model: model);
         },
       );
 
@@ -266,68 +304,9 @@ class _TallyAppState extends State<TallyApp> with WidgetsBindingObserver {
           if (model == null) {
             return Scaffold(backgroundColor: context.tokens.bg, body: const SizedBox());
           }
-          return Stack(
-            children: [
-              StatementScreen(
-                model: model,
-                onPeriod: (period) => setState(() => _period = period),
-              ),
-              // The sheet is one tap from the statement rather than a fifth
-              // tab: it is the same question - what happened - asked in the
-              // other currency.
-              Positioned(
-                left: 16,
-                bottom: 16,
-                child: Semantics(
-                  button: true,
-                  label: 'Insights',
-                  excludeSemantics: true,
-                  child: GestureDetector(
-                    onTap: () =>
-                        setState(() => _statsView = _StatsView.insights),
-                    child: Container(
-                      height: 48,
-                      padding: const EdgeInsets.symmetric(horizontal: 18),
-                      alignment: Alignment.center,
-                      decoration: BoxDecoration(
-                        color: context.tokens.surfaceStrong,
-                        borderRadius: BorderRadius.circular(999),
-                      ),
-                      child: Text(
-                        'Insights',
-                        style: Theme.of(context).textTheme.bodyLarge,
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-              Positioned(
-                right: 16,
-                bottom: 16,
-                child: Semantics(
-                  button: true,
-                  label: 'Sticker sheet',
-                  excludeSemantics: true,
-                  child: GestureDetector(
-                    onTap: () =>
-                        setState(() => _statsView = _StatsView.stickers),
-                    child: Container(
-                      height: 48,
-                      padding: const EdgeInsets.symmetric(horizontal: 18),
-                      alignment: Alignment.center,
-                      decoration: BoxDecoration(
-                        color: context.tokens.surfaceStrong,
-                        borderRadius: BorderRadius.circular(999),
-                      ),
-                      child: Text(
-                        'Stickers',
-                        style: Theme.of(context).textTheme.bodyLarge,
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ],
+          return StatementScreen(
+            model: model,
+            onPeriod: (period) => setState(() => _period = period),
           );
         },
       );
@@ -513,7 +492,7 @@ class _TallyAppState extends State<TallyApp> with WidgetsBindingObserver {
         model: c.manage,
         segment: _segment,
         onSegment: (kind) => setState(() => _segment = kind),
-        onCreate: () => _openSheet(initialKind: _segment),
+        onCreate: () => _openSheet(initialKind: _segment ?? TaskKind.oneoff),
         onEdit: (task) => _openSheet(existing: task),
         onAddToToday: (task) => c.addToToday([task.id]),
         onStartFocus: (task) => c.startFocus(
@@ -566,3 +545,63 @@ class _TallyAppState extends State<TallyApp> with WidgetsBindingObserver {
 
 /// Which face of the Stats tab is showing.
 enum _StatsView { statement, stickers, collection, insights }
+
+/// The Stats tab's three faces, as a row of chips.
+class _StatsSwitcher extends StatelessWidget {
+  const _StatsSwitcher({required this.selected, required this.onChanged});
+
+  final _StatsView selected;
+  final ValueChanged<_StatsView> onChanged;
+
+  static const _faces = [
+    (_StatsView.statement, 'Statement'),
+    (_StatsView.insights, 'Insights'),
+    (_StatsView.stickers, 'Stickers'),
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.tokens;
+    final text = Theme.of(context).textTheme;
+
+    return SizedBox(
+      height: 56,
+      child: ListView(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+        children: [
+          for (final (view, label) in _faces) ...[
+            Semantics(
+              button: true,
+              selected: selected == view,
+              label: label,
+              excludeSemantics: true,
+              child: GestureDetector(
+                onTap: () => onChanged(view),
+                behavior: HitTestBehavior.opaque,
+                child: Container(
+                  height: 40,
+                  padding: const EdgeInsets.symmetric(horizontal: 18),
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    color: selected == view
+                        ? tokens.states.solvent
+                        : tokens.surface,
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                  child: Text(
+                    label,
+                    style: text.bodyLarge?.copyWith(
+                      color: selected == view ? tokens.bg : tokens.inkMuted,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+          ],
+        ],
+      ),
+    );
+  }
+}

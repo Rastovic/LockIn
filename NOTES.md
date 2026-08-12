@@ -901,3 +901,73 @@ the firewall has Homebrew's python at "Block incoming connections" while
 `/usr/bin/python3` is allowed. Same command, different binary, works. Checked
 rather than guessed, because the guess would have been "turn the firewall off",
 which is a security setting and not mine to change.
+
+## First day of real use (2026-08-12)
+
+Seven things came back. Only one was a wrong number, and it was not the one
+that prompted the report.
+
+**The balance was right and unexplained.** −2 borrowing, 66 minutes on one
+screen, 67 on another. The ledger reconciled exactly - 60 granted plus 5 of
+grace against 67 spent - but no screen said so, and "borrowing" was a word the
+app had never defined. Added a "how this adds up" block on the Balance screen
+listing the signed terms and totalling to the number in front of it, with the
+definition of borrowing placed where the negative number is standing rather
+than in a help page nobody opens. The lesson is that correct is not the same as
+legible, and a ledger nobody can check is asking to be taken on faith.
+
+**66 versus 67 was real.** The Statement floored the day's seconds, Insights
+rounded them. Both defensible, having both indefensible. All formatting now
+goes through `tally_ui/lib/src/format/durations.dart`.
+
+While centralising it I changed the rule to truncate towards zero and a test
+that already existed caught it: rounding a debt towards zero flatters the
+number, which is the one thing this app must never do. The original rule -
+floor towards negative infinity, in both directions - was better than my
+replacement, and the test was the only thing standing between the change and
+the phone. Restored, with the reasoning now written where the operator lives.
+
+**"I did not watch TikTok for an hour."** Unverified, and unverifiable as the
+screen stood: a single total is not a claim anyone can check. Each app in
+"where it went" now opens to the actual stretches behind its total, from the
+`spend_spans` rows the ledger already recomputes from. Either the times match
+the afternoon they remember or they do not, and a demonstrably wrong number is
+worth more than an unfalsifiable one. Whether the total is accurate is still
+open and still the Phase 1 kill gate - the Digital Wellbeing comparison has not
+been done.
+
+**Insights and Stickers covered the text.** They were pills floating at
+`bottom: 16` in a Stack over the Statement, which scrolled underneath them.
+Being reachable only by scrolling to the end of a list is also a poor way to
+expose two thirds of a tab. Replaced with a switcher at the top: same space,
+never covers content, and shows what else is there before you have read
+anything.
+
+**Tasks needed an All.** Four kinds because they are genuinely different
+objects, which is still true, but knowing which of four buckets something was
+filed under is a poor way to find it again. All keeps the kinds as headed
+groups rather than dissolving them, and the tab now opens there.
+
+**Settings scrolled too far.** One flat list: every watched app, then every
+rule, then theme, then backup. Reaching Backup meant scrolling past the whole
+app list. Now four folded sections, each carrying a one-line summary of its
+current state so "what is this set to" is answered without opening anything.
+
+**The Blush light glow read as brick.** It was the borrowing red, and it had to
+be: the distinguishability test requires the borrowing colour to sit 120+
+perceptual units from the pink solvent, which rules out a pink number. But the
+glow is not the number. A colour graded for text makes a bad field - #B81E1E
+blurred at half alpha over near-white composites to #DC8A8B, muddy. The glow
+now has its own token, #F0607F, which composites to #F8ABBC and sits 68 units
+from the solvent glow where the dark red sat 64. Pinker and slightly more
+distinguishable, so nothing was traded.
+
+**The sum block did not fit.** Its own test caught a 42px overflow: the Balance
+screen was a fixed Column with two Spacers, sized to fit exactly. Anything laid
+out to fit exactly breaks the first time someone raises their text size. Now
+scrolls.
+
+**Serving the APK: the IP moved.** Yesterday's address was stale - different
+network, new DHCP lease. Checked `ipconfig getifaddr` rather than reusing the
+address that worked once, which is the same class of mistake as reusing a build
+output without checking it was rebuilt.

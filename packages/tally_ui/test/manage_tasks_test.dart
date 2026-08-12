@@ -30,10 +30,10 @@ Widget wrap(Widget child) => MaterialApp(
 
 Widget manage({
   required List<Task> tasks,
-  TaskKind segment = TaskKind.oneoff,
+  TaskKind? segment = TaskKind.oneoff,
   Map<String, int> streaks = const {},
   Set<String> planned = const {},
-  ValueChanged<TaskKind>? onSegment,
+  ValueChanged<TaskKind?>? onSegment,
   void Function(Task)? onEdit,
   void Function(Task)? onAdd,
   VoidCallback? onCreate,

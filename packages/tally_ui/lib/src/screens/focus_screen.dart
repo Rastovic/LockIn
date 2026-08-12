@@ -1,6 +1,8 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+
+import '../format/durations.dart';
 import 'package:tally_engine/tally_engine.dart';
 
 import '../theme/state_colors.dart';
@@ -96,7 +98,7 @@ class _FocusScreenState extends State<FocusScreen> {
     // Earned so far, stated live. The plan's rule is that the rate is said out
     // loud; showing the running total makes it concrete rather than a promise.
     final earnedMinutes =
-        (run.elapsedSeconds(now) * widget.earnRatio / 60).floor();
+        wholeMinutes((run.elapsedSeconds(now) * widget.earnRatio).round());
 
     return Scaffold(
       backgroundColor: tokens.bg,
@@ -356,7 +358,7 @@ class FocusCompleteScreen extends StatelessWidget {
         child: Column(
           children: [
             const Spacer(),
-            Text('${(creditedSeconds / 60).floor()}', style: text.displayLarge),
+            Text('${wholeMinutes(creditedSeconds)}', style: text.displayLarge),
             const SizedBox(height: 4),
             Text(
               phoneDownBonus ? 'minutes earned, phone down' : 'minutes earned',
@@ -366,13 +368,13 @@ class FocusCompleteScreen extends StatelessWidget {
             if (debtClearedSeconds > 0)
               _Line(
                 label: 'went to clearing your debt',
-                value: '${(debtClearedSeconds / 60).floor()} min',
+                value: '${wholeMinutes(debtClearedSeconds)} min',
                 color: tokens.states.borrowing,
               ),
             if (cappedSeconds > 0)
               _Line(
                 label: 'over today’s earn cap',
-                value: '${(cappedSeconds / 60).floor()} min',
+                value: '${wholeMinutes(cappedSeconds)} min',
                 color: tokens.states.low,
               ),
             _Line(

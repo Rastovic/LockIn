@@ -43,12 +43,34 @@ final class StateColors {
     required this.low,
     required this.borrowing,
     required this.savings,
+    this.borrowingGlow,
   });
 
   final Color solvent;
   final Color low;
   final Color borrowing;
   final Color savings;
+
+  /// What the blurred field behind the balance is painted in when borrowing.
+  ///
+  /// Null everywhere it is not needed, and the state colour is used instead.
+  ///
+  /// It exists because a colour graded for **text** makes a bad **field**. On a
+  /// light ground the borrowing red is dark and low in saturation so it can
+  /// carry 4.5:1 as a number; blurred at half alpha across near-white it
+  /// composites to a muddy brick smear rather than reading as that number's own
+  /// light. A lighter, more saturated tint of the same family composites to a
+  /// clear colour and, measured against the solvent glow, separates further
+  /// than the dark one did - so this is not a trade of clarity for prettiness.
+  ///
+  /// The number itself never uses this. Contrast and the distinguishability
+  /// rule still bind the state colours, and they are what carries the meaning.
+  final Color? borrowingGlow;
+
+  /// The colour for the blurred field behind the balance.
+  Color glowFor(BalanceState state) => state == BalanceState.borrowing
+      ? (borrowingGlow ?? borrowing)
+      : of(state);
 
   Color of(BalanceState state) => switch (state) {
         BalanceState.solvent => solvent,

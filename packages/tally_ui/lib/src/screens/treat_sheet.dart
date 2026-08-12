@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../format/durations.dart';
+
 import '../theme/tally_theme_data.dart';
 
 /// Something to spend savings on that is not a screen.
@@ -268,7 +270,7 @@ class _TreatSheetState extends State<TreatSheet> {
   }
 
   static String _hm(int seconds) {
-    final minutes = (seconds / 60).floor();
+    final minutes = wholeMinutes(seconds);
     if (minutes < 60) return '${minutes}m';
     final rest = minutes % 60;
     return rest == 0

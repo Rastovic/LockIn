@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+
+import '../format/durations.dart';
 import 'package:tally_engine/tally_engine.dart';
 
 import '../theme/tally_theme_data.dart';
@@ -120,7 +122,7 @@ final class WatchableAppSummary {
   final bool watching;
 
   String get weekly {
-    final minutes = (recentSeconds / 60).round();
+    final minutes = wholeMinutes(recentSeconds);
     if (minutes <= 0) return 'no usage this week';
     if (minutes < 60) return '${minutes}m last week';
     return '${minutes ~/ 60}h ${minutes % 60}m last week';

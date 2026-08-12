@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+
+import '../format/durations.dart';
 import 'package:tally_engine/tally_engine.dart';
 
 import '../theme/tally_theme.dart';
@@ -23,7 +25,7 @@ final class WatchableApp {
   final bool watching;
   final bool notInstalled;
 
-  int get recentMinutes => (recentSeconds / 60).round();
+  int get recentMinutes => wholeMinutes(recentSeconds);
 
   String get recentLabel {
     if (notInstalled) return 'not installed';
@@ -129,24 +131,37 @@ class WatchedAppsScreen extends StatelessWidget {
                 children: [
                   if (access != UsageAccess.granted)
                     _AccessCard(access: access, onGrant: onGrantAccess)
-                  else ...[
-                    Text(
-                      'Time in these apps is what the balance pays for. '
-                      'Change them any day.',
-                      style: text.bodyMedium,
+                  else
+                    _Fold(
+                      title: 'WATCHED APPS',
+                      summary: _watchedCount == 0
+                          ? 'nothing watched yet'
+                          : '$_watchedCount of ${apps.length}',
+                      // The only section that opens by itself. Everything
+                      // else here is set once; this is the list someone comes
+                      // back to change.
+                      initiallyOpen: _watchedCount == 0,
+                      children: [
+                        Text(
+                          'Time in these apps is what the balance pays for. '
+                          'Change them any day.',
+                          style: text.bodyMedium,
+                        ),
+                        const SizedBox(height: 16),
+                        for (final app in apps)
+                          _AppRow(
+                            app: app,
+                            atLimit:
+                                _watchedCount >= maxWatched && !app.watching,
+                            onToggle: (value) => onToggle?.call(app, value),
+                          ),
+                        if (apps.isEmpty) _NoApps(),
+                      ],
                     ),
-                    const SizedBox(height: 16),
-                    for (final app in apps)
-                      _AppRow(
-                        app: app,
-                        atLimit: _watchedCount >= maxWatched && !app.watching,
-                        onToggle: (value) => onToggle?.call(app, value),
-                      ),
-                    if (apps.isEmpty) _NoApps(),
-                  ],
-                  const SizedBox(height: 28),
-                  Text('THE NUMBERS', style: text.labelSmall),
-                  const SizedBox(height: 4),
+                  _Fold(
+                    title: 'THE NUMBERS',
+                    summary: 'what a minute is worth',
+                    children: [
                   Text(
                     'Everything that decides what a minute is worth lives '
                     'here, so there is one place to look.',
@@ -235,10 +250,18 @@ class WatchedAppsScreen extends StatelessWidget {
                     'nothing is ever blocked.',
                     style: text.labelMedium,
                   ),
-                  if (theme != null && onTheme != null) ...[
-                    const SizedBox(height: 30),
-                    Text('LOOK', style: text.labelSmall),
-                    const SizedBox(height: 10),
+                    ],
+                  ),
+                  if (theme != null && onTheme != null)
+                    _Fold(
+                      title: 'LOOK',
+                      summary: '${theme!.label}, '
+                          '${switch (themeMode ?? ThemeMode.dark) {
+                        ThemeMode.dark => 'dark',
+                        ThemeMode.light => 'light',
+                        ThemeMode.system => 'system',
+                      }}',
+                      children: [
                     _RuleChoice(
                       title: 'Theme',
                       detail: 'Two, and each is written in light and dark.',
@@ -266,10 +289,12 @@ class WatchedAppsScreen extends StatelessWidget {
                         value as ThemeMode,
                       ),
                     ),
-                  ],
-                  const SizedBox(height: 20),
-                  Text('ELSEWHERE', style: text.labelSmall),
-                  const SizedBox(height: 10),
+                      ],
+                    ),
+                  _Fold(
+                    title: 'ELSEWHERE',
+                    summary: 'goals, backup, export',
+                    children: [
                   if (onOpenGoals != null)
                     _LinkRow(
                       label: 'Goals',
@@ -295,6 +320,8 @@ class WatchedAppsScreen extends StatelessWidget {
                           'be loaded back in.',
                       onTap: onExportCsv!,
                     ),
+                    ],
+                  ),
                 ],
               ),
             ),
@@ -592,4 +619,98 @@ class _NoApps extends StatelessWidget {
           textAlign: TextAlign.center,
         ),
       );
+}
+
+/// A settings section that starts closed.
+///
+/// Settings was one flat scroll: every watched app, then every rule, then the
+/// theme, then backup and export. On a phone with a normal number of apps
+/// installed, reaching Backup meant scrolling past the whole app list, and the
+/// things people look for least often sat furthest away.
+///
+/// Folded, the screen opens as four headers you can read at once. Each carries
+/// a one-line summary of its current state so the common question - what is
+/// this set to - is answered without opening anything.
+class _Fold extends StatefulWidget {
+  const _Fold({
+    required this.title,
+    required this.summary,
+    required this.children,
+    this.initiallyOpen = false,
+  });
+
+  final String title;
+  final String summary;
+  final List<Widget> children;
+  final bool initiallyOpen;
+
+  @override
+  State<_Fold> createState() => _FoldState();
+}
+
+class _FoldState extends State<_Fold> {
+  late bool _open = widget.initiallyOpen;
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.tokens;
+    final text = Theme.of(context).textTheme;
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Semantics(
+            button: true,
+            expanded: _open,
+            label: '${widget.title}, ${widget.summary}',
+            excludeSemantics: true,
+            child: GestureDetector(
+              onTap: () => setState(() => _open = !_open),
+              behavior: HitTestBehavior.opaque,
+              child: Container(
+                padding: const EdgeInsets.fromLTRB(14, 14, 12, 14),
+                decoration: BoxDecoration(
+                  color: tokens.surface,
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(widget.title, style: text.labelSmall),
+                          const SizedBox(height: 2),
+                          Text(
+                            widget.summary,
+                            style: text.bodyMedium
+                                ?.copyWith(color: tokens.inkMuted),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Icon(
+                      _open ? Icons.expand_less : Icons.expand_more,
+                      size: 20,
+                      color: tokens.inkFaint,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          if (_open)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(2, 14, 2, 6),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: widget.children,
+              ),
+            ),
+        ],
+      ),
+    );
+  }
 }

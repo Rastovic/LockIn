@@ -2,6 +2,8 @@ import 'dart:ui';
 
 import 'package:flutter/material.dart';
 
+import '../format/durations.dart';
+
 import '../theme/state_colors.dart';
 import '../theme/tally_theme_data.dart';
 
@@ -10,11 +12,6 @@ import '../theme/tally_theme_data.dart';
 /// **Floors towards negative infinity, never towards zero**, so 90 seconds of
 /// debt reads as −2 and not −1. Rounding a debt towards zero flatters the
 /// number, which is the one thing this app must never do.
-String formatMinutes(int seconds) {
-  final minutes = (seconds / 60).floor();
-  return minutes < 0 ? '−${minutes.abs()}' : '$minutes';
-}
-
 /// The balance, as a strip across the top of Today.
 ///
 /// **Settled decision 17: 22px, reviewed and kept.** The state-tinted glow does
@@ -82,7 +79,7 @@ class BalanceStrip extends StatelessWidget {
               Positioned(
                 left: -18,
                 child: StateGlow(
-                  color: color,
+                  color: tokens.glowFor(state),
                   width: 148,
                   height: 66,
                   blur: 20,
