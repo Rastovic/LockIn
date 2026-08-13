@@ -137,10 +137,6 @@ class WatchedAppsScreen extends StatelessWidget {
                       summary: _watchedCount == 0
                           ? 'nothing watched yet'
                           : '$_watchedCount of ${apps.length}',
-                      // The only section that opens by itself. Everything
-                      // else here is set once; this is the list someone comes
-                      // back to change.
-                      initiallyOpen: _watchedCount == 0,
                       children: [
                         Text(
                           'Time in these apps is what the balance pays for. '
@@ -636,20 +632,25 @@ class _Fold extends StatefulWidget {
     required this.title,
     required this.summary,
     required this.children,
-    this.initiallyOpen = false,
   });
 
   final String title;
   final String summary;
   final List<Widget> children;
-  final bool initiallyOpen;
 
   @override
   State<_Fold> createState() => _FoldState();
 }
 
 class _FoldState extends State<_Fold> {
-  late bool _open = widget.initiallyOpen;
+  /// **Every section starts closed**, including the app list.
+  ///
+  /// One of them used to open itself when nothing was being watched, on the
+  /// theory that a new user needs to see it. It made the screen open at a
+  /// different height depending on state, and the point of folding was to make
+  /// Settings a short index you can read at once. An index with one section
+  /// already unrolled is not an index.
+  bool _open = false;
 
   @override
   Widget build(BuildContext context) {

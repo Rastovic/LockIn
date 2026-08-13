@@ -106,6 +106,7 @@ class _TallyAppState extends State<TallyApp> with WidgetsBindingObserver {
         onExtend: c.extendFocus,
         onGiveUp: c.endFocus,
         onComplete: c.endFocus,
+        alarmBlocked: c.focusAlarmBlocked,
       );
     }
 

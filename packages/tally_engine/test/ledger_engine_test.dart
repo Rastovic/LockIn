@@ -5,8 +5,15 @@ const tiktok = 'com.zhiliaoapp.musically';
 
 /// Every test runs at UTC+0 unless it is specifically about timezones, so the
 /// 4am boundary sits at 04:00 UTC and the arithmetic is readable.
+/// The engine under test.
+///
+/// The fallback grants 30 free minutes a day **explicitly**. The shipped
+/// default is zero - everything has to be earned - and these cases are about
+/// what an allowance does when there is one, so they state the allowance they
+/// are testing rather than inheriting whatever the product default happens to
+/// be this month. Cases that need no allowance pass zero, equally explicitly.
 LedgerEngine engineWith([LedgerSettings? settings]) => LedgerEngine(
-      settings: settings ?? const LedgerSettings(),
+      settings: settings ?? const LedgerSettings(dailyAllowanceMinutes: 30),
       offsetAt: fixedOffset(0),
     );
 
@@ -310,7 +317,10 @@ void main() {
 
     test('savings may cover a debt only by hand, and never overshoot', () {
       final result = engineWith(
-        const LedgerSettings(dailyEarnCapMinutes: null),
+        const LedgerSettings(
+          dailyEarnCapMinutes: null,
+          dailyAllowanceMinutes: 30,
+        ),
       ).compute(
         fromDay: '2026-08-11',
         toDay: '2026-08-12',

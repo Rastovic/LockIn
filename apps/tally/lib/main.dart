@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:tally_data/tally_data.dart';
 import 'package:tally_engine/tally_engine.dart';
 import 'package:tally_ui/tally_ui.dart';
+import 'package:vitals_notify/vitals_notify.dart';
 
 import 'app/onboarding_flow.dart';
 import 'app/tally_app.dart';
@@ -73,11 +74,19 @@ class _TallyRootState extends State<TallyRoot> {
   }
   late TallyController _controller = _build();
 
+  /// One notifier for the app's lifetime.
+  ///
+  /// Built once rather than per controller: the controller is rebuilt whenever
+  /// a setting changes, and a fresh plugin instance each time would lose track
+  /// of what it had already scheduled.
+  final _notifier = LocalNotifier();
+
   TallyController _build() => TallyController(
         db: widget.db,
         installId: widget.installId,
         settings: _settings,
         usageSource: const AndroidUsageSource(),
+        notifier: _notifier,
       )..onSettingsChanged = (next) {
           setState(() {
             _settings = next;

@@ -5,6 +5,7 @@ import 'package:tally_engine/tally_engine.dart';
 import 'package:tally_ui/tally_ui.dart';
 import 'package:vitals_archive/vitals_archive.dart';
 import 'package:vitals_core/vitals_core.dart';
+import 'package:vitals_notify/vitals_notify.dart';
 
 import '../platform/android_usage_source.dart';
 import 'app_database.dart';
@@ -24,6 +25,7 @@ class TallyController extends ChangeNotifier {
     required this.installId,
     this.settings = const LedgerSettings(),
     UsageSource? usageSource,
+    this._notifier,
     DateTime Function()? clock,
   })  : _clock = clock ?? (() => DateTime.now().toUtc()),
         _tasks = TaskRepository(db, installId: installId),
@@ -42,6 +44,16 @@ class TallyController extends ChangeNotifier {
   final TaskRepository _tasks;
   final LedgerRepository _ledger;
   final UsageSource? _usage;
+  final Notifier? _notifier;
+
+  /// The id the focus alarm is scheduled under.
+  ///
+  /// Fixed rather than derived from the run, so a stale alarm from a block
+  /// that ended badly is always cancellable by the next one.
+  static const _focusAlarmId = 8801;
+
+  /// Notifications are denied, so no end-of-block alarm can ring.
+  bool focusAlarmBlocked = false;
 
   List<Task> tasks = const [];
   List<AppSpend> spendByApp = const [];
@@ -123,6 +135,9 @@ class TallyController extends ChangeNotifier {
     // Restored before anything else, so a block that was running when the
     // process died is on screen again rather than silently lost.
     focus ??= await FocusStore.load();
+    // A restored block needs its alarm back: the process died, and Android
+    // does not keep notifications scheduled by a process that is gone.
+    if (focus != null) await _syncFocusAlarm();
     usageAccess = await _usage?.access() ?? UsageAccess.unavailable;
     tasks = await _tasks.tasks();
     plan = await _tasks.planFor(dayKey);
@@ -601,7 +616,62 @@ class TallyController extends ChangeNotifier {
   /// happens constantly. Losing a 45 minute block because Android needed the
   /// memory is the worst failure this app has, because the time really was
   /// spent.
-  Future<void> _saveFocus() => FocusStore.save(focus);
+  Future<void> _saveFocus() async {
+    await FocusStore.save(focus);
+    await _syncFocusAlarm();
+  }
+
+  /// Keeps the end-of-block alarm in step with the run.
+  ///
+  /// The reason this exists: a focus block is most useful when the phone is
+  /// being used for the thing being focused on. Studying on the same phone
+  /// means leaving Tally's screen, and a countdown nobody is looking at is not
+  /// a timer. Without this, the only way to know a block had finished was to
+  /// come back and check, which defeats the block.
+  ///
+  /// Rescheduled from scratch on every transition rather than adjusted:
+  /// pausing, resuming and extending all move the end, and one cancel-then-set
+  /// has no states to get wrong.
+  Future<void> _syncFocusAlarm() async {
+    final notifier = _notifier;
+    if (notifier == null) return;
+
+    await notifier.cancel(_focusAlarmId);
+
+    final run = focus;
+    // Nothing to ring for: no block, a finished one, or one sitting paused
+    // with no end time to aim at.
+    if (run == null || !run.isRunning || run.isPaused) return;
+
+    // Checked every time a block starts rather than once at onboarding: the
+    // permission can be revoked from system settings at any point, and an
+    // alarm that cannot ring must be reported before the block, not after it.
+    final permission = await notifier.permission();
+    final blocked = permission != NotificationPermission.granted;
+    if (blocked != focusAlarmBlocked) {
+      focusAlarmBlocked = blocked;
+      notifyListeners();
+    }
+    if (blocked) return;
+
+    final endsAt = now.add(Duration(seconds: run.remainingSeconds(now)));
+    await notifier.schedule(
+      Nudge(
+        id: _focusAlarmId,
+        // The user set this timer, so it is [NudgeKind.scheduled]: never
+        // capped by the nudge budget and never held back by quiet hours.
+        // Silently dropping a timer someone started is a broken app.
+        kind: NudgeKind.scheduled,
+        title: 'Time is up',
+        body: run.target.inMinutes >= 60
+            ? 'Your ${run.target.inHours} hour block is done.'
+            : 'Your ${run.target.inMinutes} minute block is done.',
+        at: endsAt,
+        tag: 'focus-end',
+        quietHoursExempt: true,
+      ),
+    );
+  }
 
   /// Ends the block and banks whatever was worked.
   ///
@@ -612,6 +682,7 @@ class TallyController extends ChangeNotifier {
     final run = focus?.finish(now);
     focus = null;
     await FocusStore.clear();
+    await _notifier?.cancel(_focusAlarmId);
     if (run == null) {
       notifyListeners();
       return;

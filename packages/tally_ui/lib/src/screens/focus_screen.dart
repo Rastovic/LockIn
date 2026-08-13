@@ -31,6 +31,7 @@ class FocusScreen extends StatefulWidget {
     this.onGiveUp,
     this.onComplete,
     this.clock,
+    this.alarmBlocked = false,
     super.key,
   });
 
@@ -42,6 +43,13 @@ class FocusScreen extends StatefulWidget {
 
   final String? taskTitle;
   final String? stickerId;
+
+  /// Notifications are off, so the end-of-block alarm cannot ring.
+  ///
+  /// Said on screen rather than swallowed. The whole reason the alarm exists
+  /// is that people leave this screen during a block - if it cannot ring, the
+  /// user has to know now, not by missing the end of a block later.
+  final bool alarmBlocked;
 
   final VoidCallback? onPause;
   final VoidCallback? onResume;
@@ -134,6 +142,18 @@ class _FocusScreenState extends State<FocusScreen> {
               style: text.bodyMedium,
               textAlign: TextAlign.center,
             ),
+            if (widget.alarmBlocked && !run.isPaused) ...[
+              const SizedBox(height: 8),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 32),
+                child: Text(
+                  'Notifications are off, so nothing will ring when this ends. '
+                  'You can turn them on in your phone settings.',
+                  style: text.labelMedium?.copyWith(color: tokens.states.low),
+                  textAlign: TextAlign.center,
+                ),
+              ),
+            ],
             if (run.phoneDownRequested) ...[
               const SizedBox(height: 6),
               Text(

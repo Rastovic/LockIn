@@ -72,7 +72,7 @@ void main() {
 
   group('LedgerSettings', () {
     test('converts minutes to seconds', () {
-      const s = LedgerSettings();
+      const s = LedgerSettings(dailyAllowanceMinutes: 30);
       expect(s.dailyAllowanceSeconds, 1800);
       expect(s.rolloverCapSeconds, 3600);
       expect(s.graceSeconds, 300);
@@ -87,15 +87,24 @@ void main() {
     });
 
     test('copyWith changes one field and keeps the rest', () {
-      final s = const LedgerSettings().copyWith(earnRatio: 2.0);
+      final s = const LedgerSettings(dailyAllowanceMinutes: 30)
+          .copyWith(earnRatio: 2.0);
       expect(s.earnRatio, 2.0);
-      expect(s.dailyAllowanceMinutes, 30);
+      expect(s.dailyAllowanceMinutes, 30, reason: 'untouched by copyWith');
     });
 
     test('the earn cap can be cleared, which copyWith alone cannot express', () {
       final s = const LedgerSettings().copyWith(clearEarnCap: true);
       expect(s.dailyEarnCapMinutes, isNull);
       expect(s.dailyEarnCapSeconds, isNull);
+    });
+
+    test('grants nothing by default', () {
+      // The shipped default is zero: handing out the app's own currency before
+      // the user has done anything makes the first day a smaller version of
+      // the problem rather than the start of the fix.
+      expect(const LedgerSettings().dailyAllowanceMinutes, 0);
+      expect(const LedgerSettings().dailyAllowanceSeconds, 0);
     });
 
     test('rejects settings that would break the ledger', () {

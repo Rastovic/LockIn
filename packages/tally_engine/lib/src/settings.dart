@@ -11,7 +11,7 @@ final class LedgerSettings {
   const LedgerSettings({
     this.earnRatio = 1.0,
     this.dailyEarnCapMinutes = 90,
-    this.dailyAllowanceMinutes = 30,
+    this.dailyAllowanceMinutes = 0,
     this.rolloverCapMinutes = 60,
     this.graceMinutes = 5,
     this.debtFloorMinutes = 60,
@@ -38,6 +38,15 @@ final class LedgerSettings {
   /// Free minutes granted at each day boundary. May be zero.
   ///
   /// Does not roll over. Day one must not be a brick wall.
+  /// Free minutes granted at the day boundary. **Zero by default.**
+  ///
+  /// A non-zero default hands out the app's own currency before the user has
+  /// done anything, which makes the first day a smaller version of the problem
+  /// rather than the start of the fix. Starting at zero means every minute of
+  /// scrolling is one that was focused for, from the first day, and the number
+  /// on the strip means the same thing on day one as it does on day ninety.
+  ///
+  /// Still settable: someone who wants a floor under the day can pick one.
   final int dailyAllowanceMinutes;
 
   /// Most earned credit that survives a day boundary. The overflow becomes

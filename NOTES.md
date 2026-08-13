@@ -1043,3 +1043,47 @@ reading the code would not have:
 Then the circle mask clipped the speech bubble at 74% and the foreground went
 back to the documented 66% band. Four rounds of "it looks fine in the file" and
 none of them survived being drawn under a mask.
+
+## Zero allowance, a block alarm, and folds that stay folded (2026-08-13)
+
+**The default allowance is now zero.** It was 30 free minutes a day. Handing
+out the app's own currency before the user has done anything makes the first
+day a smaller version of the problem rather than the start of the fix, and it
+means the number on the strip does not mean the same thing on day one as it
+does on day ninety. Still settable for anyone who wants a floor under the day.
+
+The change broke seven tests, all of which were asserting allowance behaviour
+while inheriting the allowance from the product default. They now state the 30
+they are testing. A test that depends on a default it does not name is a test
+that fails whenever someone makes a product decision, and its failure says
+nothing about whether the code is correct.
+
+**An alarm at the end of a focus block.** The reason is specific and was worth
+hearing: focusing often means using the same phone for the thing being focused
+on, so the user leaves this app during a block, and a countdown nobody is
+looking at is not a timer. Without an alarm the only way to learn a block had
+ended was to come back and check, which defeats the block.
+
+Scheduled as `NudgeKind.scheduled` and quiet-hours exempt: the user started
+this timer, so it is never capped by the nudge budget and never held back.
+Rescheduled from scratch on every transition rather than adjusted, because
+pause, resume and extend all move the end and one cancel-then-set has no
+states to get wrong. A block restored after process death gets its alarm back
+on load - Android does not keep notifications scheduled by a process that is
+gone, so persisting the run without re-arming the alarm would have restored a
+countdown that could no longer ring.
+
+Left on inexact scheduling. Exact alarms need `SCHEDULE_EXACT_ALARM`, a
+special-access grant and a Play declaration, and the device is not in deep doze
+during a study session, so the cost is a possible minute of lateness against a
+permission that invites review. Worth revisiting if it turns out to drift.
+
+**A denied permission is now visible.** The permission is checked every time a
+block starts, not once at onboarding, because it can be revoked from system
+settings at any point. If it is off, the focus screen says so while the block
+runs. The whole reason the alarm exists is that people leave this screen - an
+alarm that silently cannot ring is worse than no alarm, because it is trusted.
+
+**Settings folds all start closed.** One opened itself when nothing was being
+watched. It made the screen open at a different height depending on state, and
+an index with a section already unrolled is not an index.

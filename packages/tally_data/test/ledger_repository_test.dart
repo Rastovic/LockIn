@@ -16,7 +16,11 @@ LedgerRepository repoFor(TallyDatabase db, {LedgerSettings? settings}) =>
     LedgerRepository(
       db,
       installId: install,
-      settings: settings ?? const LedgerSettings(),
+      // 30 free minutes, stated rather than inherited: these cases are about
+      // whether stored rows recompute to the right balance, and the shipped
+      // default of zero is a product decision that should not be able to
+      // silently change what they are asserting.
+      settings: settings ?? const LedgerSettings(dailyAllowanceMinutes: 30),
       offsetAt: fixedOffset(0),
     );
 

@@ -572,8 +572,6 @@ class _EstimateRow extends StatefulWidget {
   /// Null clears the estimate.
   final ValueChanged<int?> onPick;
 
-  static const options = EstimateOptions.all;
-
   @override
   State<_EstimateRow> createState() => _EstimateRowState();
 }
