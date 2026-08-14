@@ -96,6 +96,12 @@ class WatcherService : Service() {
         lastRemaining = remaining
 
         updateOngoing(ongoingTitle(remaining), null)
+        // The home screen widget shows the same number as the ongoing notice,
+        // and this is where that number is already being worked out. Free:
+        // no extra wakeup, no extra usage query, and it stops the widget's
+        // minutes standing still while the notification's count down.
+        TodayWidgetStore(this).writeBalance(remaining)
+        TodayWidgetStore.refresh(this)
         maybeNudge(remaining = remaining, previous = wasRemaining)
 
         // Poll quickly only while something is actually being spent. Otherwise

@@ -313,6 +313,7 @@ class _TallyAppState extends State<TallyApp> with WidgetsBindingObserver {
       );
 
   bool _showGoals = false;
+  bool _showAccuracy = false;
 
   Widget _buildGoals() => GoalsScreen(
         goals: c.goals,
@@ -466,9 +467,11 @@ class _TallyAppState extends State<TallyApp> with WidgetsBindingObserver {
     );
   }
 
-  Widget _buildSettings() => _showGoals
-      ? _buildGoals()
-      : WatchedAppsScreen(
+  Widget _buildSettings() => _showAccuracy
+      ? _buildAccuracy()
+      : _showGoals
+          ? _buildGoals()
+          : WatchedAppsScreen(
         apps: c.watchable,
         settings: c.settings,
         access: c.usageAccess,
@@ -485,8 +488,19 @@ class _TallyAppState extends State<TallyApp> with WidgetsBindingObserver {
         themeMode: widget.themeMode,
         onTheme: widget.onTheme,
         onOpenGoals: () => setState(() => _showGoals = true),
+        onCheckNumbers: () => setState(() => _showAccuracy = true),
         onExportCsv: _exportCsv,
         onOpenBackup: _openBackup,
+      );
+
+  /// The one check the app cannot run on itself.
+  Widget _buildAccuracy() => FutureBuilder<List<AccuracyDay>>(
+        future: c.accuracyDays(),
+        builder: (context, snapshot) => AccuracyScreen(
+          days: snapshot.data ?? const [],
+          onBack: () => setState(() => _showAccuracy = false),
+          onReport: c.recordAccuracy,
+        ),
       );
 
   Widget _buildTasks() => ManageTasksScreen(

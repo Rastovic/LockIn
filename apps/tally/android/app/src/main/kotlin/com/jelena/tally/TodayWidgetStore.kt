@@ -33,6 +33,21 @@ class TodayWidgetStore(context: Context) {
     /** True once Dart has written anything, so a fresh widget can say so. */
     val hasData: Boolean get() = prefs.contains(KEY_DATE)
 
+    /**
+     * The instant this plan stops being today's, from Dart.
+     *
+     * Kotlin cannot work out when a day ends: the boundary is a setting, it is
+     * 4am by default, and it moves with the timezone. So Dart sends the answer
+     * and the widget does one comparison. Without it the widget would show
+     * yesterday's tasks under today's date, which is the worst thing a widget
+     * can do - confidently wrong rather than obviously broken.
+     */
+    val validUntilMillis: Long get() = prefs.getLong(KEY_VALID_UNTIL, 0L)
+
+    val isStale: Boolean
+        get() = validUntilMillis != 0L &&
+            System.currentTimeMillis() >= validUntilMillis
+
     data class Row(val title: String, val done: Boolean, val glyph: String)
 
     val rows: List<Row>
@@ -63,6 +78,7 @@ class TodayWidgetStore(context: Context) {
         total: Int,
         spendable: Int,
         usageVisible: Boolean,
+        validUntil: Long,
     ) {
         prefs.edit()
             .putString(KEY_DATE, dateLabel)
@@ -71,7 +87,22 @@ class TodayWidgetStore(context: Context) {
             .putInt(KEY_TOTAL, total)
             .putInt(KEY_SPENDABLE, spendable)
             .putBoolean(KEY_USAGE, usageVisible)
+            .putLong(KEY_VALID_UNTIL, validUntil)
             .apply()
+    }
+
+    /**
+     * The balance only, from the watcher.
+     *
+     * Overwriting Dart's figure is correct rather than a shortcut: the watcher
+     * computes it as **Dart's authoritative balance minus usage since the
+     * instant Dart wrote it**, which is the same rule the ongoing notification
+     * follows. It is the same number, further forward in time.
+     *
+     * Nothing else is touched. The plan is Dart's to write.
+     */
+    fun writeBalance(spendable: Int) {
+        prefs.edit().putInt(KEY_SPENDABLE, spendable).apply()
     }
 
     companion object {
@@ -81,6 +112,7 @@ class TodayWidgetStore(context: Context) {
         private const val KEY_TOTAL = "totalCount"
         private const val KEY_SPENDABLE = "spendableSeconds"
         private const val KEY_USAGE = "usageVisible"
+        private const val KEY_VALID_UNTIL = "validUntilMillis"
 
         /**
          * Redraws every placed instance.

@@ -187,3 +187,42 @@ final class FocusStore {
     await prefs.remove(_key);
   }
 }
+
+/// What Digital Wellbeing said, as the user read it off.
+///
+/// Preferences rather than the database, and deliberately **not** in a backup:
+/// this is a measurement of *this phone* against *this phone's* own counter.
+/// Carried to a new device it would compare lockIn's numbers against readings
+/// taken on hardware that is no longer involved, which is worse than having no
+/// reading at all. Same reasoning that keeps `usage_checkpoints` local.
+final class AccuracyReports {
+  const AccuracyReports._();
+
+  static String _key(String dayKey, String packageName) =>
+      'tally.accuracy.$dayKey.$packageName';
+
+  static Future<Map<String, int>> load() async {
+    final prefs = await SharedPreferences.getInstance();
+    return {
+      for (final key in prefs.getKeys())
+        if (key.startsWith('tally.accuracy.'))
+          key.substring('tally.accuracy.'.length): prefs.getInt(key) ?? 0,
+    };
+  }
+
+  static Future<void> save(
+    String dayKey,
+    String packageName,
+    int? minutes,
+  ) async {
+    final prefs = await SharedPreferences.getInstance();
+    final key = _key(dayKey, packageName);
+    // A negative reading is a typo, not a measurement, and storing it would
+    // put a nonsense difference on screen.
+    if (minutes == null || minutes < 0) {
+      await prefs.remove(key);
+      return;
+    }
+    await prefs.setInt(key, minutes);
+  }
+}

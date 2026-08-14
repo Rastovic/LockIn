@@ -68,6 +68,7 @@ void main() {
       dateLabel: 'Fri 14 August',
       spendableSeconds: 900,
       usageVisible: true,
+      validUntil: DateTime.utc(2026, 8, 15, 4),
     );
 
     expect(calls.single.method, 'updateTodayWidget');
@@ -94,6 +95,7 @@ void main() {
       dateLabel: 'Fri 14 August',
       spendableSeconds: 0,
       usageVisible: false,
+      validUntil: DateTime.utc(2026, 8, 15, 4),
     );
     expect((calls.single.arguments as Map)['usageVisible'], isFalse);
   });
@@ -106,6 +108,7 @@ void main() {
       dateLabel: 'Fri 14 August',
       spendableSeconds: 0,
       usageVisible: true,
+      validUntil: DateTime.utc(2026, 8, 15, 4),
     );
     final rows =
         jsonDecode((calls.single.arguments as Map)['rows'] as String) as List;
@@ -120,9 +123,28 @@ void main() {
       dateLabel: 'Fri 14 August',
       spendableSeconds: 0,
       usageVisible: true,
+      validUntil: DateTime.utc(2026, 8, 15, 4),
     );
     expect(calls, hasLength(1));
     expect(jsonDecode((calls.single.arguments as Map)['rows'] as String), []);
+  });
+
+  test('sends when the plan stops being today, so Android can tell', () async {
+    // Android cannot work this out: the day boundary is a setting, it defaults
+    // to 4am and it moves with the timezone. Without it the widget shows
+    // yesterday's tasks under today's date, which is the worst thing a widget
+    // can do - confidently wrong rather than obviously broken.
+    await const AndroidHomeWidget().push(
+      view: viewOf([task('Dishes')]),
+      dateLabel: 'Fri 14 August',
+      spendableSeconds: 0,
+      usageVisible: true,
+      validUntil: DateTime.utc(2026, 8, 15, 4),
+    );
+    expect(
+      (calls.single.arguments as Map)['validUntilMillis'],
+      DateTime.utc(2026, 8, 15, 4).millisecondsSinceEpoch,
+    );
   });
 
   test('a runaway plan is capped rather than sent whole', () async {
@@ -131,6 +153,7 @@ void main() {
       dateLabel: 'Fri 14 August',
       spendableSeconds: 0,
       usageVisible: true,
+      validUntil: DateTime.utc(2026, 8, 15, 4),
     );
     final args = calls.single.arguments as Map;
     final rows = jsonDecode(args['rows'] as String) as List;

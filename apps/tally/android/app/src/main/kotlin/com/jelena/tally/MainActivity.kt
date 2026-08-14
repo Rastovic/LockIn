@@ -97,6 +97,8 @@ class MainActivity : FlutterActivity() {
                         spendable = call.argument<Int>("spendableSeconds") ?: 0,
                         usageVisible =
                             call.argument<Boolean>("usageVisible") ?: false,
+                        validUntil =
+                            call.argument<Long>("validUntilMillis") ?: 0L,
                     )
                     TodayWidgetStore.refresh(applicationContext)
                     result.success(null)

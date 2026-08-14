@@ -367,6 +367,7 @@ class TallyController extends ChangeNotifier {
       // A confident zero would be a claim the app cannot make without usage
       // access, so the widget simply says nothing about minutes instead.
       usageVisible: usageAccess == UsageAccess.granted,
+      validUntil: _ledger.engine.dayStart(addDays(dayKey, 1)),
     );
   }
 
@@ -1323,6 +1324,59 @@ class TallyController extends ChangeNotifier {
     await addToToday([task.id], source: PlanSource.suggestion);
     await _recordSuggestion(item, SuggestionOutcome.accepted);
   }
+
+  /// The last [days] days of per-app spend, for checking against the phone's
+  /// own counter.
+  ///
+  /// Reads `day_spend`, which is the same derived table the Statement's
+  /// breakdown uses. Deliberately not a fresh query against
+  /// `UsageStatsManager`: the point of the check is to test **what lockIn
+  /// stored**, and re-reading the source would compare the phone against
+  /// itself and pass no matter what.
+  Future<List<AccuracyDay>> accuracyDays({int days = 7}) async {
+    final reports = await AccuracyReports.load();
+    final watched = await db.select(db.watchedApps).get();
+    final labels = {for (final app in watched) app.packageName: app.label};
+
+    final result = <AccuracyDay>[];
+    for (var back = 0; back < days; back++) {
+      final key = addDays(dayKey, -back);
+      final rows = await (db.select(db.daySpend)
+            ..where((t) => t.dayKey.equals(key))
+            ..where((t) => t.deletedAt.isNull()))
+          .get();
+
+      final apps = [
+        for (final row in rows)
+          AccuracyApp(
+            packageName: row.packageName,
+            label: labels[row.packageName] ?? row.packageName,
+            seconds: row.seconds,
+            reportedMinutes: reports['$key.${row.packageName}'],
+          ),
+      ]..sort((a, b) => b.seconds.compareTo(a.seconds));
+
+      result.add(
+        AccuracyDay(
+          dayKey: key,
+          label: back == 0
+              ? 'Today'
+              : back == 1
+                  ? 'Yesterday'
+                  : _formatDate(_ledger.engine.dayStart(key)),
+          apps: apps,
+        ),
+      );
+    }
+    return result;
+  }
+
+  Future<void> recordAccuracy(
+    String dayKey,
+    String packageName,
+    int? minutes,
+  ) =>
+      AccuracyReports.save(dayKey, packageName, minutes);
 
   Future<void> _loadSuggestionHistory() async {
     final rows = await (db.select(db.suggestionHistory)

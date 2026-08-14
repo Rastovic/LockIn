@@ -2,5 +2,6 @@
 <resources>
     <string name="widget_title">Today</string>
     <string name="widget_empty">Nothing planned yet.</string>
+    <string name="widget_new_day">New day. Open lockIn to plan it.</string>
     <string name="widget_description">Today\'s plan, and what is left to spend.</string>
 </resources>

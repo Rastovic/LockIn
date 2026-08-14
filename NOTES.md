@@ -1233,3 +1233,56 @@ Also caught while wiring it: `this._field` inside a **named** parameter list
 does not stay named - callers end up passing it positionally. Both injected
 dependencies are ordinary named parameters assigned in the initialiser list,
 with the lint silenced and the reason written down.
+
+## Widget staleness, and making the accuracy check a real thing (2026-08-14, last)
+
+**Two different kinds of stale, and only one was obvious.**
+
+The minutes standing still while you scroll was the visible one. The fix cost
+nothing: `WatcherService` already computes exactly that figure every poll for
+the ongoing notification - Dart's authoritative balance minus usage since the
+instant Dart wrote it - so it now writes the same number to the widget. No
+extra wakeup, no extra usage query, and the widget and the notification can no
+longer disagree because they are the same value.
+
+The dangerous one was the day rolling over. Left alone, the widget shows
+yesterday's tasks under today's date, which is the worst thing a widget can do:
+confidently wrong rather than obviously broken. Kotlin cannot work out when a
+day ends - the boundary is a setting, defaults to 4am, and moves with the
+timezone - so Dart sends the instant the plan stops being today's and Kotlin
+does one comparison. Past it, the list is hidden outright rather than trusted
+to be empty, because the adapter still holds yesterday's rows until the app
+runs again.
+
+Caught the day flip with `DATE_CHANGED`, `TIME_SET` and `TIMEZONE_CHANGED`,
+which are broadcasts Android already sends. Polling on a short period would
+have spent battery to learn the same thing later.
+
+**The accuracy check is now a screen instead of a line in a plan.**
+
+Everything in this app is arithmetic on one measurement: how long a watched app
+was in the foreground. If that is wrong then the balance, the statement, the
+insights and the streak are all confidently wrong together, and no amount of
+internal consistency would reveal it. It is the one thing the app cannot check
+on itself, and it has been sitting unverified through every feature built on
+top of it.
+
+Settings now has "Check the numbers": what lockIn counted per app per day, a
+box for what Digital Wellbeing says, and the difference with a plain sentence
+naming which way it went. Direction matters and the copy says it - counting
+more than the phone over-charges the user, counting less lets spend go
+unrecorded, and those are different bugs.
+
+It reads `day_spend`, the stored derived table, and deliberately **not** a
+fresh query against `UsageStatsManager`. Re-reading the source would compare
+the phone against itself and pass no matter what was wrong with what got
+stored.
+
+Readings live in preferences and never travel in a backup: a measurement of
+this phone against this phone's own counter means nothing on different
+hardware, which is worse than having no reading at all.
+
+Two minutes of disagreement is stated as expected rather than tolerated. It is
+the honest resolution of the comparison - the two count session edges
+differently and both round - and calling it "close" rather than "wrong" is what
+stops the screen crying wolf on its first use.

@@ -61,6 +61,7 @@ class WatchedAppsScreen extends StatelessWidget {
     this.themeMode,
     this.onTheme,
     this.onOpenGoals,
+    this.onCheckNumbers,
     this.onExportCsv,
     this.onOpenBackup,
     super.key,
@@ -81,6 +82,9 @@ class WatchedAppsScreen extends StatelessWidget {
   final ThemeMode? themeMode;
   final void Function(TallyTheme, ThemeMode)? onTheme;
   final VoidCallback? onOpenGoals;
+
+  /// Opens the comparison against the phone's own counter.
+  final VoidCallback? onCheckNumbers;
   final Future<void> Function()? onExportCsv;
   final VoidCallback? onOpenBackup;
 
@@ -291,6 +295,15 @@ class WatchedAppsScreen extends StatelessWidget {
                     title: 'ELSEWHERE',
                     summary: 'goals, backup, export',
                     children: [
+                  if (onCheckNumbers != null)
+                    _LinkRow(
+                      label: 'Check the numbers',
+                      // Named for what it answers rather than what it does.
+                      // "Diagnostics" would be read as something for me.
+                      detail: 'Compare what lockIn counted against what your '
+                          'phone says.',
+                      onTap: onCheckNumbers!,
+                    ),
                   if (onOpenGoals != null)
                     _LinkRow(
                       label: 'Goals',

@@ -36,6 +36,7 @@ final class AndroidHomeWidget {
     required String dateLabel,
     required int spendableSeconds,
     required bool usageVisible,
+    required DateTime validUntil,
   }) async {
     final rows = [
       for (final row in view.rows.take(maxRows))
@@ -57,6 +58,11 @@ final class AndroidHomeWidget {
         // False when usage access was never granted, and the widget then says
         // nothing about minutes rather than showing a confident zero.
         'usageVisible': usageVisible,
+        // When this plan stops being today's. Android cannot work that out:
+        // the boundary is a setting, it defaults to 4am and it moves with the
+        // timezone. Sending the answer keeps the day rule in one place and
+        // leaves Kotlin with a single comparison.
+        'validUntilMillis': validUntil.millisecondsSinceEpoch,
       });
     } on MissingPluginException {
       // Any platform that is not Android, including the web preview.
