@@ -88,6 +88,27 @@
         <meta-data
             android:name="flutterEmbedding"
             android:value="2" />
+
+        <!-- Today's plan on the home screen. Read only: it opens the app
+             rather than ticking anything, so there is never a second writer
+             to the ledger. -->
+        <receiver
+            android:name=".TodayWidgetProvider"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/today_widget_info" />
+        </receiver>
+
+        <!-- BIND_REMOTEVIEWS is required by the platform and is granted to the
+             system, not requested from the user. -->
+        <service
+            android:name=".TodayWidgetService"
+            android:permission="android.permission.BIND_REMOTEVIEWS"
+            android:exported="false" />
     </application>
     <!-- Required to query activities that can process text, see:
          https://developer.android.com/training/package-visibility and

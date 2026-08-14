@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  The widget sits on the user's wallpaper, not on the app's background, so it
+  carries its own small palette and follows the system's light and dark rather
+  than the theme picked inside the app. A widget that stayed dark on a light
+  home screen would look like a hole in it.
+-->
+<resources>
+    <color name="widget_bg">#FFFFF6F8</color>
+    <color name="widget_ink">#FF2A1922</color>
+    <color name="widget_ink_muted">#FF6B4E5A</color>
+    <color name="widget_ink_faint">#FF9C8590</color>
+    <color name="widget_accent">#FFB03A6D</color>
+</resources>

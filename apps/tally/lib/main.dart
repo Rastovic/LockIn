@@ -8,6 +8,7 @@ import 'app/onboarding_flow.dart';
 import 'app/tally_app.dart';
 import 'data/app_database.dart';
 import 'data/tally_controller.dart';
+import 'platform/android_home_widget.dart';
 import 'platform/android_usage_source.dart';
 
 Future<void> main() async {
@@ -87,6 +88,7 @@ class _TallyRootState extends State<TallyRoot> {
         settings: _settings,
         usageSource: const AndroidUsageSource(),
         notifier: _notifier,
+        homeWidget: const AndroidHomeWidget(),
       )..onSettingsChanged = (next) {
           setState(() {
             _settings = next;

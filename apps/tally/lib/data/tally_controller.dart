@@ -7,6 +7,7 @@ import 'package:vitals_archive/vitals_archive.dart';
 import 'package:vitals_core/vitals_core.dart';
 import 'package:vitals_notify/vitals_notify.dart';
 
+import '../platform/android_home_widget.dart';
 import '../platform/android_usage_source.dart';
 import 'app_database.dart';
 
@@ -25,9 +26,18 @@ class TallyController extends ChangeNotifier {
     required this.installId,
     this.settings = const LedgerSettings(),
     UsageSource? usageSource,
-    this._notifier,
+    Notifier? notifier,
+    AndroidHomeWidget? homeWidget,
     DateTime Function()? clock,
-  })  : _clock = clock ?? (() => DateTime.now().toUtc()),
+    // Assigned rather than declared as initialising formals: `this._field` in
+    // a named parameter list does not stay named, and callers end up having to
+    // pass it positionally.
+  })  :
+        // ignore: prefer_initializing_formals
+        _notifier = notifier,
+        // ignore: prefer_initializing_formals
+        _homeWidget = homeWidget,
+        _clock = clock ?? (() => DateTime.now().toUtc()),
         _tasks = TaskRepository(db, installId: installId),
         _projects = ProjectRepository(db, installId: installId),
         _usage = usageSource,
@@ -47,6 +57,7 @@ class TallyController extends ChangeNotifier {
   final LedgerRepository _ledger;
   final UsageSource? _usage;
   final Notifier? _notifier;
+  final AndroidHomeWidget? _homeWidget;
 
   /// The id the focus alarm is scheduled under.
   ///
@@ -337,6 +348,26 @@ class TallyController extends ChangeNotifier {
     );
     spendByApp = await _loadSpendByApp();
     await _pushSnapshot();
+    await _pushWidget();
+  }
+
+  /// Redraws the home screen widget.
+  ///
+  /// Called from the same place as the watcher snapshot, after a recompute,
+  /// so the widget is never showing a number the app has already moved past.
+  /// It is also the only push: ticking a task recomputes, and everything that
+  /// changes the plan goes through the same path.
+  Future<void> _pushWidget() async {
+    final widget = _homeWidget;
+    if (widget == null) return;
+    await widget.push(
+      view: today.view,
+      dateLabel: _formatDate(now),
+      spendableSeconds: ledger?.spendableSeconds ?? 0,
+      // A confident zero would be a claim the app cannot make without usage
+      // access, so the widget simply says nothing about minutes instead.
+      usageVisible: usageAccess == UsageAccess.granted,
+    );
   }
 
   /// Tells the watcher where the balance stands.

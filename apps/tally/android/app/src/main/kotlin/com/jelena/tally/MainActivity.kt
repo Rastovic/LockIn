@@ -85,6 +85,23 @@ class MainActivity : FlutterActivity() {
                     result.success(null)
                 }
 
+                // Dart writes finished strings; nothing here knows what a
+                // sticker id means or how a day is assembled. See
+                // TodayWidgetStore.
+                "updateTodayWidget" -> {
+                    TodayWidgetStore(applicationContext).write(
+                        dateLabel = call.argument<String>("dateLabel") ?: "",
+                        rowsJson = call.argument<String>("rows") ?: "[]",
+                        done = call.argument<Int>("doneCount") ?: 0,
+                        total = call.argument<Int>("totalCount") ?: 0,
+                        spendable = call.argument<Int>("spendableSeconds") ?: 0,
+                        usageVisible =
+                            call.argument<Boolean>("usageVisible") ?: false,
+                    )
+                    TodayWidgetStore.refresh(applicationContext)
+                    result.success(null)
+                }
+
                 "startWatching" -> {
                     WatcherService.start(applicationContext)
                     result.success(null)

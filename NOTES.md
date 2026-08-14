@@ -1183,3 +1183,53 @@ The recurrence test exists in two places on purpose: the planner test proves
 the rule, and the controller test proves it survives a write to the database
 and a read back the next morning. The first one passing while the second fails
 is exactly the shape of the bug that shipped yesterday.
+
+## The home screen widget (2026-08-14, later still)
+
+The original rescope asked for this first - "a widget of all the tasks I plan
+to do today… I can see them on that widget" - and it was the one thing from
+that message that never got built. Everything else did: the transferable pool,
+the manage tab, stickers as categories, the quiet goals list.
+
+**Native, not a plugin.** The app already has a Dart-decides-Android-renders
+seam in `BalanceSnapshot`, and the widget follows it exactly: Dart resolves the
+titles, the done flags and the sticker glyphs, and Kotlin receives finished
+strings. Nothing in the widget knows what a sticker id means, which tasks are
+habits, or how a day is assembled. Adding a task kind needs no Kotlin change at
+all. A plugin would have added a dependency to re-implement a seam that was
+already there.
+
+**Read only, and that is a decision rather than an unfinished edge.** Ticking
+from a widget means one of two things: a second writer to the ledger living in
+Kotlin, or a background isolate opening the same SQLite file as the running
+app. The first duplicates the rules the entire app is built on - the rules that
+exist so a checkbox cannot move the balance. The second risks the data. Neither
+is worth saving a tap on a list you are about to open anyway. Tapping opens the
+app.
+
+Four things that would have been silent bugs on someone's home screen:
+
+- `notifyAppWidgetViewDataChanged` is the **only** thing that makes a
+  collection adapter re-read. Sending just the update broadcast leaves
+  yesterday's tasks under today's date, which is the worst possible failure for
+  a widget: confidently wrong rather than obviously broken.
+- The adapter intent needs a **unique data uri per widget id**, or Android
+  reuses one adapter across every placed instance.
+- Rows need a **pending intent template** on the list plus a fill-in intent per
+  row. A click listener set inside the adapter is ignored, and the widget feels
+  dead without telling you why.
+- A null glyph would render as the literal string "null" in a TextView. The
+  Dart side sends an empty string, and there is a test for exactly that.
+
+The widget carries its own small palette in `values` and `values-night` rather
+than following the theme picked inside the app. It sits on the user's wallpaper,
+not on the app's background: a widget that stayed dark on a light home screen
+would look like a hole in it.
+
+It says nothing about minutes until usage access is granted. A confident zero
+would read as "you have spent everything" rather than "this is switched off".
+
+Also caught while wiring it: `this._field` inside a **named** parameter list
+does not stay named - callers end up passing it positionally. Both injected
+dependencies are ordinary named parameters assigned in the initialiser list,
+with the lint silenced and the reason written down.
