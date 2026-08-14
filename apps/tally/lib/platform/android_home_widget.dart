@@ -31,6 +31,26 @@ final class AndroidHomeWidget {
   /// megabyte through a platform channel.
   static const maxRows = 50;
 
+  /// Everything typed into the capture widget since the app last ran.
+  ///
+  /// Returns plain strings. Kotlin holds words; turning them into tasks is
+  /// Dart's job and happens on the other side of this call, which is what
+  /// keeps the database to a single writer.
+  Future<List<String>> drainCaptures() async {
+    try {
+      final captured =
+          await channel.invokeMethod<List<Object?>>('drainCaptures');
+      return [
+        for (final item in captured ?? const [])
+          if (item is String && item.trim().isNotEmpty) item.trim(),
+      ];
+    } on MissingPluginException {
+      return const [];
+    } on PlatformException {
+      return const [];
+    }
+  }
+
   Future<void> push({
     required TodayView view,
     required String dateLabel,

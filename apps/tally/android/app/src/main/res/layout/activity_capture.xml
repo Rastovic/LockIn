@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  One field and two buttons. Anything else here is a decision being asked for
+  at the exact moment the user said they have no time to make one.
+-->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:background="@drawable/capture_background"
+    android:padding="20dp">
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/capture_title"
+        android:textSize="17sp"
+        android:textStyle="bold"
+        android:textColor="@color/widget_ink" />
+
+    <EditText
+        android:id="@+id/capture_input"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        android:hint="@string/capture_hint"
+        android:textColorHint="@color/widget_ink_faint"
+        android:textColor="@color/widget_ink"
+        android:textSize="16sp"
+        android:inputType="textCapSentences|textAutoCorrect"
+        android:imeOptions="actionDone"
+        android:maxLines="3"
+        android:minHeight="48dp"
+        android:importantForAutofill="no"
+        android:autofillHints=""
+        android:background="@drawable/capture_field" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="14dp"
+        android:orientation="horizontal"
+        android:gravity="end">
+
+        <Button
+            android:id="@+id/capture_cancel"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/capture_cancel"
+            android:textColor="@color/widget_ink_muted"
+            android:background="@android:color/transparent" />
+
+        <Button
+            android:id="@+id/capture_save"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="8dp"
+            android:text="@string/capture_save"
+            android:textColor="@color/widget_accent"
+            android:background="@android:color/transparent" />
+    </LinearLayout>
+</LinearLayout>

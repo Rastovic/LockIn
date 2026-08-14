@@ -116,6 +116,26 @@
             android:name=".TodayWidgetService"
             android:permission="android.permission.BIND_REMOTEVIEWS"
             android:exported="false" />
+
+        <!-- Capture without opening the app: a plain activity with no Flutter
+             in it, so it appears instantly over whatever was on screen.
+             excludeFromRecents because it is a box, not a place. -->
+        <activity
+            android:name=".CaptureActivity"
+            android:theme="@style/CaptureDialog"
+            android:excludeFromRecents="true"
+            android:exported="false" />
+
+        <receiver
+            android:name=".CaptureWidgetProvider"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/capture_widget_info" />
+        </receiver>
     </application>
     <!-- Required to query activities that can process text, see:
          https://developer.android.com/training/package-visibility and

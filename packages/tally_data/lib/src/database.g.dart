@@ -80,6 +80,20 @@ class $TasksTable extends Tasks with TableInfo<$TasksTable, TaskRow> {
     type: DriftSqlType.string,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _needsSortingMeta = const VerificationMeta(
+    'needsSorting',
+  );
+  @override
+  late final GeneratedColumn<bool> needsSorting = GeneratedColumn<bool>(
+    'needs_sorting',
+    aliasedName,
+    true,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("needs_sorting" IN (0, 1))',
+    ),
+  );
   static const VerificationMeta _repeatMeta = const VerificationMeta('repeat');
   @override
   late final GeneratedColumn<String> repeat = GeneratedColumn<String>(
@@ -184,6 +198,7 @@ class $TasksTable extends Tasks with TableInfo<$TasksTable, TaskRow> {
     installId,
     kind,
     title,
+    needsSorting,
     repeat,
     note,
     stickerId,
@@ -248,6 +263,15 @@ class $TasksTable extends Tasks with TableInfo<$TasksTable, TaskRow> {
       );
     } else if (isInserting) {
       context.missing(_titleMeta);
+    }
+    if (data.containsKey('needs_sorting')) {
+      context.handle(
+        _needsSortingMeta,
+        needsSorting.isAcceptableOrUnknown(
+          data['needs_sorting']!,
+          _needsSortingMeta,
+        ),
+      );
     }
     if (data.containsKey('repeat')) {
       context.handle(
@@ -347,6 +371,10 @@ class $TasksTable extends Tasks with TableInfo<$TasksTable, TaskRow> {
         DriftSqlType.string,
         data['${effectivePrefix}title'],
       )!,
+      needsSorting: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}needs_sorting'],
+      ),
       repeat: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}repeat'],
@@ -419,6 +447,16 @@ class TaskRow extends DataClass implements Insertable<TaskRow> {
   final String kind;
   final String title;
 
+  /// Captured on the fly and not yet sorted into a kind.
+  ///
+  /// A task exists the moment it is captured, with a real id and a real row.
+  /// The flag says only that nobody has decided what sort of thing it is yet,
+  /// which is a different claim from "not a task".
+  ///
+  /// Nullable, so schema 3 rows are already valid at schema 4: a task written
+  /// before capture existed was, by definition, already sorted.
+  final bool? needsSorting;
+
   /// `once` or `daily`. A string, never an ordinal (rule 6).
   ///
   /// Nullable so schema 2 rows are already valid at schema 3: a task written
@@ -448,6 +486,7 @@ class TaskRow extends DataClass implements Insertable<TaskRow> {
     required this.installId,
     required this.kind,
     required this.title,
+    this.needsSorting,
     this.repeat,
     this.note,
     this.stickerId,
@@ -469,6 +508,9 @@ class TaskRow extends DataClass implements Insertable<TaskRow> {
     map['install_id'] = Variable<String>(installId);
     map['kind'] = Variable<String>(kind);
     map['title'] = Variable<String>(title);
+    if (!nullToAbsent || needsSorting != null) {
+      map['needs_sorting'] = Variable<bool>(needsSorting);
+    }
     if (!nullToAbsent || repeat != null) {
       map['repeat'] = Variable<String>(repeat);
     }
@@ -505,6 +547,9 @@ class TaskRow extends DataClass implements Insertable<TaskRow> {
       installId: Value(installId),
       kind: Value(kind),
       title: Value(title),
+      needsSorting: needsSorting == null && nullToAbsent
+          ? const Value.absent()
+          : Value(needsSorting),
       repeat: repeat == null && nullToAbsent
           ? const Value.absent()
           : Value(repeat),
@@ -541,6 +586,7 @@ class TaskRow extends DataClass implements Insertable<TaskRow> {
       installId: serializer.fromJson<String>(json['installId']),
       kind: serializer.fromJson<String>(json['kind']),
       title: serializer.fromJson<String>(json['title']),
+      needsSorting: serializer.fromJson<bool?>(json['needsSorting']),
       repeat: serializer.fromJson<String?>(json['repeat']),
       note: serializer.fromJson<String?>(json['note']),
       stickerId: serializer.fromJson<String?>(json['stickerId']),
@@ -562,6 +608,7 @@ class TaskRow extends DataClass implements Insertable<TaskRow> {
       'installId': serializer.toJson<String>(installId),
       'kind': serializer.toJson<String>(kind),
       'title': serializer.toJson<String>(title),
+      'needsSorting': serializer.toJson<bool?>(needsSorting),
       'repeat': serializer.toJson<String?>(repeat),
       'note': serializer.toJson<String?>(note),
       'stickerId': serializer.toJson<String?>(stickerId),
@@ -581,6 +628,7 @@ class TaskRow extends DataClass implements Insertable<TaskRow> {
     String? installId,
     String? kind,
     String? title,
+    Value<bool?> needsSorting = const Value.absent(),
     Value<String?> repeat = const Value.absent(),
     Value<String?> note = const Value.absent(),
     Value<String?> stickerId = const Value.absent(),
@@ -597,6 +645,7 @@ class TaskRow extends DataClass implements Insertable<TaskRow> {
     installId: installId ?? this.installId,
     kind: kind ?? this.kind,
     title: title ?? this.title,
+    needsSorting: needsSorting.present ? needsSorting.value : this.needsSorting,
     repeat: repeat.present ? repeat.value : this.repeat,
     note: note.present ? note.value : this.note,
     stickerId: stickerId.present ? stickerId.value : this.stickerId,
@@ -619,6 +668,9 @@ class TaskRow extends DataClass implements Insertable<TaskRow> {
       installId: data.installId.present ? data.installId.value : this.installId,
       kind: data.kind.present ? data.kind.value : this.kind,
       title: data.title.present ? data.title.value : this.title,
+      needsSorting: data.needsSorting.present
+          ? data.needsSorting.value
+          : this.needsSorting,
       repeat: data.repeat.present ? data.repeat.value : this.repeat,
       note: data.note.present ? data.note.value : this.note,
       stickerId: data.stickerId.present ? data.stickerId.value : this.stickerId,
@@ -648,6 +700,7 @@ class TaskRow extends DataClass implements Insertable<TaskRow> {
           ..write('installId: $installId, ')
           ..write('kind: $kind, ')
           ..write('title: $title, ')
+          ..write('needsSorting: $needsSorting, ')
           ..write('repeat: $repeat, ')
           ..write('note: $note, ')
           ..write('stickerId: $stickerId, ')
@@ -669,6 +722,7 @@ class TaskRow extends DataClass implements Insertable<TaskRow> {
     installId,
     kind,
     title,
+    needsSorting,
     repeat,
     note,
     stickerId,
@@ -689,6 +743,7 @@ class TaskRow extends DataClass implements Insertable<TaskRow> {
           other.installId == this.installId &&
           other.kind == this.kind &&
           other.title == this.title &&
+          other.needsSorting == this.needsSorting &&
           other.repeat == this.repeat &&
           other.note == this.note &&
           other.stickerId == this.stickerId &&
@@ -707,6 +762,7 @@ class TasksCompanion extends UpdateCompanion<TaskRow> {
   final Value<String> installId;
   final Value<String> kind;
   final Value<String> title;
+  final Value<bool?> needsSorting;
   final Value<String?> repeat;
   final Value<String?> note;
   final Value<String?> stickerId;
@@ -724,6 +780,7 @@ class TasksCompanion extends UpdateCompanion<TaskRow> {
     this.installId = const Value.absent(),
     this.kind = const Value.absent(),
     this.title = const Value.absent(),
+    this.needsSorting = const Value.absent(),
     this.repeat = const Value.absent(),
     this.note = const Value.absent(),
     this.stickerId = const Value.absent(),
@@ -742,6 +799,7 @@ class TasksCompanion extends UpdateCompanion<TaskRow> {
     required String installId,
     required String kind,
     required String title,
+    this.needsSorting = const Value.absent(),
     this.repeat = const Value.absent(),
     this.note = const Value.absent(),
     this.stickerId = const Value.absent(),
@@ -765,6 +823,7 @@ class TasksCompanion extends UpdateCompanion<TaskRow> {
     Expression<String>? installId,
     Expression<String>? kind,
     Expression<String>? title,
+    Expression<bool>? needsSorting,
     Expression<String>? repeat,
     Expression<String>? note,
     Expression<String>? stickerId,
@@ -783,6 +842,7 @@ class TasksCompanion extends UpdateCompanion<TaskRow> {
       if (installId != null) 'install_id': installId,
       if (kind != null) 'kind': kind,
       if (title != null) 'title': title,
+      if (needsSorting != null) 'needs_sorting': needsSorting,
       if (repeat != null) 'repeat': repeat,
       if (note != null) 'note': note,
       if (stickerId != null) 'sticker_id': stickerId,
@@ -803,6 +863,7 @@ class TasksCompanion extends UpdateCompanion<TaskRow> {
     Value<String>? installId,
     Value<String>? kind,
     Value<String>? title,
+    Value<bool?>? needsSorting,
     Value<String?>? repeat,
     Value<String?>? note,
     Value<String?>? stickerId,
@@ -821,6 +882,7 @@ class TasksCompanion extends UpdateCompanion<TaskRow> {
       installId: installId ?? this.installId,
       kind: kind ?? this.kind,
       title: title ?? this.title,
+      needsSorting: needsSorting ?? this.needsSorting,
       repeat: repeat ?? this.repeat,
       note: note ?? this.note,
       stickerId: stickerId ?? this.stickerId,
@@ -854,6 +916,9 @@ class TasksCompanion extends UpdateCompanion<TaskRow> {
     }
     if (title.present) {
       map['title'] = Variable<String>(title.value);
+    }
+    if (needsSorting.present) {
+      map['needs_sorting'] = Variable<bool>(needsSorting.value);
     }
     if (repeat.present) {
       map['repeat'] = Variable<String>(repeat.value);
@@ -897,6 +962,7 @@ class TasksCompanion extends UpdateCompanion<TaskRow> {
           ..write('installId: $installId, ')
           ..write('kind: $kind, ')
           ..write('title: $title, ')
+          ..write('needsSorting: $needsSorting, ')
           ..write('repeat: $repeat, ')
           ..write('note: $note, ')
           ..write('stickerId: $stickerId, ')
@@ -9900,6 +9966,7 @@ typedef $$TasksTableCreateCompanionBuilder =
       required String installId,
       required String kind,
       required String title,
+      Value<bool?> needsSorting,
       Value<String?> repeat,
       Value<String?> note,
       Value<String?> stickerId,
@@ -9919,6 +9986,7 @@ typedef $$TasksTableUpdateCompanionBuilder =
       Value<String> installId,
       Value<String> kind,
       Value<String> title,
+      Value<bool?> needsSorting,
       Value<String?> repeat,
       Value<String?> note,
       Value<String?> stickerId,
@@ -9967,6 +10035,11 @@ class $$TasksTableFilterComposer
 
   ColumnFilters<String> get title => $composableBuilder(
     column: $table.title,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get needsSorting => $composableBuilder(
+    column: $table.needsSorting,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -10055,6 +10128,11 @@ class $$TasksTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<bool> get needsSorting => $composableBuilder(
+    column: $table.needsSorting,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get repeat => $composableBuilder(
     column: $table.repeat,
     builder: (column) => ColumnOrderings(column),
@@ -10128,6 +10206,11 @@ class $$TasksTableAnnotationComposer
   GeneratedColumn<String> get title =>
       $composableBuilder(column: $table.title, builder: (column) => column);
 
+  GeneratedColumn<bool> get needsSorting => $composableBuilder(
+    column: $table.needsSorting,
+    builder: (column) => column,
+  );
+
   GeneratedColumn<String> get repeat =>
       $composableBuilder(column: $table.repeat, builder: (column) => column);
 
@@ -10198,6 +10281,7 @@ class $$TasksTableTableManager
                 Value<String> installId = const Value.absent(),
                 Value<String> kind = const Value.absent(),
                 Value<String> title = const Value.absent(),
+                Value<bool?> needsSorting = const Value.absent(),
                 Value<String?> repeat = const Value.absent(),
                 Value<String?> note = const Value.absent(),
                 Value<String?> stickerId = const Value.absent(),
@@ -10215,6 +10299,7 @@ class $$TasksTableTableManager
                 installId: installId,
                 kind: kind,
                 title: title,
+                needsSorting: needsSorting,
                 repeat: repeat,
                 note: note,
                 stickerId: stickerId,
@@ -10234,6 +10319,7 @@ class $$TasksTableTableManager
                 required String installId,
                 required String kind,
                 required String title,
+                Value<bool?> needsSorting = const Value.absent(),
                 Value<String?> repeat = const Value.absent(),
                 Value<String?> note = const Value.absent(),
                 Value<String?> stickerId = const Value.absent(),
@@ -10251,6 +10337,7 @@ class $$TasksTableTableManager
                 installId: installId,
                 kind: kind,
                 title: title,
+                needsSorting: needsSorting,
                 repeat: repeat,
                 note: note,
                 stickerId: stickerId,

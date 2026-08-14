@@ -104,6 +104,14 @@ class MainActivity : FlutterActivity() {
                     result.success(null)
                 }
 
+                // Everything captured from the home screen since the app was
+                // last open. Read and cleared together, so nothing typed
+                // during the drain can fall between the two.
+                "drainCaptures" -> {
+                    result.success(CaptureQueue(applicationContext).drain())
+                    CaptureWidgetProvider.refresh(applicationContext)
+                }
+
                 "startWatching" -> {
                     WatcherService.start(applicationContext)
                     result.success(null)

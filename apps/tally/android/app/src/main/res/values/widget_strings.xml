@@ -4,4 +4,14 @@
     <string name="widget_empty">Nothing planned yet.</string>
     <string name="widget_new_day">New day. Open lockIn to plan it.</string>
     <string name="widget_description">Today\'s plan, and what is left to spend.</string>
+    <string name="capture_plus">+</string>
+    <string name="capture_prompt">Jot something down</string>
+    <string name="capture_waiting_one">1 waiting to sort</string>
+    <string name="capture_waiting_many">%1$d waiting to sort</string>
+    <string name="capture_title">Jot it down</string>
+    <string name="capture_hint">Whatever it is</string>
+    <string name="capture_save">Save</string>
+    <string name="capture_cancel">Cancel</string>
+    <string name="capture_saved">Saved. Sort it later.</string>
+    <string name="capture_widget_description">Capture a task without opening the app.</string>
 </resources>

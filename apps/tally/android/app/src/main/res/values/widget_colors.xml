@@ -11,4 +11,5 @@
     <color name="widget_ink_muted">#FF6B4E5A</color>
     <color name="widget_ink_faint">#FF9C8590</color>
     <color name="widget_accent">#FFB03A6D</color>
+    <color name="widget_field">#14000000</color>
 </resources>

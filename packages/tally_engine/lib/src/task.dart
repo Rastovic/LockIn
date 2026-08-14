@@ -52,6 +52,7 @@ final class Task {
     required this.title,
     required this.createdAt,
     this.repeat = TaskRepeat.once,
+    this.needsSorting = false,
     this.note,
     this.stickerId,
     this.estimateMinutes,
@@ -74,6 +75,15 @@ final class Task {
   /// other kind is impossible to express. What repeats is not something the
   /// app can infer from what sort of thing it is.
   final TaskRepeat repeat;
+
+  /// Captured on the fly, not yet sorted into a kind.
+  ///
+  /// **It is a real task the moment it is captured**, with a real id and a
+  /// row of its own. This says only that nobody has decided what sort of thing
+  /// it is, which is why it is a flag rather than a separate kind: a holding
+  /// pen you have to promote things out of is a second task list, and things
+  /// die in it.
+  final bool needsSorting;
 
   /// The longer version, when the title is not enough on its own.
   ///
@@ -127,7 +137,9 @@ final class Task {
 
   Task copyWith({
     String? title,
+    TaskKind? kind,
     TaskRepeat? repeat,
+    bool? needsSorting,
     String? note,
     bool clearNote = false,
     String? stickerId,
@@ -141,10 +153,11 @@ final class Task {
   }) =>
       Task(
         id: id,
-        kind: kind,
+        kind: kind ?? this.kind,
         title: title ?? this.title,
         createdAt: createdAt,
         repeat: repeat ?? this.repeat,
+        needsSorting: needsSorting ?? this.needsSorting,
         note: clearNote ? null : (note ?? this.note),
         stickerId: clearSticker ? null : (stickerId ?? this.stickerId),
         estimateMinutes:

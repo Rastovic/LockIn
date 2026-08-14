@@ -5,4 +5,5 @@
     <color name="widget_ink_muted">#FFC2A3B0</color>
     <color name="widget_ink_faint">#FF8E7480</color>
     <color name="widget_accent">#FFF48FB8</color>
+    <color name="widget_field">#1FFFFFFF</color>
 </resources>

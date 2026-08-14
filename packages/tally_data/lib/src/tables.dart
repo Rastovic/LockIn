@@ -23,6 +23,16 @@ class Tasks extends Table with PortableTable {
 
   TextColumn get title => text().withLength(min: 1, max: 200)();
 
+  /// Captured on the fly and not yet sorted into a kind.
+  ///
+  /// A task exists the moment it is captured, with a real id and a real row.
+  /// The flag says only that nobody has decided what sort of thing it is yet,
+  /// which is a different claim from "not a task".
+  ///
+  /// Nullable, so schema 3 rows are already valid at schema 4: a task written
+  /// before capture existed was, by definition, already sorted.
+  BoolColumn get needsSorting => boolean().nullable()();
+
   /// `once` or `daily`. A string, never an ordinal (rule 6).
   ///
   /// Nullable so schema 2 rows are already valid at schema 3: a task written

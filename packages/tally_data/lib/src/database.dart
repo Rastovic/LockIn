@@ -34,7 +34,7 @@ class TallyDatabase extends _$TallyDatabase {
   TallyDatabase(super.e);
 
   /// Bumped for every schema change, and written into every archive manifest.
-  static const currentSchemaVersion = 3;
+  static const currentSchemaVersion = 4;
 
   @override
   int get schemaVersion => currentSchemaVersion;
@@ -60,6 +60,12 @@ class TallyDatabase extends _$TallyDatabase {
           // a null reads as `once`, which is what every existing task was.
           if (from < 3) {
             await m.addColumn(tasks, tasks.repeat);
+          }
+          // 3 -> 4: tasks captured from the home screen arrive unsorted.
+          // Additive and nullable, and a null means already sorted, which
+          // every existing task was.
+          if (from < 4) {
+            await m.addColumn(tasks, tasks.needsSorting);
           }
           await _createIndexes();
         },

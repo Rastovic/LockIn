@@ -158,6 +158,10 @@ class TallyController extends ChangeNotifier {
     // does not keep notifications scheduled by a process that is gone.
     if (focus != null) await _syncFocusAlarm();
     usageAccess = await _usage?.access() ?? UsageAccess.unavailable;
+    // Before anything reads the task list: a line captured from the home
+    // screen is a task the user has already written down, and it should be
+    // there the first time they look rather than after the next reload.
+    await _drainCaptures();
     tasks = await _tasks.tasks();
     plan = await _tasks.planFor(dayKey);
     streaks = await _tasks.habitStreaks(dayKey: dayKey);
@@ -552,6 +556,11 @@ class TallyController extends ChangeNotifier {
         createdAt: original.createdAt,
         repeat: draft.repeat,
         note: draft.note,
+        // Opening the sheet and saving **is** the act of sorting, so it clears
+        // the flag rather than needing a separate "sorted" button. Anything
+        // else would leave things in the inbox that the user had already dealt
+        // with, which is how an inbox stops being trusted.
+        needsSorting: false,
         stickerId: draft.stickerId,
         estimateMinutes: draft.estimateMinutes,
         projectId: draft.projectId ?? original.projectId,
@@ -567,6 +576,10 @@ class TallyController extends ChangeNotifier {
 
   Future<void> deleteTask(String id) async {
     await _tasks.deleteTask(id, now: now);
+    // Before anything reads the task list: a line captured from the home
+    // screen is a task the user has already written down, and it should be
+    // there the first time they look rather than after the next reload.
+    await _drainCaptures();
     tasks = await _tasks.tasks();
     plan = await _tasks.planFor(dayKey);
     notifyListeners();
@@ -1323,6 +1336,28 @@ class TallyController extends ChangeNotifier {
     );
     await addToToday([task.id], source: PlanSource.suggestion);
     await _recordSuggestion(item, SuggestionOutcome.accepted);
+  }
+
+  /// Turns anything captured from the home screen into real tasks.
+  ///
+  /// They arrive as [TaskKind.oneoff] and marked [Task.needsSorting], which is
+  /// the honest description of what was captured: a thing to do, with nobody
+  /// having yet said what sort of thing it is. They are real tasks from this
+  /// moment - findable, editable, plannable - rather than sitting in a holding
+  /// pen that has to be promoted out of. Holding pens are where captured
+  /// things go to die.
+  Future<void> _drainCaptures() async {
+    final widget = _homeWidget;
+    if (widget == null) return;
+
+    for (final title in await widget.drainCaptures()) {
+      await _tasks.createTask(
+        kind: TaskKind.oneoff,
+        title: title,
+        now: now,
+        needsSorting: true,
+      );
+    }
   }
 
   /// The last [days] days of per-app spend, for checking against the phone's

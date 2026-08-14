@@ -49,10 +49,12 @@ class ManageTasksScreen extends StatelessWidget {
     required this.model,
     required this.segment,
     required this.onSegment,
+    this.inbox = false,
     this.onCreate,
     this.onEdit,
     this.onAddToToday,
     this.onStartFocus,
+    this.onInbox,
     this.onCreateProject,
     this.onAddToProject,
     this.onRenameProject,
@@ -65,12 +67,23 @@ class ManageTasksScreen extends StatelessWidget {
   /// The kind being shown, or null for All.
   final TaskKind? segment;
 
+  /// True when the Inbox segment is showing, which is not a kind.
+  ///
+  /// Kept as a separate flag rather than a fifth enum value because "captured
+  /// and not yet sorted" is a state a task passes through, not a sort of thing
+  /// it is. A task in the inbox is already a one-off; it just has not been
+  /// looked at.
+  final bool inbox;
+
   final ValueChanged<TaskKind?> onSegment;
 
   final VoidCallback? onCreate;
   final void Function(Task task)? onEdit;
   final void Function(Task task)? onAddToToday;
   final void Function(Task task)? onStartFocus;
+
+  /// Shows the Inbox segment.
+  final VoidCallback? onInbox;
 
   final VoidCallback? onCreateProject;
   final void Function(Project project)? onAddToProject;
@@ -87,11 +100,19 @@ class ManageTasksScreen extends StatelessWidget {
 
   static const _planner = TodayPlanner();
 
-  List<Task> get _visible => [
-        for (final task in model.tasks)
-          if (!task.isArchived && (segment == null || task.kind == segment))
-            task,
-      ];
+  List<Task> get _visible => inbox
+      ? [
+          for (final task in model.tasks)
+            if (!task.isArchived && task.needsSorting) task,
+        ]
+      : [
+          for (final task in model.tasks)
+            if (!task.isArchived && (segment == null || task.kind == segment))
+              task,
+        ];
+
+  int get _inboxCount =>
+      model.tasks.where((t) => !t.isArchived && t.needsSorting).length;
 
   /// The All view, in kind order, with empty kinds left out.
   List<(TaskKind, List<Task>)> get _grouped => [
@@ -138,10 +159,22 @@ class ManageTasksScreen extends StatelessWidget {
                       .length,
               },
               allCount: model.tasks.where((t) => !t.isArchived).length,
+              inbox: inbox,
+              inboxCount: _inboxCount,
               onChanged: onSegment,
+              onInbox: onInbox,
             ),
             Expanded(
-              child: segment == TaskKind.projectTask
+              child: inbox
+                  ? (visible.isEmpty
+                      ? const _EmptyInbox()
+                      : ListView.builder(
+                          padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
+                          itemCount: visible.length,
+                          itemBuilder: (context, index) =>
+                              _row(context, visible[index]),
+                        ))
+                  : segment == TaskKind.projectTask
                   ? _ProjectList(
                       projects: model.projects
                           .where((p) => !p.isArchived)
@@ -181,10 +214,14 @@ class ManageTasksScreen extends StatelessWidget {
                         ),
             ),
             _CreateButton(
-              label: segment == TaskKind.projectTask
-                  ? 'New project'
-                  : _createLabel,
-              onTap: segment == TaskKind.projectTask ? onCreateProject : onCreate,
+              label: inbox
+                  ? 'New task'
+                  : segment == TaskKind.projectTask
+                      ? 'New project'
+                      : _createLabel,
+              onTap: !inbox && segment == TaskKind.projectTask
+                  ? onCreateProject
+                  : onCreate,
             ),
             const SizedBox(height: 12),
           ],
@@ -290,14 +327,20 @@ class _Segments extends StatelessWidget {
     required this.labels,
     required this.counts,
     required this.allCount,
+    required this.inbox,
+    required this.inboxCount,
     required this.onChanged,
+    required this.onInbox,
   });
 
   final TaskKind? selected;
   final Map<TaskKind, String> labels;
   final Map<TaskKind, int> counts;
   final int allCount;
+  final bool inbox;
+  final int inboxCount;
   final ValueChanged<TaskKind?> onChanged;
+  final VoidCallback? onInbox;
 
   @override
   Widget build(BuildContext context) {
@@ -308,13 +351,43 @@ class _Segments extends StatelessWidget {
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(horizontal: 16),
         children: [
+          // First, and only while there is something in it. A permanently
+          // visible empty inbox is a chore on display.
+          if (inboxCount > 0) ...[
+            Semantics(
+              button: true,
+              selected: inbox,
+              label: 'Inbox',
+              excludeSemantics: true,
+              child: GestureDetector(
+                onTap: onInbox,
+                behavior: HitTestBehavior.opaque,
+                child: Container(
+                  height: 40,
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    color: inbox ? tokens.states.low : tokens.surface,
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                  child: Text(
+                    'Inbox $inboxCount',
+                    style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                          color: inbox ? tokens.bg : tokens.states.low,
+                        ),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+          ],
           for (final entry in <MapEntry<TaskKind?, String>>[
             const MapEntry(null, 'All'),
             ...labels.entries,
           ]) ...[
             Semantics(
               button: true,
-              selected: selected == entry.key,
+              selected: !inbox && selected == entry.key,
               label: entry.value,
               excludeSemantics: true,
               child: GestureDetector(
@@ -325,7 +398,7 @@ class _Segments extends StatelessWidget {
                   padding: const EdgeInsets.symmetric(horizontal: 16),
                   alignment: Alignment.center,
                   decoration: BoxDecoration(
-                    color: selected == entry.key
+                    color: !inbox && selected == entry.key
                         ? tokens.states.solvent
                         : tokens.surface,
                     borderRadius: BorderRadius.circular(999),
@@ -336,7 +409,7 @@ class _Segments extends StatelessWidget {
                     '${entry.value} '
                         '${entry.key == null ? allCount : counts[entry.key] ?? 0}',
                     style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                          color: selected == entry.key
+                          color: !inbox && selected == entry.key
                               ? tokens.bg
                               : tokens.inkMuted,
                         ),
@@ -671,6 +744,44 @@ class _ProjectHeader extends StatelessWidget {
               ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+}
+
+/// The inbox, once it is empty.
+///
+/// Says the work is finished rather than that the feature is unused. An empty
+/// inbox is the good state, and the copy should not read like something is
+/// missing from it.
+class _EmptyInbox extends StatelessWidget {
+  const _EmptyInbox();
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.tokens;
+    final text = Theme.of(context).textTheme;
+
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 44),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              'Nothing to sort',
+              style: text.titleLarge?.copyWith(color: tokens.inkMuted),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Anything you jot down from the home screen lands here until '
+              'you decide what it is.',
+              style: text.bodyMedium,
+              textAlign: TextAlign.center,
+            ),
+          ],
         ),
       ),
     );

@@ -1286,3 +1286,45 @@ Two minutes of disagreement is stated as expected rather than tolerated. It is
 the honest resolution of the comparison - the two count session edges
 differently and both round - and calling it "close" rather than "wrong" is what
 stops the screen crying wolf on its first use.
+
+## Capture from the home screen (2026-08-14, last of the day)
+
+The ask was precise and the precision mattered: something to catch a task
+**without opening the app**, sorted properly later. Two halves, and treating
+them as one feature would have ruined both.
+
+**Capture is a plain Android activity with no Flutter in it.** It opens over
+whatever was on screen, takes one line and closes, with the keyboard already
+up. Routing it through the app would mean a cold start to save six words, and
+a capture tool slower than remembering the thing is one nobody uses. That is
+not a nicety - it is the whole feature.
+
+Kotlin holds **strings and nothing else**. No ids, no kinds, no timestamps
+that matter. It is the `BalanceSnapshot` rule pointed the other way: Android
+collects, Dart decides. Turning words into tasks happens on the Dart side of
+the drain, so the database still has exactly one writer.
+
+The queue is read and cleared together, so a capture typed during a drain
+cannot fall between the two calls - it is simply in the next one.
+
+**Captured lines become real tasks immediately**, marked `needsSorting`. The
+alternative - a separate inbox table of not-quite-tasks that get promoted - was
+tempting and wrong. A holding pen is where captured things go to die: it is a
+second list, it needs its own screen, its own empty state and its own rules
+about what a half-task can do. A flag on a real task means it is findable,
+editable and plannable from the moment it is captured, and sorting is just
+filling in the parts nobody had time for.
+
+Opening the sheet and saving **is** the act of sorting, so it clears the flag.
+A separate "mark as sorted" button would leave things in the inbox the user had
+already dealt with, which is exactly how an inbox stops being trusted.
+
+The Inbox chip only exists while something is in it. A permanently visible
+empty inbox is a chore on display, and this app does not do those.
+
+The capture widget shows the waiting count, and that matters more than it
+looks: a captured line lives outside the app's database until it next runs, so
+without a number on screen there is nothing to say it was kept.
+
+Schema 3 to 4, nullable, and a null means already sorted - which every task
+written before today was.

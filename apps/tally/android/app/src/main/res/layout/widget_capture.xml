@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Small on purpose. It does one thing, and a large button for one thing is
+  home screen space taken from something else.
+-->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/capture_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:gravity="center"
+    android:background="@drawable/widget_background"
+    android:padding="10dp">
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/capture_plus"
+        android:textSize="26sp"
+        android:textColor="@color/widget_accent" />
+
+    <TextView
+        android:id="@+id/capture_waiting"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center"
+        android:maxLines="2"
+        android:ellipsize="end"
+        android:paddingTop="2dp"
+        android:textSize="11sp"
+        android:textColor="@color/widget_ink_muted"
+        android:text="@string/capture_prompt" />
+</LinearLayout>

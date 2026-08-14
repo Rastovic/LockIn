@@ -50,6 +50,7 @@ final class TaskRepository {
     String? projectId,
     String? note,
     TaskRepeat repeat = TaskRepeat.once,
+    bool needsSorting = false,
     Set<int> habitWeekdays = const {},
   }) async {
     final task = Task(
@@ -58,6 +59,7 @@ final class TaskRepository {
       title: title.trim(),
       createdAt: now,
       repeat: repeat,
+      needsSorting: needsSorting,
       note: note,
       stickerId: stickerId,
       estimateMinutes: estimateMinutes,
@@ -74,6 +76,7 @@ final class TaskRepository {
             title: task.title,
             createdAt: now.millisecondsSinceEpoch,
             repeat: Value(task.repeat.name),
+            needsSorting: Value(task.needsSorting),
             note: Value(task.note),
             stickerId: Value(task.stickerId),
             estimateMinutes: Value(task.estimateMinutes),
@@ -91,6 +94,7 @@ final class TaskRepository {
         kind: Value(task.kind.name),
         title: Value(task.title.trim()),
         repeat: Value(task.repeat.name),
+        needsSorting: Value(task.needsSorting),
         note: Value(task.note),
         stickerId: Value(task.stickerId),
         estimateMinutes: Value(task.estimateMinutes),
@@ -343,6 +347,7 @@ final class TaskRepository {
         // A null is a task written before repeating existed, and every one of
         // those was a one-off. An unknown value from a newer version reads the
         // same way rather than crashing a launch.
+        needsSorting: row.needsSorting ?? false,
         repeat: TaskRepeat.values.firstWhere(
           (r) => r.name == row.repeat,
           orElse: () => TaskRepeat.once,

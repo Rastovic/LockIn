@@ -47,6 +47,9 @@ class _TallyAppState extends State<TallyApp> with WidgetsBindingObserver {
   /// having to guess which one a task was filed under is the wrong first
   /// impression of the screen.
   TaskKind? _segment;
+
+  /// Showing captured tasks that have not been sorted yet.
+  bool _inbox = false;
   bool _showBalance = false;
 
   TallyController get c => widget.controller;
@@ -506,7 +509,12 @@ class _TallyAppState extends State<TallyApp> with WidgetsBindingObserver {
   Widget _buildTasks() => ManageTasksScreen(
         model: c.manage,
         segment: _segment,
-        onSegment: (kind) => setState(() => _segment = kind),
+        inbox: _inbox,
+        onInbox: () => setState(() => _inbox = true),
+        onSegment: (kind) => setState(() {
+          _segment = kind;
+          _inbox = false;
+        }),
         onCreate: () => _openSheet(initialKind: _segment ?? TaskKind.oneoff),
         onEdit: (task) => _openSheet(existing: task),
         onAddToToday: (task) => c.addToToday([task.id]),
