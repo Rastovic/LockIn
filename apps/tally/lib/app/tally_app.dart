@@ -160,8 +160,8 @@ class _TallyAppState extends State<TallyApp> with WidgetsBindingObserver {
         onStartSession: () => c.startFocus(),
         onAcceptHabit: (habit) =>
             c.addToToday([habit.id], source: PlanSource.habit),
-        onAcceptSuggestion: (item) => _acceptSuggestion(item),
-        onDismissSuggestion: (_) {},
+        onAcceptSuggestion: c.acceptSuggestion,
+        onDismissSuggestion: c.dismissSuggestion,
         onOpenPool: _openPool,
         onOpenBalance: () => setState(() => _showBalance = true),
       );
@@ -500,24 +500,75 @@ class _TallyAppState extends State<TallyApp> with WidgetsBindingObserver {
           taskId: task.id,
           minutes: task.estimateMinutes ?? 25,
         ),
+        onCreateProject: _openProjectSheet,
+        onAddToProject: (project) => _openSheet(
+          initialKind: TaskKind.projectTask,
+          projectId: project.id,
+          projectName: project.name,
+        ),
+        onRenameProject: (project) => _openProjectSheet(existing: project),
+        onDeleteProject: _confirmDeleteProject,
       );
 
-  /// Accepting a suggestion turns it into a real task and plans it, which is
-  /// the single tap the plan calls for.
-  Future<void> _acceptSuggestion(LibraryItem item) async {
-    await c.createTask(
-      TaskDraft(
-        kind: TaskKind.oneoff,
-        title: item.title,
-        stickerId: item.stickerId,
-        estimateMinutes: item.minutes,
+  /// Creating or renaming a project.
+  ///
+  /// A name and nothing else. A project holds no time, no dates and no
+  /// progress, so there is nothing else to ask for.
+  Future<void> _openProjectSheet({Project? existing}) async {
+    final controller = TextEditingController(text: existing?.name ?? '');
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (sheetContext) => Padding(
+        padding: EdgeInsets.only(
+          bottom: MediaQuery.viewInsetsOf(sheetContext).bottom,
+        ),
+        child: NameSheet(
+          title: existing == null ? 'New project' : 'Rename project',
+          hint: 'Dissertation',
+          controller: controller,
+          saveLabel: existing == null ? 'Create' : 'Save',
+          onSave: (name) {
+            Navigator.of(sheetContext).pop();
+            if (existing == null) {
+              c.createProject(name);
+            } else {
+              c.renameProject(existing, name);
+            }
+          },
+        ),
       ),
     );
-    final created = c.tasks.lastWhere((t) => t.title == item.title);
-    await c.addToToday([created.id], source: PlanSource.suggestion);
+    controller.dispose();
   }
 
-  Future<void> _openSheet({Task? existing, TaskKind? initialKind}) async {
+  Future<void> _confirmDeleteProject(Project project) async {
+    await showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (sheetContext) => ConfirmSheet(
+        title: 'Delete ${project.name}?',
+        // The reassurance that matters: someone tidying a project list is not
+        // asking to lose the work inside it.
+        detail: 'The tasks in it are kept. They stop being filed under a '
+            'project, and nothing else changes.',
+        confirmLabel: 'Delete the project',
+        onConfirm: () {
+          Navigator.of(sheetContext).pop();
+          c.deleteProject(project.id);
+        },
+        onCancel: () => Navigator.of(sheetContext).pop(),
+      ),
+    );
+  }
+
+  Future<void> _openSheet({
+    Task? existing,
+    TaskKind? initialKind,
+    String? projectId,
+    String? projectName,
+  }) async {
     await showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
@@ -525,6 +576,8 @@ class _TallyAppState extends State<TallyApp> with WidgetsBindingObserver {
       builder: (sheetContext) => TaskSheet(
         existing: existing,
         initialKind: initialKind ?? TaskKind.oneoff,
+        projectId: projectId,
+        projectName: projectName,
         onSave: (draft) {
           Navigator.of(sheetContext).pop();
           if (existing == null) {

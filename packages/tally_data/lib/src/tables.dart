@@ -50,6 +50,10 @@ class Tasks extends Table with PortableTable {
   Set<Column> get primaryKey => {id};
 }
 
+/// The row is `ProjectRow`: the domain type of that name lives in
+/// `tally_engine`, and a persistence row is not a domain object. Fourth time
+/// this collision has come up, after Treat, SavingsTransfer and Goal.
+@DataClassName('ProjectRow')
 class Projects extends Table with PortableTable {
   TextColumn get name => text().withLength(min: 1, max: 200)();
 

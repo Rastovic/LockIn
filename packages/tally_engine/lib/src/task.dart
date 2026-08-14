@@ -15,6 +15,14 @@ enum TaskKind {
   /// A plain one-off. Lives in the pool until it is planned. Carries nothing,
   /// and that is the point.
   oneoff,
+
+  /// A minute or less: supplements, water the plants, put the bins out.
+  ///
+  /// **Deliberately not a habit.** A habit carries a streak, and a streak on
+  /// something this small turns a two second job into something you can fail
+  /// at. These carry no streak, no schedule and no estimate - they exist to be
+  /// ticked and forgotten, and the only thing they earn is a sticker.
+  quick,
 }
 
 /// Anything the user might plan into a day.
@@ -185,4 +193,50 @@ final class StickerStamp {
 
   @override
   String toString() => 'StickerStamp($dayKey, $stickerId)';
+}
+
+/// A container for project tasks.
+///
+/// **A project carries no time of its own.** The minutes live on the tasks
+/// inside it, and the project's total is derived from them rather than stored.
+/// That is the whole reason it is a separate object: a project with its own
+/// estimate would be a second number to keep in step with the sum of its
+/// parts, and the two would disagree the first time a task changed.
+///
+/// It carries no due date and no progress bar either. It is a folder with a
+/// name, and the tasks inside it are ordinary tasks that happen to be filed.
+final class Project {
+  const Project({
+    required this.id,
+    required this.name,
+    required this.createdAt,
+    this.stickerId,
+    this.archivedAt,
+  });
+
+  final String id;
+  final String name;
+  final DateTime createdAt;
+  final String? stickerId;
+  final DateTime? archivedAt;
+
+  bool get isArchived => archivedAt != null;
+
+  Project copyWith({
+    String? name,
+    String? stickerId,
+    bool clearSticker = false,
+    DateTime? archivedAt,
+    bool unarchive = false,
+  }) =>
+      Project(
+        id: id,
+        name: name ?? this.name,
+        createdAt: createdAt,
+        stickerId: clearSticker ? null : (stickerId ?? this.stickerId),
+        archivedAt: unarchive ? null : (archivedAt ?? this.archivedAt),
+      );
+
+  @override
+  String toString() => 'Project($id, "$name")';
 }

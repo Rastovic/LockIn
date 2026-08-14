@@ -860,7 +860,8 @@ class TasksCompanion extends UpdateCompanion<TaskRow> {
   }
 }
 
-class $ProjectsTable extends Projects with TableInfo<$ProjectsTable, Project> {
+class $ProjectsTable extends Projects
+    with TableInfo<$ProjectsTable, ProjectRow> {
   @override
   final GeneratedDatabase attachedDatabase;
   final String? _alias;
@@ -979,7 +980,7 @@ class $ProjectsTable extends Projects with TableInfo<$ProjectsTable, Project> {
   static const String $name = 'projects';
   @override
   VerificationContext validateIntegrity(
-    Insertable<Project> instance, {
+    Insertable<ProjectRow> instance, {
     bool isInserting = false,
   }) {
     final context = VerificationContext();
@@ -1045,9 +1046,9 @@ class $ProjectsTable extends Projects with TableInfo<$ProjectsTable, Project> {
   @override
   Set<GeneratedColumn> get $primaryKey => {id};
   @override
-  Project map(Map<String, dynamic> data, {String? tablePrefix}) {
+  ProjectRow map(Map<String, dynamic> data, {String? tablePrefix}) {
     final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
-    return Project(
+    return ProjectRow(
       id: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}id'],
@@ -1089,7 +1090,7 @@ class $ProjectsTable extends Projects with TableInfo<$ProjectsTable, Project> {
   }
 }
 
-class Project extends DataClass implements Insertable<Project> {
+class ProjectRow extends DataClass implements Insertable<ProjectRow> {
   /// UUID v7. **Never an autoincrement integer.**
   ///
   /// Two devices both minting `id = 47` cannot be merged, and merge is the
@@ -1115,7 +1116,7 @@ class Project extends DataClass implements Insertable<Project> {
   final String? stickerId;
   final int createdAt;
   final int? archivedAt;
-  const Project({
+  const ProjectRow({
     required this.id,
     required this.updatedAt,
     this.deletedAt,
@@ -1164,12 +1165,12 @@ class Project extends DataClass implements Insertable<Project> {
     );
   }
 
-  factory Project.fromJson(
+  factory ProjectRow.fromJson(
     Map<String, dynamic> json, {
     ValueSerializer? serializer,
   }) {
     serializer ??= driftRuntimeOptions.defaultSerializer;
-    return Project(
+    return ProjectRow(
       id: serializer.fromJson<String>(json['id']),
       updatedAt: serializer.fromJson<int>(json['updatedAt']),
       deletedAt: serializer.fromJson<int?>(json['deletedAt']),
@@ -1195,7 +1196,7 @@ class Project extends DataClass implements Insertable<Project> {
     };
   }
 
-  Project copyWith({
+  ProjectRow copyWith({
     String? id,
     int? updatedAt,
     Value<int?> deletedAt = const Value.absent(),
@@ -1204,7 +1205,7 @@ class Project extends DataClass implements Insertable<Project> {
     Value<String?> stickerId = const Value.absent(),
     int? createdAt,
     Value<int?> archivedAt = const Value.absent(),
-  }) => Project(
+  }) => ProjectRow(
     id: id ?? this.id,
     updatedAt: updatedAt ?? this.updatedAt,
     deletedAt: deletedAt.present ? deletedAt.value : this.deletedAt,
@@ -1214,8 +1215,8 @@ class Project extends DataClass implements Insertable<Project> {
     createdAt: createdAt ?? this.createdAt,
     archivedAt: archivedAt.present ? archivedAt.value : this.archivedAt,
   );
-  Project copyWithCompanion(ProjectsCompanion data) {
-    return Project(
+  ProjectRow copyWithCompanion(ProjectsCompanion data) {
+    return ProjectRow(
       id: data.id.present ? data.id.value : this.id,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
       deletedAt: data.deletedAt.present ? data.deletedAt.value : this.deletedAt,
@@ -1231,7 +1232,7 @@ class Project extends DataClass implements Insertable<Project> {
 
   @override
   String toString() {
-    return (StringBuffer('Project(')
+    return (StringBuffer('ProjectRow(')
           ..write('id: $id, ')
           ..write('updatedAt: $updatedAt, ')
           ..write('deletedAt: $deletedAt, ')
@@ -1258,7 +1259,7 @@ class Project extends DataClass implements Insertable<Project> {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      (other is Project &&
+      (other is ProjectRow &&
           other.id == this.id &&
           other.updatedAt == this.updatedAt &&
           other.deletedAt == this.deletedAt &&
@@ -1269,7 +1270,7 @@ class Project extends DataClass implements Insertable<Project> {
           other.archivedAt == this.archivedAt);
 }
 
-class ProjectsCompanion extends UpdateCompanion<Project> {
+class ProjectsCompanion extends UpdateCompanion<ProjectRow> {
   final Value<String> id;
   final Value<int> updatedAt;
   final Value<int?> deletedAt;
@@ -1305,7 +1306,7 @@ class ProjectsCompanion extends UpdateCompanion<Project> {
        installId = Value(installId),
        name = Value(name),
        createdAt = Value(createdAt);
-  static Insertable<Project> custom({
+  static Insertable<ProjectRow> custom({
     Expression<String>? id,
     Expression<int>? updatedAt,
     Expression<int>? deletedAt,
@@ -10378,14 +10379,17 @@ class $$ProjectsTableTableManager
         RootTableManager<
           _$TallyDatabase,
           $ProjectsTable,
-          Project,
+          ProjectRow,
           $$ProjectsTableFilterComposer,
           $$ProjectsTableOrderingComposer,
           $$ProjectsTableAnnotationComposer,
           $$ProjectsTableCreateCompanionBuilder,
           $$ProjectsTableUpdateCompanionBuilder,
-          (Project, BaseReferences<_$TallyDatabase, $ProjectsTable, Project>),
-          Project,
+          (
+            ProjectRow,
+            BaseReferences<_$TallyDatabase, $ProjectsTable, ProjectRow>,
+          ),
+          ProjectRow,
           PrefetchHooks Function()
         > {
   $$ProjectsTableTableManager(_$TallyDatabase db, $ProjectsTable table)
@@ -10455,14 +10459,14 @@ typedef $$ProjectsTableProcessedTableManager =
     ProcessedTableManager<
       _$TallyDatabase,
       $ProjectsTable,
-      Project,
+      ProjectRow,
       $$ProjectsTableFilterComposer,
       $$ProjectsTableOrderingComposer,
       $$ProjectsTableAnnotationComposer,
       $$ProjectsTableCreateCompanionBuilder,
       $$ProjectsTableUpdateCompanionBuilder,
-      (Project, BaseReferences<_$TallyDatabase, $ProjectsTable, Project>),
-      Project,
+      (ProjectRow, BaseReferences<_$TallyDatabase, $ProjectsTable, ProjectRow>),
+      ProjectRow,
       PrefetchHooks Function()
     >;
 typedef $$SessionsTableCreateCompanionBuilder =

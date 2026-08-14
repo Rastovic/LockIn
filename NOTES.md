@@ -1087,3 +1087,60 @@ alarm that silently cannot ring is worse than no alarm, because it is trusted.
 **Settings folds all start closed.** One opened itself when nothing was being
 watched. It made the screen open at a different height depending on state, and
 an index with a section already unrolled is not an index.
+
+## Projects, quick tasks, and two suggestion bugs (2026-08-14)
+
+**"Not now" was wired to an empty function.** `onDismissSuggestion: (_) {}`,
+literally. The card was rebuilt from the same deterministic pick a moment
+later, so the button visibly did nothing. There was a `suggestion_history`
+table sitting unused the whole time.
+
+**Accepting one did not retire it either**, for a subtler reason: the picker
+was called with `addedItemIds: {for (final task in tasks) task.id}` - task
+UUIDs compared against library item ids. Two id spaces that never intersect,
+so the set was always effectively empty and nothing was ever suppressed. It
+type-checked perfectly. Both are `Set<String>`.
+
+Worth naming the shape: the picker had a `history` parameter designed for
+exactly this, with suppression rules already written and tested, and the
+caller passed neither it nor anything that could work. The engine was right
+and nobody connected it. Now the outcome of every suggestion is recorded and
+the picker is told, with four tests covering dismiss, accept, no-repeat within
+the day, and accept surviving a reload.
+
+**The description never reached the database.** Yesterday's `tasks.note` went
+from the sheet to the draft to the model to the column and stopped: the
+repository never wrote it and never read it back, so every description anyone
+typed vanished on save, silently. A field is not done when it merely compiles
+end to end. Fixed with a round-trip test that writes, reads, updates and
+clears.
+
+**Projects now hold tasks.** A project is a folder with a name and **no time
+of its own**: the header shows what its tasks add up to, derived on the spot.
+A stored total would be a second number that starts disagreeing with its own
+parts the first time a task changes, which is the entire reason not to have
+one.
+
+Deleting a project keeps its tasks - they become unfiled project tasks and are
+still listed under their own heading. Someone tidying a project list is not
+asking to lose the work inside it, and the confirmation says so before the tap
+rather than after.
+
+Opening the sheet from inside a project hides the kind picker: whoever tapped
+"add a task" under a project has already answered that question, and offering
+to turn it into a habit is offering to lose it.
+
+**Quick tasks are a fifth kind**, and deliberately not habits. A habit carries
+a streak, and a streak on taking supplements turns a two second job into
+something you can fail at. No streak, no schedule, no estimate - the sheet
+hides the wheel entirely for them, because every option it can offer is longer
+than the task.
+
+Adding the enum value was the easy part: Dart's exhaustiveness checking found
+every switch that needed a new case, which is the argument for switching on
+enums rather than defaulting.
+
+Fourth drift row-class collision, after Treat, SavingsTransfer and Goal:
+`Projects` generated a `Project` that clashed with the domain type. The rule is
+now reflexive - any table whose name matches a domain object needs
+`@DataClassName('...Row')` from the start.

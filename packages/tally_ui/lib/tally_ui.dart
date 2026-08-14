@@ -15,6 +15,7 @@ export 'src/screens/insights_screen.dart';
 export 'src/screens/onboarding_screen.dart';
 export 'src/screens/pool_sheet.dart';
 export 'src/screens/manage_tasks_screen.dart';
+export 'src/screens/small_sheets.dart';
 export 'src/screens/statement_screen.dart';
 export 'src/screens/sticker_screens.dart';
 export 'src/screens/task_sheet.dart';

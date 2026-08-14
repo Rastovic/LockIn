@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:tally_engine/tally_engine.dart';
 
+import '../format/durations.dart';
 import '../theme/tally_theme_data.dart';
+import '../widgets/sticker_chip.dart';
 import '../widgets/task_row.dart';
 
 /// Everything Manage Tasks needs to draw.
@@ -9,12 +11,16 @@ final class ManageTasksModel {
   const ManageTasksModel({
     required this.tasks,
     required this.now,
+    this.projects = const [],
     this.streaks = const {},
     this.plannedToday = const {},
   });
 
   final List<Task> tasks;
   final DateTime now;
+
+  /// The folders project tasks are filed under.
+  final List<Project> projects;
 
   /// Current streak per habit id.
   final Map<String, int> streaks;
@@ -47,6 +53,10 @@ class ManageTasksScreen extends StatelessWidget {
     this.onEdit,
     this.onAddToToday,
     this.onStartFocus,
+    this.onCreateProject,
+    this.onAddToProject,
+    this.onRenameProject,
+    this.onDeleteProject,
     super.key,
   });
 
@@ -62,8 +72,14 @@ class ManageTasksScreen extends StatelessWidget {
   final void Function(Task task)? onAddToToday;
   final void Function(Task task)? onStartFocus;
 
+  final VoidCallback? onCreateProject;
+  final void Function(Project project)? onAddToProject;
+  final void Function(Project project)? onRenameProject;
+  final void Function(Project project)? onDeleteProject;
+
   static const _labels = {
     TaskKind.habit: 'Daily',
+    TaskKind.quick: 'Quick',
     TaskKind.projectTask: 'Projects',
     TaskKind.dread: 'Avoiding',
     TaskKind.oneoff: 'Someday',
@@ -125,7 +141,31 @@ class ManageTasksScreen extends StatelessWidget {
               onChanged: onSegment,
             ),
             Expanded(
-              child: visible.isEmpty
+              child: segment == TaskKind.projectTask
+                  ? _ProjectList(
+                      projects: model.projects
+                          .where((p) => !p.isArchived)
+                          .toList(),
+                      tasksFor: (id) => [
+                        for (final task in model.tasks)
+                          if (!task.isArchived &&
+                              task.kind == TaskKind.projectTask &&
+                              task.projectId == id)
+                            task,
+                      ],
+                      unfiled: [
+                        for (final task in model.tasks)
+                          if (!task.isArchived &&
+                              task.kind == TaskKind.projectTask &&
+                              task.projectId == null)
+                            task,
+                      ],
+                      buildRow: _row,
+                      onAddToProject: onAddToProject,
+                      onRenameProject: onRenameProject,
+                      onDeleteProject: onDeleteProject,
+                    )
+                  : visible.isEmpty
                   ? _EmptySegment(kind: segment)
                   : segment == null
                       ? _AllList(
@@ -140,7 +180,12 @@ class ManageTasksScreen extends StatelessWidget {
                               _row(context, visible[index]),
                         ),
             ),
-            _CreateButton(label: _createLabel, onTap: onCreate),
+            _CreateButton(
+              label: segment == TaskKind.projectTask
+                  ? 'New project'
+                  : _createLabel,
+              onTap: segment == TaskKind.projectTask ? onCreateProject : onCreate,
+            ),
             const SizedBox(height: 12),
           ],
         ),
@@ -172,6 +217,7 @@ class ManageTasksScreen extends StatelessWidget {
         TaskKind.habit => 'New daily task',
         TaskKind.projectTask => 'New project task',
         TaskKind.dread => 'Add something you are avoiding',
+        TaskKind.quick => 'New quick task',
         TaskKind.oneoff => 'New task',
         null => 'New task',
       };
@@ -190,6 +236,7 @@ class ManageTasksScreen extends StatelessWidget {
         final avoided = _planner.avoidedDaysFor(task, now: model.now);
         return avoided > 0 ? 'avoided $avoided days' : 'added today';
 
+      case TaskKind.quick:
       case TaskKind.projectTask:
       case TaskKind.oneoff:
         return model.plannedToday.contains(task.id) ? 'in today' : null;
@@ -335,6 +382,11 @@ class _EmptySegment extends StatelessWidget {
       'One-off things, kept until you plan them into a day. They carry '
           'nothing, and that is the point.',
     ),
+    TaskKind.quick: (
+      'Nothing quick yet',
+      'A minute or less. Supplements, the bins, water the plants. No streak '
+          'and no timer, because two seconds is not something to fail at.',
+    ),
   };
 
   @override
@@ -401,6 +453,223 @@ class _CreateButton extends StatelessWidget {
                     fontWeight: FontWeight.w700,
                   ),
             ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Projects, each opening to the tasks filed under it.
+///
+/// **A project has no time of its own.** The header shows the sum of its
+/// tasks' estimates, derived on the spot rather than stored, because a stored
+/// total is a second number that starts disagreeing with its own parts the
+/// first time a task changes. It is a folder with a name, and what is inside
+/// are ordinary project tasks.
+class _ProjectList extends StatefulWidget {
+  const _ProjectList({
+    required this.projects,
+    required this.tasksFor,
+    required this.unfiled,
+    required this.buildRow,
+    this.onAddToProject,
+    this.onRenameProject,
+    this.onDeleteProject,
+  });
+
+  final List<Project> projects;
+  final List<Task> Function(String projectId) tasksFor;
+
+  /// Project tasks with no project, including anything left behind when a
+  /// project was deleted. Never hidden: an unfiled task is still work.
+  final List<Task> unfiled;
+
+  final Widget Function(BuildContext, Task) buildRow;
+  final void Function(Project project)? onAddToProject;
+  final void Function(Project project)? onRenameProject;
+  final void Function(Project project)? onDeleteProject;
+
+  @override
+  State<_ProjectList> createState() => _ProjectListState();
+}
+
+class _ProjectListState extends State<_ProjectList> {
+  final _open = <String>{};
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.tokens;
+    final text = Theme.of(context).textTheme;
+
+    if (widget.projects.isEmpty && widget.unfiled.isEmpty) {
+      return const _EmptySegment(kind: TaskKind.projectTask);
+    }
+
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
+      children: [
+        for (final project in widget.projects) ...[
+          _ProjectHeader(
+            project: project,
+            tasks: widget.tasksFor(project.id),
+            open: _open.contains(project.id),
+            onToggle: () => setState(
+              () => _open.contains(project.id)
+                  ? _open.remove(project.id)
+                  : _open.add(project.id),
+            ),
+            onAdd: widget.onAddToProject == null
+                ? null
+                : () => widget.onAddToProject!(project),
+            onRename: widget.onRenameProject == null
+                ? null
+                : () => widget.onRenameProject!(project),
+            onDelete: widget.onDeleteProject == null
+                ? null
+                : () => widget.onDeleteProject!(project),
+          ),
+          if (_open.contains(project.id)) ...[
+            for (final task in widget.tasksFor(project.id))
+              Padding(
+                padding: const EdgeInsets.only(left: 12),
+                child: widget.buildRow(context, task),
+              ),
+            if (widget.tasksFor(project.id).isEmpty)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 2, 12, 10),
+                child: Text('Nothing in here yet.', style: text.labelMedium),
+              ),
+          ],
+          const SizedBox(height: 6),
+        ],
+        if (widget.unfiled.isNotEmpty) ...[
+          Padding(
+            padding: const EdgeInsets.fromLTRB(8, 14, 8, 8),
+            child: Text(
+              'NOT IN A PROJECT  ${widget.unfiled.length}',
+              style: text.labelSmall?.copyWith(color: tokens.inkFaint),
+            ),
+          ),
+          for (final task in widget.unfiled) widget.buildRow(context, task),
+        ],
+      ],
+    );
+  }
+}
+
+class _ProjectHeader extends StatelessWidget {
+  const _ProjectHeader({
+    required this.project,
+    required this.tasks,
+    required this.open,
+    required this.onToggle,
+    this.onAdd,
+    this.onRename,
+    this.onDelete,
+  });
+
+  final Project project;
+  final List<Task> tasks;
+  final bool open;
+  final VoidCallback onToggle;
+  final VoidCallback? onAdd;
+  final VoidCallback? onRename;
+  final VoidCallback? onDelete;
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.tokens;
+    final text = Theme.of(context).textTheme;
+
+    // Derived, never stored. Tasks without an estimate simply contribute
+    // nothing rather than being guessed at.
+    final estimated = tasks.fold(0, (sum, t) => sum + (t.estimateMinutes ?? 0));
+    final left = tasks.length;
+
+    return Semantics(
+      button: true,
+      expanded: open,
+      label: '${project.name}, $left tasks',
+      excludeSemantics: true,
+      child: GestureDetector(
+        onTap: onToggle,
+        behavior: HitTestBehavior.opaque,
+        child: Container(
+          padding: const EdgeInsets.fromLTRB(14, 12, 8, 12),
+          decoration: BoxDecoration(
+            color: tokens.surface,
+            borderRadius: BorderRadius.circular(14),
+          ),
+          child: Row(
+            children: [
+              if (project.stickerId != null) ...[
+                StickerChip(stickerId: project.stickerId!, size: 26),
+                const SizedBox(width: 10),
+              ],
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      project.name,
+                      style: text.bodyLarge,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    Text(
+                      // The project's own line never claims a duration of its
+                      // own: it reports what its tasks add up to, and says so.
+                      left == 0
+                          ? 'empty'
+                          : estimated == 0
+                              ? '$left tasks'
+                              : '$left tasks · ${formatDuration(estimated * 60)} planned',
+                      style: text.labelMedium,
+                    ),
+                  ],
+                ),
+              ),
+              if (onAdd != null)
+                Semantics(
+                  button: true,
+                  label: 'Add a task to ${project.name}',
+                  excludeSemantics: true,
+                  child: GestureDetector(
+                    onTap: onAdd,
+                    behavior: HitTestBehavior.opaque,
+                    child: SizedBox(
+                      width: 40,
+                      height: 40,
+                      child: Icon(Icons.add, size: 20, color: tokens.inkMuted),
+                    ),
+                  ),
+                ),
+              if (onRename != null)
+                Semantics(
+                  button: true,
+                  label: 'Rename ${project.name}',
+                  excludeSemantics: true,
+                  child: GestureDetector(
+                    onTap: onRename,
+                    behavior: HitTestBehavior.opaque,
+                    child: SizedBox(
+                      width: 40,
+                      height: 40,
+                      child: Icon(
+                        Icons.edit_outlined,
+                        size: 18,
+                        color: tokens.inkFaint,
+                      ),
+                    ),
+                  ),
+                ),
+              Icon(
+                open ? Icons.expand_less : Icons.expand_more,
+                size: 20,
+                color: tokens.inkFaint,
+              ),
+            ],
           ),
         ),
       ),

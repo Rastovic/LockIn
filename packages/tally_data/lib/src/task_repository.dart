@@ -48,6 +48,7 @@ final class TaskRepository {
     String? stickerId,
     int? estimateMinutes,
     String? projectId,
+    String? note,
     Set<int> habitWeekdays = const {},
   }) async {
     final task = Task(
@@ -55,6 +56,7 @@ final class TaskRepository {
       kind: kind,
       title: title.trim(),
       createdAt: now,
+      note: note,
       stickerId: stickerId,
       estimateMinutes: estimateMinutes,
       projectId: projectId,
@@ -69,6 +71,7 @@ final class TaskRepository {
             kind: task.kind.name,
             title: task.title,
             createdAt: now.millisecondsSinceEpoch,
+            note: Value(task.note),
             stickerId: Value(task.stickerId),
             estimateMinutes: Value(task.estimateMinutes),
             projectId: Value(task.projectId),
@@ -84,6 +87,7 @@ final class TaskRepository {
         updatedAt: Value(now.millisecondsSinceEpoch),
         kind: Value(task.kind.name),
         title: Value(task.title.trim()),
+        note: Value(task.note),
         stickerId: Value(task.stickerId),
         estimateMinutes: Value(task.estimateMinutes),
         habitWeekdays: Value(_encodeWeekdays(task.habitWeekdays)),
@@ -331,6 +335,7 @@ final class TaskRepository {
         title: row.title,
         createdAt:
             DateTime.fromMillisecondsSinceEpoch(row.createdAt, isUtc: true),
+        note: row.note,
         stickerId: row.stickerId,
         estimateMinutes: row.estimateMinutes,
         projectId: row.projectId,
@@ -368,4 +373,93 @@ final class TaskRepository {
           if (int.tryParse(part.trim()) case final day?)
             if (day >= 1 && day <= 7) day,
       };
+}
+
+/// Projects: the folders that project tasks are filed under.
+///
+/// Separate from [TaskRepository] because a project is not a task and reads
+/// nothing from the plan. Kept in this file because the two are always used
+/// together and a one-class file would be filing for its own sake.
+final class ProjectRepository {
+  ProjectRepository(this.db, {required this.installId});
+
+  final TallyDatabase db;
+  final String installId;
+
+  Future<List<Project>> projects() async {
+    final rows = await (db.select(db.projects)
+          ..where((t) => t.deletedAt.isNull())
+          ..orderBy([(t) => OrderingTerm.asc(t.createdAt)]))
+        .get();
+    return [for (final row in rows) _toProject(row)];
+  }
+
+  Future<Project> createProject({
+    required String name,
+    required DateTime now,
+    String? stickerId,
+  }) async {
+    final project = Project(
+      id: Ids.newId(),
+      name: name.trim(),
+      createdAt: now,
+      stickerId: stickerId,
+    );
+    await db.into(db.projects).insert(
+          ProjectsCompanion.insert(
+            id: project.id,
+            updatedAt: now.millisecondsSinceEpoch,
+            installId: installId,
+            name: project.name,
+            createdAt: now.millisecondsSinceEpoch,
+            stickerId: Value(project.stickerId),
+          ),
+        );
+    return project;
+  }
+
+  Future<void> updateProject(Project project, {required DateTime now}) async {
+    await (db.update(db.projects)..where((t) => t.id.equals(project.id))).write(
+      ProjectsCompanion(
+        updatedAt: Value(now.millisecondsSinceEpoch),
+        name: Value(project.name.trim()),
+        stickerId: Value(project.stickerId),
+        archivedAt: Value(project.archivedAt?.millisecondsSinceEpoch),
+      ),
+    );
+  }
+
+  /// Removes a project and unfiles its tasks.
+  ///
+  /// **The tasks survive.** Deleting a folder is not a decision to destroy
+  /// what is in it, and someone tidying up their project list would not expect
+  /// to lose the work. They become ordinary project tasks with no project.
+  Future<void> deleteProject(String id, {required DateTime now}) async {
+    final stamp = now.millisecondsSinceEpoch;
+    await db.transaction(() async {
+      await (db.update(db.tasks)..where((t) => t.projectId.equals(id))).write(
+        TasksCompanion(
+          updatedAt: Value(stamp),
+          projectId: const Value(null),
+        ),
+      );
+      await (db.update(db.projects)..where((t) => t.id.equals(id))).write(
+        ProjectsCompanion(
+          updatedAt: Value(stamp),
+          deletedAt: Value(stamp),
+        ),
+      );
+    });
+  }
+
+  Project _toProject(ProjectRow row) => Project(
+        id: row.id,
+        name: row.name,
+        createdAt:
+            DateTime.fromMillisecondsSinceEpoch(row.createdAt, isUtc: true),
+        stickerId: row.stickerId,
+        archivedAt: row.archivedAt == null
+            ? null
+            : DateTime.fromMillisecondsSinceEpoch(row.archivedAt!, isUtc: true),
+      );
 }

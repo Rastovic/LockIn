@@ -29,6 +29,7 @@ class TallyController extends ChangeNotifier {
     DateTime Function()? clock,
   })  : _clock = clock ?? (() => DateTime.now().toUtc()),
         _tasks = TaskRepository(db, installId: installId),
+        _projects = ProjectRepository(db, installId: installId),
         _usage = usageSource,
         _ledger = LedgerRepository(
           db,
@@ -42,6 +43,7 @@ class TallyController extends ChangeNotifier {
 
   final DateTime Function() _clock;
   final TaskRepository _tasks;
+  final ProjectRepository _projects;
   final LedgerRepository _ledger;
   final UsageSource? _usage;
   final Notifier? _notifier;
@@ -60,6 +62,11 @@ class TallyController extends ChangeNotifier {
   List<WatchableApp> watchable = const [];
   UsageAccess usageAccess = UsageAccess.denied;
   List<PlanEntry> plan = const [];
+
+  /// Every suggestion this install has been offered, and what became of it.
+  List<SuggestionRecord> suggestionHistory = const [];
+
+  List<Project> projects = const [];
   Map<String, int> streaks = const {};
   LedgerResult? ledger;
   FocusRun? focus;
@@ -120,6 +127,7 @@ class TallyController extends ChangeNotifier {
   ManageTasksModel get manage => ManageTasksModel(
         tasks: tasks,
         now: now,
+        projects: projects,
         streaks: streaks,
         plannedToday: {for (final entry in plan) entry.taskId},
       );
@@ -142,6 +150,8 @@ class TallyController extends ChangeNotifier {
     tasks = await _tasks.tasks();
     plan = await _tasks.planFor(dayKey);
     streaks = await _tasks.habitStreaks(dayKey: dayKey);
+    await _loadSuggestionHistory();
+    projects = await _projects.projects();
     await _reconcile();
     await loadWatchable();
     await loadGoals();
@@ -452,15 +462,45 @@ class TallyController extends ChangeNotifier {
 
   // --- tasks ---------------------------------------------------------------
 
-  Future<void> createTask(TaskDraft draft) async {
-    await _tasks.createTask(
+  /// Creates a task and returns it, so the caller can plan it immediately
+  /// without having to find it again by title.
+  Future<Task> createTask(TaskDraft draft) async {
+    final task = await _tasks.createTask(
       kind: draft.kind,
       title: draft.title,
       now: now,
       stickerId: draft.stickerId,
       estimateMinutes: draft.estimateMinutes,
+      projectId: draft.projectId,
+      note: draft.note,
       habitWeekdays: draft.habitWeekdays,
     );
+    tasks = await _tasks.tasks();
+    notifyListeners();
+    return task;
+  }
+
+  Future<Project> createProject(String name, {String? stickerId}) async {
+    final project = await _projects.createProject(
+      name: name,
+      now: now,
+      stickerId: stickerId,
+    );
+    projects = await _projects.projects();
+    notifyListeners();
+    return project;
+  }
+
+  Future<void> renameProject(Project project, String name) async {
+    await _projects.updateProject(project.copyWith(name: name), now: now);
+    projects = await _projects.projects();
+    notifyListeners();
+  }
+
+  /// Removes a project. **Its tasks survive**, unfiled.
+  Future<void> deleteProject(String id) async {
+    await _projects.deleteProject(id, now: now);
+    projects = await _projects.projects();
     tasks = await _tasks.tasks();
     notifyListeners();
   }
@@ -1189,8 +1229,80 @@ class TallyController extends ChangeNotifier {
         dayKey: dayKey,
         installId: installId,
         library: shippedLibrary,
-        addedItemIds: {for (final task in tasks) task.id},
+        // The history is what makes "not now" and "add" mean anything: the
+        // picker suppresses accepted items forever and dismissed ones for its
+        // repeat window, and it can only do that if it is told.
+        //
+        // This used to pass `addedItemIds: {task.id for tasks}`, comparing
+        // task UUIDs against library item ids. Two id spaces that never
+        // intersect, so nothing was ever suppressed and the same suggestion
+        // came back day after day however many times it was accepted.
+        history: suggestionHistory,
       );
+
+  /// Records the fate of today's suggestion and picks the next one.
+  ///
+  /// Both buttons land here. "Not now" wrote nothing at all before, which is
+  /// why it looked like a button that did nothing: the card was rebuilt from
+  /// the same deterministic pick a moment later.
+  Future<void> _recordSuggestion(
+    LibraryItem item,
+    SuggestionOutcome outcome,
+  ) async {
+    await db.into(db.suggestionHistory).insert(
+          SuggestionHistoryCompanion.insert(
+            id: Ids.newId(),
+            updatedAt: now.millisecondsSinceEpoch,
+            installId: installId,
+            dayKey: dayKey,
+            tzOffsetMinutes: now.timeZoneOffset.inMinutes,
+            itemId: item.id,
+            outcome: outcome.name,
+          ),
+        );
+    await _loadSuggestionHistory();
+    notifyListeners();
+  }
+
+  /// Turns down today's suggestion. Another one takes its place immediately.
+  Future<void> dismissSuggestion(LibraryItem item) =>
+      _recordSuggestion(item, SuggestionOutcome.dismissed);
+
+  /// Accepts today's suggestion: it becomes a real task, planned into today.
+  ///
+  /// The task and the history row are written together so the card cannot be
+  /// replaced by a copy of itself if something fails in between.
+  Future<void> acceptSuggestion(LibraryItem item) async {
+    final task = await createTask(
+      TaskDraft(
+        kind: TaskKind.oneoff,
+        title: item.title,
+        stickerId: item.stickerId,
+        estimateMinutes: item.minutes,
+      ),
+    );
+    await addToToday([task.id], source: PlanSource.suggestion);
+    await _recordSuggestion(item, SuggestionOutcome.accepted);
+  }
+
+  Future<void> _loadSuggestionHistory() async {
+    final rows = await (db.select(db.suggestionHistory)
+          ..where((t) => t.deletedAt.isNull()))
+        .get();
+    suggestionHistory = [
+      for (final row in rows)
+        SuggestionRecord(
+          itemId: row.itemId,
+          dayKey: row.dayKey,
+          outcome: SuggestionOutcome.values.firstWhere(
+            (o) => o.name == row.outcome,
+            // An outcome written by a newer version is not a reason to crash a
+            // launch. Treated as merely offered, which suppresses nothing.
+            orElse: () => SuggestionOutcome.offered,
+          ),
+        ),
+    ];
+  }
 
   static const _months = [
     'January', 'February', 'March', 'April', 'May', 'June', 'July',

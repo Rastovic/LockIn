@@ -12,6 +12,7 @@ final class TaskDraft {
     this.note,
     this.stickerId,
     this.estimateMinutes,
+    this.projectId,
     this.habitWeekdays = const {},
   });
 
@@ -23,6 +24,10 @@ final class TaskDraft {
 
   final String? stickerId;
   final int? estimateMinutes;
+
+  /// The project this task belongs to, when it was created inside one.
+  final String? projectId;
+
   final Set<int> habitWeekdays;
 
   bool get isValid => title.trim().isNotEmpty;
@@ -44,6 +49,8 @@ class TaskSheet extends StatefulWidget {
     this.existing,
     this.initialKind = TaskKind.oneoff,
     this.onDelete,
+    this.projectId,
+    this.projectName,
     super.key,
   });
 
@@ -55,12 +62,21 @@ class TaskSheet extends StatefulWidget {
   final TaskKind initialKind;
   final VoidCallback? onDelete;
 
+  /// Set when the sheet was opened from inside a project.
+  ///
+  /// The kind is then settled and the picker is hidden: someone tapping "add
+  /// a task" under a project has already said what they are making, and
+  /// offering to turn it into a habit is offering to lose it.
+  final String? projectId;
+  final String? projectName;
+
   @override
   State<TaskSheet> createState() => _TaskSheetState();
 }
 
 class _TaskSheetState extends State<TaskSheet> {
-  late TaskKind _kind = widget.existing?.kind ?? widget.initialKind;
+  late TaskKind _kind = widget.existing?.kind ??
+      (widget.projectId != null ? TaskKind.projectTask : widget.initialKind);
   late final TextEditingController _title = TextEditingController(
     text: widget.existing?.title ?? '',
   );
@@ -103,7 +119,10 @@ class _TaskSheetState extends State<TaskSheet> {
       title: _title.text.trim(),
       stickerId: _sticker,
       note: _note.text.trim().isEmpty ? null : _note.text.trim(),
-      estimateMinutes: _estimate,
+      // Dropped rather than kept hidden: switching a task to quick and back
+      // should not resurrect an estimate the user can no longer see.
+      estimateMinutes: _kind == TaskKind.quick ? null : _estimate,
+      projectId: _kind == TaskKind.projectTask ? widget.projectId : null,
       habitWeekdays: _kind == TaskKind.habit ? _weekdays : const {},
     );
     if (draft.isValid) widget.onSave(draft);
@@ -147,11 +166,18 @@ class _TaskSheetState extends State<TaskSheet> {
               const SizedBox(height: 18),
               Text(editing ? 'Edit task' : 'New task', style: text.titleLarge),
               const SizedBox(height: 16),
-              _KindPicker(
-                selected: _kind,
-                onChanged: (kind) => setState(() => _kind = kind),
-              ),
-              const SizedBox(height: 16),
+              if (widget.projectName == null) ...[
+                _KindPicker(
+                  selected: _kind,
+                  onChanged: (kind) => setState(() => _kind = kind),
+                ),
+                const SizedBox(height: 16),
+              ] else ...[
+                Text('IN PROJECT', style: text.labelSmall),
+                const SizedBox(height: 6),
+                Text(widget.projectName!, style: text.bodyLarge),
+                const SizedBox(height: 16),
+              ],
               _TitleField(controller: _title, kind: _kind),
               const SizedBox(height: 10),
               _NoteField(controller: _note, kind: _kind),
@@ -166,11 +192,16 @@ class _TaskSheetState extends State<TaskSheet> {
                   _pickingSticker = false;
                 }),
               ),
-              const SizedBox(height: 16),
-              _EstimateRow(
-                selected: _estimate,
-                onPick: (minutes) => setState(() => _estimate = minutes),
-              ),
+              // A quick task has no timer. Offering one would invite an
+              // estimate on something that takes two seconds, and every
+              // estimate the wheel can produce is longer than the task.
+              if (_kind != TaskKind.quick) ...[
+                const SizedBox(height: 16),
+                _EstimateRow(
+                  selected: _estimate,
+                  onPick: (minutes) => setState(() => _estimate = minutes),
+                ),
+              ],
               // Only habits are scheduled. A dread task has no week dots because
               // the whole point of it is that it has no schedule.
               if (_kind == TaskKind.habit) ...[
@@ -239,6 +270,7 @@ class _KindPicker extends StatelessWidget {
   /// The words the user thinks in, not the words the model uses.
   static const labels = {
     TaskKind.habit: 'Daily',
+    TaskKind.quick: 'Quick',
     TaskKind.projectTask: 'Project',
     TaskKind.dread: 'Avoiding',
     TaskKind.oneoff: 'Someday',
@@ -249,6 +281,7 @@ class _KindPicker extends StatelessWidget {
     TaskKind.habit: 'on a rhythm, carries a streak',
     TaskKind.projectTask: 'part of something bigger',
     TaskKind.dread: 'counts the days you put it off',
+    TaskKind.quick: 'a minute or less, no timer',
     TaskKind.oneoff: 'kept until you plan it',
   };
 
@@ -331,6 +364,7 @@ class _TitleField extends StatelessWidget {
     TaskKind.habit: 'Piano, 20 minutes',
     TaskKind.projectTask: 'Write the introduction',
     TaskKind.dread: 'Clean the flat',
+    TaskKind.quick: 'Take supplements',
     TaskKind.oneoff: 'Book the dentist',
   };
 
@@ -386,6 +420,7 @@ class _NoteField extends StatelessWidget {
     TaskKind.habit: 'Scales first, then the piece.',
     TaskKind.projectTask: 'Two paragraphs on why the study was run.',
     TaskKind.dread: 'Kitchen and the pile by the door.',
+    TaskKind.quick: 'The vitamin D and the magnesium.',
     TaskKind.oneoff: 'The one on the high street, they open at nine.',
   };
 

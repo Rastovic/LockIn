@@ -383,4 +383,32 @@ void main() {
       expect(await reopened.stampsFor(today), hasLength(1));
     });
   });
+  group('the description', () {
+    /// Wired from the sheet to the model to the column and stopped there: the
+    /// repository never wrote it and never read it back, so every description
+    /// anyone typed vanished on save with no error anywhere. A field is not
+    /// done when it merely compiles end to end.
+    test('survives a write and a read', () async {
+      final made = await repo.createTask(
+        kind: TaskKind.oneoff,
+        title: 'Call the vet',
+        now: now,
+        note: 'Booster is due.',
+      );
+      expect(made.note, 'Booster is due.');
+
+      final loaded = (await repo.tasks()).single;
+      expect(loaded.note, 'Booster is due.', reason: 'read back');
+
+      await repo.updateTask(
+        loaded.copyWith(note: 'Booster and a nail trim.'),
+        now: now,
+      );
+      expect((await repo.tasks()).single.note, 'Booster and a nail trim.');
+
+      await repo.updateTask(loaded.copyWith(clearNote: true), now: now);
+      expect((await repo.tasks()).single.note, isNull, reason: 'clearable');
+    });
+  });
+
 }
