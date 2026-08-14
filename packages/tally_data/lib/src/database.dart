@@ -34,7 +34,7 @@ class TallyDatabase extends _$TallyDatabase {
   TallyDatabase(super.e);
 
   /// Bumped for every schema change, and written into every archive manifest.
-  static const currentSchemaVersion = 2;
+  static const currentSchemaVersion = 3;
 
   @override
   int get schemaVersion => currentSchemaVersion;
@@ -55,6 +55,11 @@ class TallyDatabase extends _$TallyDatabase {
           // is nothing to backfill.
           if (from < 2) {
             await m.addColumn(tasks, tasks.note);
+          }
+          // 2 -> 3: tasks say whether they repeat. Additive and nullable, and
+          // a null reads as `once`, which is what every existing task was.
+          if (from < 3) {
+            await m.addColumn(tasks, tasks.repeat);
           }
           await _createIndexes();
         },

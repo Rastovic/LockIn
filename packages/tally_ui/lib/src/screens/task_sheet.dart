@@ -13,6 +13,7 @@ final class TaskDraft {
     this.stickerId,
     this.estimateMinutes,
     this.projectId,
+    this.repeat = TaskRepeat.once,
     this.habitWeekdays = const {},
   });
 
@@ -27,6 +28,9 @@ final class TaskDraft {
 
   /// The project this task belongs to, when it was created inside one.
   final String? projectId;
+
+  /// Whether it comes back tomorrow.
+  final TaskRepeat repeat;
 
   final Set<int> habitWeekdays;
 
@@ -81,6 +85,7 @@ class _TaskSheetState extends State<TaskSheet> {
     text: widget.existing?.title ?? '',
   );
   late String? _sticker = widget.existing?.stickerId;
+  late TaskRepeat _repeat = widget.existing?.repeat ?? TaskRepeat.once;
   late int? _estimate = widget.existing?.estimateMinutes;
   late final _note = TextEditingController(text: widget.existing?.note ?? '');
 
@@ -122,7 +127,12 @@ class _TaskSheetState extends State<TaskSheet> {
       // Dropped rather than kept hidden: switching a task to quick and back
       // should not resurrect an estimate the user can no longer see.
       estimateMinutes: _kind == TaskKind.quick ? null : _estimate,
-      projectId: _kind == TaskKind.projectTask ? widget.projectId : null,
+      // A habit already repeats, on its own weekdays. Letting it also carry a
+      // daily repeat would be two schedules on one task disagreeing.
+      repeat: _kind == TaskKind.habit ? TaskRepeat.once : _repeat,
+      projectId: _kind == TaskKind.projectTask
+          ? (widget.projectId ?? widget.existing?.projectId)
+          : null,
       habitWeekdays: _kind == TaskKind.habit ? _weekdays : const {},
     );
     if (draft.isValid) widget.onSave(draft);
@@ -192,6 +202,15 @@ class _TaskSheetState extends State<TaskSheet> {
                   _pickingSticker = false;
                 }),
               ),
+              // Every kind except a habit, which already repeats on its own
+              // weekdays and would otherwise carry two schedules at once.
+              if (_kind != TaskKind.habit) ...[
+                const SizedBox(height: 16),
+                _RepeatRow(
+                  selected: _repeat,
+                  onPick: (value) => setState(() => _repeat = value),
+                ),
+              ],
               // A quick task has no timer. Offering one would invite an
               // estimate on something that takes two seconds, and every
               // estimate the wheel can produce is longer than the task.
@@ -851,6 +870,90 @@ class _SaveButton extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+/// One time, or every day.
+///
+/// A property of the task, not of its kind. The first attempt made every quick
+/// task daily by definition, which is wrong in both directions: a quick job
+/// you only need to do once had nowhere to go, and nothing of any other kind
+/// could repeat at all. What comes back tomorrow is not something the app can
+/// work out from what sort of thing it is.
+///
+/// Two options and no more. Weekly, monthly and "every third Tuesday" are a
+/// scheduling system, and a scheduling system is the thing this app is trying
+/// not to become. A habit already carries weekdays for the cases that need
+/// them.
+class _RepeatRow extends StatelessWidget {
+  const _RepeatRow({required this.selected, required this.onPick});
+
+  final TaskRepeat selected;
+  final ValueChanged<TaskRepeat> onPick;
+
+  static const _labels = {
+    TaskRepeat.once: 'Just once',
+    TaskRepeat.daily: 'Every day',
+  };
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.tokens;
+    final text = Theme.of(context).textTheme;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('REPEATS', style: text.labelSmall),
+        const SizedBox(height: 8),
+        Row(
+          children: [
+            for (final entry in _labels.entries) ...[
+              Expanded(
+                child: Semantics(
+                  button: true,
+                  selected: selected == entry.key,
+                  label: entry.value,
+                  excludeSemantics: true,
+                  child: GestureDetector(
+                    onTap: () => onPick(entry.key),
+                    behavior: HitTestBehavior.opaque,
+                    child: Container(
+                      height: 44,
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(
+                        color: selected == entry.key
+                            ? tokens.states.solvent
+                            : tokens.surface,
+                        borderRadius: BorderRadius.circular(999),
+                      ),
+                      child: Text(
+                        entry.value,
+                        style: text.bodyLarge?.copyWith(
+                          color: selected == entry.key
+                              ? tokens.bg
+                              : tokens.inkMuted,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              if (entry.key != _labels.keys.last) const SizedBox(width: 8),
+            ],
+          ],
+        ),
+        const SizedBox(height: 6),
+        Text(
+          selected == TaskRepeat.daily
+              // Said plainly, because "every day" could reasonably be read as
+              // a commitment rather than an offer.
+              ? 'Offered again each morning. No streak, nothing to break.'
+              : 'Leaves the list once it is done.',
+          style: text.labelMedium,
+        ),
+      ],
     );
   }
 }

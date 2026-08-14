@@ -40,10 +40,13 @@ final class TodayView {
   /// The plan, in the user's order.
   final List<TodayRow> rows;
 
-  /// Habits due today that are not already planned.
+  /// Recurring things due today that are not already planned: habits due on
+  /// this weekday, and every quick task.
   ///
   /// **Offered, never auto-added.** An app that fills your day for you is an
-  /// app you stop trusting by Thursday.
+  /// app you stop trusting by Thursday. That holds for a two second job as
+  /// much as for a habit - the difference between a list you keep and a list
+  /// you resent is who put the items on it.
   final List<Task> offeredHabits;
 
   /// Total estimate of everything planned, done or not.
@@ -101,7 +104,7 @@ final class TodayPlanner {
     final plannedIds = {for (final row in rows) row.task.id};
     final weekday = _weekdayOf(dayKey);
     final offered = tasks
-        .where((t) => t.isHabitDueOn(weekday) && !plannedIds.contains(t.id))
+        .where((t) => t.isDueOn(weekday) && !plannedIds.contains(t.id))
         .toList();
 
     return TodayView(

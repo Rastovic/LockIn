@@ -520,4 +520,106 @@ void main() {
       expect((ledger.days.single.earnedSeconds / 60).round(), 60);
     });
   });
+  group('repeating tasks come back', () {
+    /// The first version tied repeating to TaskKind.quick, which made every
+    /// quick task daily by definition. Wrong in both directions: a quick job
+    /// you only need to do once had nowhere to go, and nothing of any other
+    /// kind could repeat at all.
+    Task repeating(String id, {TaskRepeat repeat = TaskRepeat.daily}) => Task(
+          id: id,
+          kind: TaskKind.quick,
+          title: id,
+          createdAt: DateTime.utc(2026, 8, 1),
+          repeat: repeat,
+        );
+
+    test('a daily task is offered every day', () {
+      const planner = TodayPlanner();
+      for (final day in ['2026-08-14', '2026-08-15', '2026-08-16']) {
+        final view = planner.buildToday(
+          dayKey: day,
+          tasks: [repeating('supplements')],
+          plan: const [],
+          now: DateTime.utc(2026, 8, 16, 9),
+        );
+        expect(
+          view.offeredHabits.map((t) => t.id),
+          ['supplements'],
+          reason: day,
+        );
+      }
+    });
+
+    test('a one-time task is never offered', () {
+      final view = const TodayPlanner().buildToday(
+        dayKey: '2026-08-14',
+        tasks: [repeating('call the plumber', repeat: TaskRepeat.once)],
+        plan: const [],
+        now: DateTime.utc(2026, 8, 14, 9),
+      );
+      expect(view.offeredHabits, isEmpty);
+    });
+
+    test('it is not offered again once it is in today', () {
+      // Offered, never auto-added, and never offered twice: ticking it should
+      // not put it straight back on the list.
+      final view = const TodayPlanner().buildToday(
+        dayKey: '2026-08-14',
+        tasks: [repeating('supplements')],
+        plan: [
+          PlanEntry(
+            id: 'e1',
+            dayKey: '2026-08-14',
+            taskId: 'supplements',
+            sortOrder: 0,
+            source: PlanSource.manual,
+          ),
+        ],
+        now: DateTime.utc(2026, 8, 14, 9),
+      );
+      expect(view.offeredHabits, isEmpty);
+      expect(view.rows, hasLength(1));
+    });
+
+    test('repeating is independent of kind', () {
+      // Any kind can repeat, and a quick task need not. What comes back
+      // tomorrow is not something the app can infer from what sort of thing
+      // it is.
+      final view = const TodayPlanner().buildToday(
+        dayKey: '2026-08-14',
+        tasks: [
+          Task(
+            id: 'bins',
+            kind: TaskKind.dread,
+            title: 'Put the bins out',
+            createdAt: DateTime.utc(2026, 8, 1),
+            repeat: TaskRepeat.daily,
+          ),
+        ],
+        plan: const [],
+        now: DateTime.utc(2026, 8, 14, 9),
+      );
+      expect(view.offeredHabits.map((t) => t.id), ['bins']);
+    });
+
+    test('an archived repeating task stops being offered', () {
+      final view = const TodayPlanner().buildToday(
+        dayKey: '2026-08-14',
+        tasks: [
+          Task(
+            id: 'old',
+            kind: TaskKind.quick,
+            title: 'Old',
+            createdAt: DateTime.utc(2026, 8, 1),
+            repeat: TaskRepeat.daily,
+            archivedAt: DateTime.utc(2026, 8, 10),
+          ),
+        ],
+        plan: const [],
+        now: DateTime.utc(2026, 8, 14, 9),
+      );
+      expect(view.offeredHabits, isEmpty);
+    });
+  });
+
 }

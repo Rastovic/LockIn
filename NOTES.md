@@ -1144,3 +1144,42 @@ Fourth drift row-class collision, after Treat, SavingsTransfer and Goal:
 `Projects` generated a `Project` that clashed with the domain type. The rule is
 now reflexive - any table whose name matches a domain object needs
 `@DataClassName('...Row')` from the start.
+
+## Repeating is a choice, not a kind (2026-08-14, later)
+
+I was part way through making every quick task recur when the better shape
+arrived: **repeating is a property of the task, chosen by the user**, not
+something inferred from what sort of thing it is.
+
+Inferring it was wrong in both directions. A quick job you only need to do
+once had nowhere to go, and nothing of any other kind could repeat at all -
+putting the bins out is a dread task that comes back every week whether or not
+the app has a category for it. `TaskRepeat { once, daily }` on the task, a
+two-option control in the sheet, and the planner asks the task rather than
+its kind.
+
+Two options and no more, deliberately. Weekly, monthly and "every third
+Tuesday" are a scheduling system, and a scheduling system is the thing this app
+is trying not to become. Habits already carry weekdays for the cases that need
+them, and a habit is excluded from the repeat control for exactly that reason:
+two schedules on one task would disagree.
+
+Schema 2 to 3, nullable, and a null reads as `once` - which is what every task
+written before today was.
+
+**Editing a task was dropping fields.** `updateTask` builds a `Task` field by
+field from the draft, so every field added to `Task` after that call was
+written is silently omitted and nothing fails to compile. `note` was lost on
+every edit, and `repeat` would have joined it. `projectId` was being taken from
+the original rather than the draft, which meant a task could never be moved.
+
+This is the second time in two days the same class of bug has appeared: a field
+added to the model, the column and the sheet, and then quietly not carried by
+one of the several hand-written constructor calls in between. The tests now
+cover the edit path specifically - rename a task, assert that everything the
+rename did not mention survived.
+
+The recurrence test exists in two places on purpose: the planner test proves
+the rule, and the controller test proves it survives a write to the database
+and a read back the next morning. The first one passing while the second fails
+is exactly the shape of the bug that shipped yesterday.

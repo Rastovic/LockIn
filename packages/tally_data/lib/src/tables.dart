@@ -23,6 +23,12 @@ class Tasks extends Table with PortableTable {
 
   TextColumn get title => text().withLength(min: 1, max: 200)();
 
+  /// `once` or `daily`. A string, never an ordinal (rule 6).
+  ///
+  /// Nullable so schema 2 rows are already valid at schema 3: a task written
+  /// before repeating existed was a one-off, which is what a null reads as.
+  TextColumn get repeat => text().nullable()();
+
   /// The longer version, when the title is not enough on its own.
   ///
   /// Optional and unstructured on purpose. It holds what the task actually

@@ -25,6 +25,21 @@ enum TaskKind {
   quick,
 }
 
+/// Whether a task comes back tomorrow.
+///
+/// Stored as a **string**, never an ordinal, so reordering this enum cannot
+/// silently reinterpret a year of history.
+enum TaskRepeat {
+  /// Ticked once and done. It leaves the list.
+  once,
+
+  /// Offered again every day, for as long as it exists.
+  ///
+  /// **Carries no streak.** A streak is a habit's idea, and putting one on
+  /// taking supplements turns a two second job into something you can fail at.
+  daily,
+}
+
 /// Anything the user might plan into a day.
 ///
 /// **A task carries no minutes and no credit.** Completing one earns nothing;
@@ -36,6 +51,7 @@ final class Task {
     required this.kind,
     required this.title,
     required this.createdAt,
+    this.repeat = TaskRepeat.once,
     this.note,
     this.stickerId,
     this.estimateMinutes,
@@ -49,6 +65,15 @@ final class Task {
   final TaskKind kind;
   final String title;
   final DateTime createdAt;
+
+  /// Whether this comes back tomorrow.
+  ///
+  /// A property of the task rather than of its kind. The first version tied it
+  /// to [TaskKind.quick] and made every quick task daily, which is wrong twice
+  /// over: a one-off quick job has nowhere to go, and a recurring one of any
+  /// other kind is impossible to express. What repeats is not something the
+  /// app can infer from what sort of thing it is.
+  final TaskRepeat repeat;
 
   /// The longer version, when the title is not enough on its own.
   ///
@@ -86,8 +111,23 @@ final class Task {
       !isArchived &&
       (habitWeekdays.isEmpty || habitWeekdays.contains(weekday));
 
+  /// True when this comes back every day of its own accord.
+  ///
+  /// Recurs without carrying a schedule or a streak, which is what separates
+  /// it from a habit: no weekdays to be due on and nothing to break.
+  ///
+  /// Kept apart from [isHabitDueOn] rather than folded into it, because "due
+  /// on a weekday" is a habit's idea. Sharing the predicate would mean giving
+  /// every repeating task a schedule field to ignore.
+  bool get recursDaily => repeat == TaskRepeat.daily && !isArchived;
+
+  /// True when this should be offered for [weekday] and is not already done
+  /// for the day.
+  bool isDueOn(int weekday) => isHabitDueOn(weekday) || recursDaily;
+
   Task copyWith({
     String? title,
+    TaskRepeat? repeat,
     String? note,
     bool clearNote = false,
     String? stickerId,
@@ -104,6 +144,7 @@ final class Task {
         kind: kind,
         title: title ?? this.title,
         createdAt: createdAt,
+        repeat: repeat ?? this.repeat,
         note: clearNote ? null : (note ?? this.note),
         stickerId: clearSticker ? null : (stickerId ?? this.stickerId),
         estimateMinutes:

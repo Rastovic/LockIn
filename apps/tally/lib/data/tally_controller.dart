@@ -473,6 +473,7 @@ class TallyController extends ChangeNotifier {
       estimateMinutes: draft.estimateMinutes,
       projectId: draft.projectId,
       note: draft.note,
+      repeat: draft.repeat,
       habitWeekdays: draft.habitWeekdays,
     );
     tasks = await _tasks.tasks();
@@ -507,14 +508,21 @@ class TallyController extends ChangeNotifier {
 
   Future<void> updateTask(Task original, TaskDraft draft) async {
     await _tasks.updateTask(
+      // Built field by field rather than copied, which is why the note went
+      // missing here: a field added to Task is silently dropped by every
+      // constructor call that was written before it existed, and nothing
+      // fails. Anything the draft owns is taken from the draft, anything it
+      // does not is taken from the original.
       Task(
         id: original.id,
         kind: draft.kind,
         title: draft.title,
         createdAt: original.createdAt,
+        repeat: draft.repeat,
+        note: draft.note,
         stickerId: draft.stickerId,
         estimateMinutes: draft.estimateMinutes,
-        projectId: original.projectId,
+        projectId: draft.projectId ?? original.projectId,
         habitWeekdays: draft.habitWeekdays,
         lastCompletedAt: original.lastCompletedAt,
         archivedAt: original.archivedAt,

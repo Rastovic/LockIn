@@ -49,6 +49,7 @@ final class TaskRepository {
     int? estimateMinutes,
     String? projectId,
     String? note,
+    TaskRepeat repeat = TaskRepeat.once,
     Set<int> habitWeekdays = const {},
   }) async {
     final task = Task(
@@ -56,6 +57,7 @@ final class TaskRepository {
       kind: kind,
       title: title.trim(),
       createdAt: now,
+      repeat: repeat,
       note: note,
       stickerId: stickerId,
       estimateMinutes: estimateMinutes,
@@ -71,6 +73,7 @@ final class TaskRepository {
             kind: task.kind.name,
             title: task.title,
             createdAt: now.millisecondsSinceEpoch,
+            repeat: Value(task.repeat.name),
             note: Value(task.note),
             stickerId: Value(task.stickerId),
             estimateMinutes: Value(task.estimateMinutes),
@@ -87,6 +90,7 @@ final class TaskRepository {
         updatedAt: Value(now.millisecondsSinceEpoch),
         kind: Value(task.kind.name),
         title: Value(task.title.trim()),
+        repeat: Value(task.repeat.name),
         note: Value(task.note),
         stickerId: Value(task.stickerId),
         estimateMinutes: Value(task.estimateMinutes),
@@ -336,6 +340,13 @@ final class TaskRepository {
         createdAt:
             DateTime.fromMillisecondsSinceEpoch(row.createdAt, isUtc: true),
         note: row.note,
+        // A null is a task written before repeating existed, and every one of
+        // those was a one-off. An unknown value from a newer version reads the
+        // same way rather than crashing a launch.
+        repeat: TaskRepeat.values.firstWhere(
+          (r) => r.name == row.repeat,
+          orElse: () => TaskRepeat.once,
+        ),
         stickerId: row.stickerId,
         estimateMinutes: row.estimateMinutes,
         projectId: row.projectId,
