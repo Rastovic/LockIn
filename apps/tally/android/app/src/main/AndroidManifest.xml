@@ -34,6 +34,13 @@
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
 
+    <!-- A focus block is a timer, and a timer that rings whenever Android
+         feels like batching it is not one. This is the user-grantable
+         permission rather than USE_EXACT_ALARM, which is reserved for apps
+         whose whole purpose is alarms: the app checks whether it was granted
+         and falls back to inexact, so the alarm still rings either way. -->
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
+
     <application
         android:label="lockIn"
         android:name="${applicationName}"
@@ -136,6 +143,33 @@
                 android:name="android.appwidget.provider"
                 android:resource="@xml/capture_widget_info" />
         </receiver>
+
+        <!-- flutter_local_notifications declares only permissions in its own
+             manifest: **the receivers that deliver a scheduled notification
+             have to be declared here, by the app.** Without them the alarm is
+             set and fires into nothing, so `show` works, `zonedSchedule`
+             silently does not, and the end-of-block alarm never rings. -->
+        <receiver
+            android:name="com.dexterous.flutterlocalnotifications.ScheduledNotificationReceiver"
+            android:exported="false" />
+
+        <!-- Re-arms scheduled notifications the OS dropped. Both a reboot and
+             an app update clear pending alarms, and the second is the one that
+             would have quietly broken this for anyone updating mid-block. -->
+        <receiver
+            android:name="com.dexterous.flutterlocalnotifications.ScheduledNotificationBootReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+                <action android:name="android.intent.action.QUICKBOOT_POWERON" />
+                <action android:name="com.htc.intent.action.QUICKBOOT_POWERON" />
+            </intent-filter>
+        </receiver>
+
+        <receiver
+            android:name="com.dexterous.flutterlocalnotifications.ActionBroadcastReceiver"
+            android:exported="false" />
     </application>
     <!-- Required to query activities that can process text, see:
          https://developer.android.com/training/package-visibility and

@@ -68,6 +68,8 @@ class TallyController extends ChangeNotifier {
   /// Notifications are denied, so no end-of-block alarm can ring.
   bool focusAlarmBlocked = false;
 
+  bool _askedForNotifications = false;
+
   List<Task> tasks = const [];
   List<AppSpend> spendByApp = const [];
   List<WatchableApp> watchable = const [];
@@ -739,7 +741,18 @@ class TallyController extends ChangeNotifier {
     // Checked every time a block starts rather than once at onboarding: the
     // permission can be revoked from system settings at any point, and an
     // alarm that cannot ring must be reported before the block, not after it.
-    final permission = await notifier.permission();
+    var permission = await notifier.permission();
+
+    // Asked again here, once per run of the app, when a block is actually
+    // starting. Onboarding asks too, but someone who said no then - or who
+    // never saw that step because they installed an earlier build - would
+    // otherwise have a timer that silently never rings. Android shows nothing
+    // if the answer is already a permanent no, so this cannot become nagging.
+    if (permission != NotificationPermission.granted && !_askedForNotifications) {
+      _askedForNotifications = true;
+      permission = await notifier.requestPermission();
+    }
+
     final blocked = permission != NotificationPermission.granted;
     if (blocked != focusAlarmBlocked) {
       focusAlarmBlocked = blocked;
@@ -790,6 +803,25 @@ class TallyController extends ChangeNotifier {
         now: now,
       );
     }
+
+    // A block that ran its full length ticks the task it was for.
+    //
+    // Only on completion, never on giving up: the first is the user saying
+    // they did the thing, the second is them saying they did not. Routed
+    // through [toggle] rather than writing the plan directly, so the sticker
+    // is stamped and the streak recomputed exactly as if it had been ticked by
+    // hand - two paths to "done" that leave different state behind is how the
+    // second currency quietly stops matching the first.
+    if (run.isComplete(now) && run.taskId != null) {
+      final entry = plan
+          .where((e) => e.taskId == run.taskId && !e.isDone)
+          .firstOrNull;
+      if (entry != null) await toggle(entry);
+    }
+
+    // The widget shows the plan and the balance, and this changed both.
+    await _pushSnapshot();
+    await _pushWidget();
     notifyListeners();
   }
 

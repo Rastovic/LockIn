@@ -1328,3 +1328,53 @@ without a number on screen there is nothing to say it was kept.
 
 Schema 3 to 4, nullable, and a null means already sorted - which every task
 written before today was.
+
+## Why the alarm never rang (2026-08-17)
+
+A weekend of real use, and the block alarm had never once fired. The cause was
+not in any of the code I wrote for it, which is why every test passed.
+
+**`flutter_local_notifications` declares only permissions in its own Android
+manifest. The receivers that actually deliver a scheduled notification have to
+be declared by the app.** Without them `zonedSchedule` sets a real alarm which
+fires into a receiver that does not exist, and nothing happens. `show()` works
+fine, because that goes straight to the notification manager and never touches
+a receiver. So immediate notifications worked, scheduled ones silently did not,
+and the difference is invisible from Dart.
+
+Nothing in the test suite could have caught this. Every test mocked the
+notifier and asserted that a nudge was scheduled - which it was, correctly,
+with the right time and the right body. The scheduling was never the problem.
+Confirmed instead by grepping the **merged** manifest in the built APK, which
+had zero `com.dexterous` receivers in it. That check is worth remembering: for
+anything that depends on a plugin's native side, read the merged manifest
+rather than trusting that adding the dependency was enough.
+
+Also switched to exact alarms where Android allows them, with an inexact
+fallback. A focus block is a timer, and inexact alarms can be deferred by many
+minutes - for a 45 minute block that reads as "it did not go off" even once the
+receivers exist. `SCHEDULE_EXACT_ALARM` rather than `USE_EXACT_ALARM`: the
+former is user-grantable, the latter is reserved for apps whose whole purpose
+is alarms, and the app checks `canScheduleExactNotifications` and falls back
+rather than assuming.
+
+And the permission is now re-requested once per run when a block starts.
+Onboarding asks, but anyone who said no then, or who installed a build from
+before that step existed, had a timer that could never ring and only a line of
+small print on the focus screen to say so.
+
+## A finished block ticks its task
+
+Second report from the same weekend, and a plain omission: `endFocus` recorded
+the session and stopped. The day never looked finished no matter how much of it
+was done.
+
+Only on completion, never on giving up: the first is the user saying they did
+the thing, the second is them saying they did not. Routed through `toggle`
+rather than writing the plan row directly, so the sticker is stamped and the
+streak recomputed exactly as if it had been ticked by hand. **Two paths to
+"done" that leave different state behind is how the second currency quietly
+stops matching the first.**
+
+`endFocus` was also not pushing the snapshot or the widget, so a finished block
+left the home screen showing the old plan and the old balance.

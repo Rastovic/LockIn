@@ -160,13 +160,52 @@ final class LocalNotifier implements Notifier {
       nudge.body,
       tz.TZDateTime.from(nudge.at, tz.local),
       _detailsFor(nudge),
-      // inexact keeps this off Android 14's SCHEDULE_EXACT_ALARM, which needs a
-      // special-access grant and a Play declaration. Nothing here needs to land
-      // on a precise second, and asking for exact alarms to nudge someone about
-      // scrolling would not survive review.
-      androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+      androidScheduleMode: await _scheduleMode(),
       payload: nudge.tag,
     );
+  }
+
+  /// Exact when Android allows it, inexact when it does not.
+  ///
+  /// A focus block is a timer, and a timer Android batches at its convenience
+  /// is not one: inexact alarms can be deferred by many minutes, which for a
+  /// 45 minute block reads as "it did not go off".
+  ///
+  /// Not simply always exact, because the permission is not always there. It
+  /// is granted by default on Android 13, revocable by the user, and on 14 it
+  /// is only automatic for apps whose whole purpose is alarms. Asking every
+  /// time and falling back means the block still rings either way, just less
+  /// punctually.
+  Future<AndroidScheduleMode> _scheduleMode() async {
+    final android = _plugin.resolvePlatformSpecificImplementation<
+        AndroidFlutterLocalNotificationsPlugin>();
+    if (android == null) return AndroidScheduleMode.inexactAllowWhileIdle;
+
+    try {
+      final exact = await android.canScheduleExactNotifications() ?? false;
+      return exact
+          ? AndroidScheduleMode.exactAllowWhileIdle
+          : AndroidScheduleMode.inexactAllowWhileIdle;
+    } on Object {
+      // An older OS with no such concept, or an OEM that refuses the query.
+      // Inexact always works.
+      return AndroidScheduleMode.inexactAllowWhileIdle;
+    }
+  }
+
+  /// Sends the user to the exact-alarm screen, if there is one.
+  ///
+  /// Returns whether exact alarms are usable afterwards.
+  Future<bool> requestExactAlarms() async {
+    final android = _plugin.resolvePlatformSpecificImplementation<
+        AndroidFlutterLocalNotificationsPlugin>();
+    if (android == null) return false;
+    try {
+      await android.requestExactAlarmsPermission();
+      return await android.canScheduleExactNotifications() ?? false;
+    } on Object {
+      return false;
+    }
   }
 
   @override
