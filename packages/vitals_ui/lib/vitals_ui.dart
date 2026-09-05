@@ -1,6 +1,6 @@
 /// The Vitals design system.
 ///
-/// One token set, thirteen visually distinct apps. Section 7 of
+/// One token set, fourteen visually distinct apps. Section 7 of
 /// `00-foundation/DESIGN-SYSTEM.md` is mandatory, not decorative.
 library;
 

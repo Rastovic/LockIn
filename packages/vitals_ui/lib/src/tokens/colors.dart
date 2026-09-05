@@ -11,7 +11,7 @@ import 'package:flutter/widgets.dart';
 /// **Measured, not assumed.** `DESIGN-SYSTEM.md` originally said white text on
 /// the coral and violet accents; at 15px that fails WCAG AA outright - 3.27:1
 /// on interval red, 3.25:1 on magenta, 2.59:1 on coral. Ink wins on twelve of
-/// the thirteen accents. The exception is stitchbook's berry, which is dark
+/// the fourteen accents. The exception is stitchbook's berry, which is dark
 /// enough to need white in light mode and light enough to need ink in dark
 /// mode. `theme_test.dart` re-measures every pair on every build.
 enum AppAccent {
@@ -32,7 +32,12 @@ enum AppAccent {
     onDark: _ink,
   ),
   groveBlossom(Color(0xFFFF9EC4), onLight: _ink, onDark: _ink),
-  tallyMint(Color(0xFF4FE3A1), onLight: _ink, onDark: _ink);
+  tallyMint(Color(0xFF4FE3A1), onLight: _ink, onDark: _ink),
+
+  /// Patterns. A mid cobalt rather than the pale blue-lavender of the icon:
+  /// the pale version fails 4.5:1 against ink, and an accent that cannot carry
+  /// button text is decoration rather than an accent.
+  patternsCobalt(Color(0xFF5B8DEF), onLight: _ink, onDark: _ink);
 
   const AppAccent(
     this.light, {

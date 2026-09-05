@@ -16,9 +16,9 @@ double _contrast(Color a, Color b) {
 void main() {
   group('AppAccent', () {
     test('every app in the portfolio has an accent', () {
-      // Thirteen apps, thirteen accents. Section 7 of DESIGN-SYSTEM.md is the
+      // Fourteen apps, fourteen accents. Section 7 of DESIGN-SYSTEM.md is the
       // 4.3 defence, so a missing entry is a store risk, not a style nit.
-      expect(AppAccent.values.length, 13);
+      expect(AppAccent.values.length, 14);
     });
 
     test('no two apps share an accent', () {

@@ -9,6 +9,8 @@ environment:
 # against one shared lockfile. See NOTES.md for why this replaced `melos bootstrap`.
 workspace:
   - packages/vitals_core
+  - packages/patterns_core
+  - packages/patterns_data
   - packages/vitals_ui
   - packages/tally_engine
   - packages/vitals_archive
@@ -16,3 +18,4 @@ workspace:
   - packages/vitals_notify
   - packages/tally_ui
   - apps/tally
+  - apps/patterns
