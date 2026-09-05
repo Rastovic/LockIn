@@ -3,6 +3,21 @@
 Decisions taken while building that differ from the plans in `~/Documents/apps`.
 Anything here should eventually be folded back into the plan docs.
 
+This repo was split out of a shared workspace that also held Tideline. The
+entries below are the ones that bear on lockIn's own code: the app, the
+`tally_*` packages, and the shared `vitals_*` packages. Tideline's half of the
+log went with Tideline.
+
+**The `vitals_*` packages exist in both repos as copies.** There is no shared
+dependency between them, so a fix to `vitals_core`, `vitals_archive` or
+`vitals_notify` here does not reach Tideline and has to be carried across by
+hand. `vitals_archive` is the one where drift actually costs something, since
+it defines the backup format that was meant to be identical across every app
+in the portfolio.
+
+`vitals_ui`, the shared design system, is not in this repo: lockIn does not
+import it, `tally_ui` carries its own tokens. It lives in the Tideline repo.
+
 ---
 
 ## Pub workspaces instead of `melos bootstrap`

@@ -1,5 +1,5 @@
-name: vitals_workspace
-description: Shared packages and apps for the Vitals portfolio.
+name: lockin_workspace
+description: lockIn - a day planner with a screen-time ledger underneath, and the shared packages it stands on.
 publish_to: none
 
 environment:
@@ -7,15 +7,15 @@ environment:
 
 # Native Dart pub workspace. `flutter pub get` here resolves every package below
 # against one shared lockfile. See NOTES.md for why this replaced `melos bootstrap`.
+#
+# The `vitals_*` packages are shared portfolio infrastructure and also live in
+# the Tideline repo. They were split by copy rather than by a git dependency, so
+# a change to either copy has to be carried across by hand. See NOTES.md.
 workspace:
   - packages/vitals_core
-  - packages/patterns_core
-  - packages/patterns_data
-  - packages/vitals_ui
-  - packages/tally_engine
   - packages/vitals_archive
-  - packages/tally_data
   - packages/vitals_notify
+  - packages/tally_engine
+  - packages/tally_data
   - packages/tally_ui
   - apps/tally
-  - apps/patterns
