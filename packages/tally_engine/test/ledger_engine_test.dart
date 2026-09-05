@@ -12,8 +12,14 @@ const tiktok = 'com.zhiliaoapp.musically';
 /// what an allowance does when there is one, so they state the allowance they
 /// are testing rather than inheriting whatever the product default happens to
 /// be this month. Cases that need no allowance pass zero, equally explicitly.
+/// Grace is stated the same way and for the same reason. It ships **off** - a
+/// zero balance means one thing rather than one-thing-unless-it-is-the-first-
+/// time - but the mechanism is still part of the engine and still has to be
+/// correct, because a stored ledger recomputed later must agree with the history
+/// it was written from. So the cases that exercise it ask for it.
 LedgerEngine engineWith([LedgerSettings? settings]) => LedgerEngine(
-      settings: settings ?? const LedgerSettings(dailyAllowanceMinutes: 30),
+      settings: settings ??
+          const LedgerSettings(dailyAllowanceMinutes: 30, graceMinutes: 5),
       offsetAt: fixedOffset(0),
     );
 
@@ -320,6 +326,7 @@ void main() {
         const LedgerSettings(
           dailyEarnCapMinutes: null,
           dailyAllowanceMinutes: 30,
+          graceMinutes: 5,
         ),
       ).compute(
         fromDay: '2026-08-11',

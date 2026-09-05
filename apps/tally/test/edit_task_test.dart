@@ -84,9 +84,14 @@ void main() {
     );
   });
 
-  test('a daily task is offered again the next day', () async {
+  test('a daily task plans itself again the next day', () async {
     // The end to end version of the planner test: it has to survive being
     // written to the database and read back, not just computed.
+    //
+    // Rewritten when recurring tasks stopped being *offered* and started being
+    // planned. The old version asserted the task was waiting in the suggestion
+    // strip on Tuesday, which is exactly the tap-to-accept-every-morning that
+    // was removed: what has to be true now is that it is already on the day.
     final db = TallyDatabase(NativeDatabase.memory());
     final monday = TallyController(
       db: db,
@@ -101,12 +106,12 @@ void main() {
         repeat: TaskRepeat.daily,
       ),
     );
-    expect(monday.today.view.offeredHabits, hasLength(1));
+    // On the day it was written, without a reload.
+    expect(monday.today.view.rows.map((r) => r.task.title), ['Take supplements']);
+    expect(monday.today.view.offeredHabits, isEmpty, reason: 'planned, not offered');
 
-    final id = monday.tasks.single.id;
-    await monday.addToToday([id]);
     await monday.toggle(monday.plan.single);
-    expect(monday.today.view.offeredHabits, isEmpty, reason: 'done for today');
+    expect(monday.today.view.rows.single.isDone, isTrue);
 
     final tuesday = TallyController(
       db: db,
@@ -115,8 +120,13 @@ void main() {
     );
     await tuesday.load();
     expect(
-      tuesday.today.view.offeredHabits.map((t) => t.title),
+      tuesday.today.view.rows.map((r) => r.task.title),
       ['Take supplements'],
+    );
+    expect(
+      tuesday.today.view.rows.single.isDone,
+      isFalse,
+      reason: 'a new day is a new entry, not yesterday ticked',
     );
   });
 }

@@ -132,4 +132,43 @@ void main() {
       expect(find.text('24m'), findsOneWidget);
     });
   });
+
+  /// The day that produced the report: 97m40s spent against a −55 carry-in,
+  /// which is past the debt floor. Two numbers were wrong on one screen - the
+  /// spend read −98 in the sum and 97 in the tile below it, and the column did
+  /// not add up to the total because the floor was not one of its terms.
+  group('a day that hit the debt floor', () {
+    const model = BalanceScreenModel(
+      spendableSeconds: -3600,
+      earnedSeconds: 0,
+      spentSeconds: 5860,
+      savingsSeconds: 0,
+      solvencyStreak: 0,
+      bestStreak: 0,
+      openingSeconds: -3300,
+      allowanceSeconds: 3600,
+      unrepayableSeconds: 1960,
+    );
+
+    testWidgets('spend reads the same as the tile below it', (tester) async {
+      await tester.pumpWidget(wrap(const BalanceScreen(model: model)));
+
+      // Floor the magnitude, then sign it: −98 here beside 97 there is the
+      // same seconds disagreeing with itself.
+      expect(find.text('−97'), findsOneWidget);
+      expect(find.text('−98'), findsNothing);
+      expect(find.text('97'), findsOneWidget); // the SPENT tile
+    });
+
+    testWidgets('the terms add up to the total', (tester) async {
+      await tester.pumpWidget(wrap(const BalanceScreen(model: model)));
+
+      expect(find.text('−55'), findsOneWidget); // carried in
+      expect(find.text('+60'), findsOneWidget); // allowance
+      expect(find.text('+32'), findsOneWidget); // not charged, past the floor
+      // −55 + 60 − 97 + 32 = −60, and the total says so.
+      expect(find.text('−60'), findsWidgets);
+      expect(find.text('Rounding'), findsNothing);
+    });
+  });
 }

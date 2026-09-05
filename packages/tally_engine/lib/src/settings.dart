@@ -13,7 +13,7 @@ final class LedgerSettings {
     this.dailyEarnCapMinutes = 90,
     this.dailyAllowanceMinutes = 0,
     this.rolloverCapMinutes = 60,
-    this.graceMinutes = 5,
+    this.graceMinutes = 0,
     this.debtFloorMinutes = 60,
     this.minEarnBlockMinutes = 5,
     this.phoneDownMultiplier = 1.5,
@@ -53,9 +53,20 @@ final class LedgerSettings {
   /// savings rather than evaporating.
   final int rolloverCapMinutes;
 
-  /// Free minutes after the balance first reaches zero.
+  /// Free minutes after the balance first reaches zero. **Zero by default.**
   ///
   /// Once per zero-crossing, not once per session.
+  ///
+  /// Turned off. Grace was five free minutes handed out the moment the balance
+  /// hit zero, which made zero mean two different things depending on whether it
+  /// had been crossed yet this stretch - and the one number the whole app rests
+  /// on cannot be conditional. It also arrived exactly when the user was being
+  /// told to stop, which is the worst moment to say "well, a bit more".
+  ///
+  /// The mechanism is still here and still correct, because the debt floor and
+  /// the statement both reason about it, and a stored ledger recomputed under a
+  /// build that had never heard of grace would disagree with its own history.
+  /// At zero it simply never fires.
   final int graceMinutes;
 
   /// How far the repayable balance may go negative, as a positive magnitude.

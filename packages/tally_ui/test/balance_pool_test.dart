@@ -104,7 +104,10 @@ void main() {
         ),
       );
       expect(find.text('−60'), findsNWidgets(2));
-      expect(find.textContaining('30 minutes went unrecorded'), findsOneWidget);
+      // The minutes the floor refused are a term in the sum, and the note
+      // beside it defines the rule rather than restating the figure.
+      expect(find.text('+30'), findsOneWidget);
+      expect(find.textContaining('Debt stops at −60'), findsOneWidget);
     });
 
     testWidgets('per-app spend lists the worst first', (tester) async {

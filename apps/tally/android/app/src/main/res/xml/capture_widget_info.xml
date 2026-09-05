@@ -1,15 +1,22 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  One cell. It is a button, and a button does not need room to grow.
+  Two cells wide, one tall. It was one cell, and at that size the prompt and
+  the waiting count were both ellipsised to a fragment, which reads as a broken
+  widget rather than a small one. A capture box has to say what it is.
+
+  Resizable horizontally so it can be made wider still, but not vertically:
+  there is no second line of content to reveal.
+
   No updatePeriodMillis: the only thing that changes the count is a capture,
-  and the activity refreshes it directly.
+  and both the activity and the app refresh it directly.
 -->
 <appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
-    android:minWidth="57dp"
+    android:minWidth="110dp"
     android:minHeight="57dp"
-    android:targetCellWidth="1"
+    android:minResizeWidth="110dp"
+    android:targetCellWidth="2"
     android:targetCellHeight="1"
-    android:resizeMode="none"
+    android:resizeMode="horizontal"
     android:widgetCategory="home_screen"
     android:initialLayout="@layout/widget_capture"
     android:previewLayout="@layout/widget_capture"

@@ -115,16 +115,49 @@ class _Sum extends StatelessWidget {
     final tokens = context.tokens;
     final text = Theme.of(context).textTheme;
 
+    // Every term is whole minutes, floored from its own seconds and only then
+    // given its sign. The order matters: flooring towards negative infinity
+    // *after* negating a debit rounds it away from zero, so 97m40s of spend
+    // rendered as floor(−5860) reads −98 while the SPENT tile below the block
+    // shows floor(5860) = 97. Same seconds, two numbers, which is exactly the
+    // disagreement this block exists to rule out.
     final terms = <(String, int)>[
-      if (model.openingSeconds != 0) ('Carried in', model.openingSeconds),
-      ('Allowance today', model.allowanceSeconds),
-      if (model.earnedSeconds > 0) ('Earned focusing', model.earnedSeconds),
-      if (model.graceUsedSeconds > 0) ('Grace', model.graceUsedSeconds),
-      if (model.spentSeconds > 0) ('Spent on apps', -model.spentSeconds),
+      if (model.openingSeconds != 0)
+        ('Carried in', wholeMinutes(model.openingSeconds)),
+      ('Allowance today', wholeMinutes(model.allowanceSeconds)),
+      if (model.earnedSeconds > 0)
+        ('Earned focusing', wholeMinutes(model.earnedSeconds)),
+      if (model.graceUsedSeconds > 0)
+        ('Grace', wholeMinutes(model.graceUsedSeconds)),
+      if (model.spentSeconds > 0)
+        ('Spent on apps', -wholeMinutes(model.spentSeconds)),
+      // The debt floor is why a day can spend 97 against a −55 carry-in and
+      // still land at −60: past the floor the minutes are recorded but stop
+      // being charged. It is a term in the sum, so it belongs in the list -
+      // left out, the column simply does not add up, and the note under the
+      // block was being asked to explain arithmetic the arithmetic should
+      // state itself.
+      if (model.unrepayableSeconds > 0)
+        ('Not charged, past the floor', wholeMinutes(model.unrepayableSeconds)),
     ];
     if (terms.length < 2) return const SizedBox.shrink();
 
-    Widget line(String label, int seconds, {bool total = false}) => Padding(
+    final totalMinutes = wholeMinutes(model.spendableSeconds);
+    final termSum = terms.fold(0, (sum, term) => sum + term.$2);
+    // Each term is floored on its own, so the parts can land a minute off the
+    // total. Named rather than hidden: an unexplained one-minute gap in a
+    // column of eight is what makes a reader stop trusting all eight.
+    //
+    // Flooring is the only thing that lands here today, because the terms
+    // above are the whole identity: opening + allowance + earned + grace −
+    // spent + refused-by-the-floor is exactly the ledger's spendable. Anything
+    // new that moves the balance - a hand transfer to savings, say - needs its
+    // own line, or it turns up in this one calling itself rounding.
+    if (termSum != totalMinutes) {
+      terms.add(('Rounding', totalMinutes - termSum));
+    }
+
+    Widget line(String label, int minutes, {bool total = false}) => Padding(
       padding: const EdgeInsets.symmetric(vertical: 3),
       child: Row(
         children: [
@@ -139,9 +172,7 @@ class _Sum extends StatelessWidget {
           Text(
             // Signed, because the whole point is which way each term
             // pushes. A bare "67" in a list of credits reads as a credit.
-            seconds > 0 && !total
-                ? '+${wholeMinutes(seconds)}'
-                : formatMinutes(seconds),
+            minutes > 0 && !total ? '+$minutes' : formatMinutes(minutes * 60),
             style: text.bodyMedium?.copyWith(
               color: total ? tokens.ink : tokens.inkMuted,
               fontFeatures: const [FontFeature.tabularFigures()],
@@ -169,7 +200,7 @@ class _Sum extends StatelessWidget {
               padding: const EdgeInsets.symmetric(vertical: 8),
               child: Container(height: 1, color: tokens.surfaceStrong),
             ),
-            line('Left to spend', model.spendableSeconds, total: true),
+            line('Left to spend', totalMinutes, total: true),
             if (model.spendableSeconds < 0) ...[
               const SizedBox(height: 10),
               Text(
@@ -284,9 +315,10 @@ class BalanceScreen extends StatelessWidget {
               if (model.unrepayableSeconds > 0) ...[
                 const SizedBox(height: 12),
                 Text(
-                  'Debt stops at −60. Another '
-                  '${wholeMinutes(model.unrepayableSeconds)} minutes went '
-                  'unrecorded against it.',
+                  // The figure itself is a line in the block above now, so
+                  // this defines the rule rather than repeating the number.
+                  'Debt stops at −60. Past that the minutes still show in the '
+                  "day's spend, but what you have to repay stops growing.",
                   style: text.labelMedium,
                   textAlign: TextAlign.center,
                 ),

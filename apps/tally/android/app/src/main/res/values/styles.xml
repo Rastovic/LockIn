@@ -17,10 +17,16 @@
     </style>
 
     <!-- A dialog over whatever was on screen, so capture never feels like
-         launching an app. -->
+         launching an app.
+
+         The minimum widths are the point of this style, not decoration: a
+         floating window sizes itself to the theme's minimum, and the platform
+         default leaves a box too narrow to read back the line being typed. -->
     <style name="CaptureDialog" parent="@android:style/Theme.Material.Dialog.NoActionBar">
         <item name="android:windowBackground">@android:color/transparent</item>
         <item name="android:windowIsTranslucent">true</item>
         <item name="android:windowCloseOnTouchOutside">true</item>
+        <item name="android:windowMinWidthMinor">94%</item>
+        <item name="android:windowMinWidthMajor">72%</item>
     </style>
 </resources>

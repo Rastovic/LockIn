@@ -343,16 +343,22 @@ void main() {
     });
   });
 
-  group("tally's three nudges", () {
-    test('grace, then -15, then -60, and nothing more that day', () {
-      // The plan's exact rule: grace warning, one at -15, one at -60, maximum
-      // three a day, all silenceable.
+  group('the cap holds for any three unrelated nudges', () {
+    // This used to be named for lockIn's three balance nudges - grace, -15,
+    // -60 - and those have been removed from that app: each interrupted the
+    // user to announce a number already on screen in the ongoing notice.
+    //
+    // The case is kept because what it actually tests belongs to this package
+    // rather than to any app: three distinct tags fill the day's budget in
+    // order, and the fourth is capped rather than dropped silently. Renamed so
+    // it stops documenting a feature that no longer exists.
+    test('three distinct tags land, the fourth is capped', () {
       final decisions = policy.decideAll(
         [
-          nudge(id: 1, tag: 'grace', when: at(14)),
-          nudge(id: 2, tag: 'debt_15', when: at(15)),
-          nudge(id: 3, tag: 'debt_60', when: at(16)),
-          nudge(id: 4, tag: 'debt_more', when: at(17)),
+          nudge(id: 1, tag: 'first', when: at(14)),
+          nudge(id: 2, tag: 'second', when: at(15)),
+          nudge(id: 3, tag: 'third', when: at(16)),
+          nudge(id: 4, tag: 'fourth', when: at(17)),
         ],
         delivered: const [],
         permitted: true,

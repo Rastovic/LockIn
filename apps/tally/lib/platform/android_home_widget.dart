@@ -8,8 +8,8 @@ import 'package:tally_ui/tally_ui.dart';
 ///
 /// **Dart resolves everything the widget shows.** The Kotlin side receives
 /// finished strings - a title, a glyph, a done flag - and knows nothing about
-/// stickers, habits, plan order or what makes a day. That is the same rule the
-/// watcher follows with [BalanceSnapshot]: Android renders, Dart decides.
+/// stickers, habits, plan order or what makes a day: Android renders, Dart
+/// decides.
 ///
 /// The widget is **read only**. Tapping it opens the app rather than ticking
 /// anything, and that is a deliberate limit rather than an unfinished edge:

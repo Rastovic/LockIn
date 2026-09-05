@@ -8,7 +8,7 @@ import org.json.JSONArray
 /**
  * What the home screen widget draws, written by Dart.
  *
- * The same seam as [BalanceSnapshot], for the same reason: **Dart decides and
+ * The seam is deliberate: **Dart decides and
  * Android renders**. The rows arrive as finished strings, so nothing here
  * knows what a sticker id means, which tasks are habits, or how a day is
  * assembled. Adding a task kind or changing plan order needs no change in
@@ -89,20 +89,6 @@ class TodayWidgetStore(context: Context) {
             .putBoolean(KEY_USAGE, usageVisible)
             .putLong(KEY_VALID_UNTIL, validUntil)
             .apply()
-    }
-
-    /**
-     * The balance only, from the watcher.
-     *
-     * Overwriting Dart's figure is correct rather than a shortcut: the watcher
-     * computes it as **Dart's authoritative balance minus usage since the
-     * instant Dart wrote it**, which is the same rule the ongoing notification
-     * follows. It is the same number, further forward in time.
-     *
-     * Nothing else is touched. The plan is Dart's to write.
-     */
-    fun writeBalance(spendable: Int) {
-        prefs.edit().putInt(KEY_SPENDABLE, spendable).apply()
     }
 
     companion object {

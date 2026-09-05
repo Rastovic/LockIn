@@ -16,11 +16,15 @@ LedgerRepository repoFor(TallyDatabase db, {LedgerSettings? settings}) =>
     LedgerRepository(
       db,
       installId: install,
-      // 30 free minutes, stated rather than inherited: these cases are about
-      // whether stored rows recompute to the right balance, and the shipped
-      // default of zero is a product decision that should not be able to
-      // silently change what they are asserting.
-      settings: settings ?? const LedgerSettings(dailyAllowanceMinutes: 30),
+      // 30 free minutes and 5 of grace, stated rather than inherited: these
+      // cases are about whether stored rows recompute to the right balance, and
+      // both shipped defaults are zero - product decisions that should not be
+      // able to silently change what these are asserting. Grace especially: the
+      // order-sensitivity case below exists *because* grace fires on a
+      // zero-crossing, and with grace off there is nothing for the order to
+      // change.
+      settings: settings ??
+          const LedgerSettings(dailyAllowanceMinutes: 30, graceMinutes: 5),
       offsetAt: fixedOffset(0),
     );
 

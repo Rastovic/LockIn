@@ -79,11 +79,25 @@ final class ArchiveContents {
     required this.manifest,
     required this.tables,
     required this.mediaPaths,
-  });
+    Map<String, List<int>> media = const {},
+  }) : _media = media;
 
   final ArchiveManifest manifest;
   final Map<String, TableRows> tables;
   final List<String> mediaPaths;
+
+  /// Media bytes, keyed by the same relative path [mediaPaths] lists.
+  ///
+  /// Held rather than streamed because an archive is already fully in memory
+  /// by the time it is read: the checksum pass has to see every byte, so there
+  /// is nothing to be saved by pretending otherwise.
+  final Map<String, List<int>> _media;
+
+  /// The bytes of one media file, or null when the archive does not carry it.
+  ///
+  /// An app restoring photos calls this per row and counts the nulls, so the
+  /// restore screen can say with a number what did not come back.
+  List<int>? mediaBytes(String relativePath) => _media[relativePath];
 
   /// Rows dropped because their line would not parse.
   List<SkippedRow> get skipped =>
@@ -174,14 +188,14 @@ final class ArchiveReader {
     }
 
     final tables = <String, TableRows>{};
-    final media = <String>[];
+    final media = <String, List<int>>{};
     for (final entry in byName.entries) {
       final name = entry.key;
       if (name.startsWith('data/') && name.endsWith('.ndjson')) {
         final table = name.substring(5, name.length - 7);
         tables[table] = Ndjson.decode(table, utf8.decode(entry.value));
       } else if (name.startsWith('media/')) {
-        media.add(name.substring(6));
+        media[name.substring(6)] = entry.value;
       }
     }
 
@@ -189,7 +203,8 @@ final class ArchiveReader {
       contents: ArchiveContents(
         manifest: manifest,
         tables: tables,
-        mediaPaths: media..sort(),
+        mediaPaths: media.keys.toList()..sort(),
+        media: media,
       ),
       error: null,
     );

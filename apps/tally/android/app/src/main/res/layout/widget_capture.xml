@@ -1,33 +1,39 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  Small on purpose. It does one thing, and a large button for one thing is
-  home screen space taken from something else.
+  Laid out across rather than down. Stacked in a one-cell square, both lines
+  had roughly forty horizontal pixels to work with and the prompt came out as
+  "Jot some...", which is why the widget looked broken rather than small. Side
+  by side, the plus keeps its size and the text gets the whole remaining width.
 -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/capture_root"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:orientation="vertical"
-    android:gravity="center"
+    android:orientation="horizontal"
+    android:gravity="center_vertical"
     android:background="@drawable/widget_background"
-    android:padding="10dp">
+    android:paddingStart="12dp"
+    android:paddingEnd="12dp"
+    android:paddingTop="8dp"
+    android:paddingBottom="8dp">
 
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="@string/capture_plus"
         android:textSize="26sp"
+        android:includeFontPadding="false"
         android:textColor="@color/widget_accent" />
 
     <TextView
         android:id="@+id/capture_waiting"
-        android:layout_width="match_parent"
+        android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:gravity="center"
+        android:layout_weight="1"
+        android:layout_marginStart="10dp"
         android:maxLines="2"
         android:ellipsize="end"
-        android:paddingTop="2dp"
-        android:textSize="11sp"
+        android:textSize="13sp"
         android:textColor="@color/widget_ink_muted"
         android:text="@string/capture_prompt" />
 </LinearLayout>

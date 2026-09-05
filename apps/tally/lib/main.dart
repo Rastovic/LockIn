@@ -8,6 +8,7 @@ import 'app/onboarding_flow.dart';
 import 'app/tally_app.dart';
 import 'data/app_database.dart';
 import 'data/tally_controller.dart';
+import 'platform/android_focus_notice.dart';
 import 'platform/android_home_widget.dart';
 import 'platform/android_usage_source.dart';
 
@@ -89,6 +90,7 @@ class _TallyRootState extends State<TallyRoot> {
         usageSource: const AndroidUsageSource(),
         notifier: _notifier,
         homeWidget: const AndroidHomeWidget(),
+        focusNotice: const AndroidFocusNotice(),
       )..onSettingsChanged = (next) {
           setState(() {
             _settings = next;

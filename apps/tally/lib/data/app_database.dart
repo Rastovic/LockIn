@@ -131,7 +131,14 @@ final class FocusStore {
     );
   }
 
-  static Future<FocusRun?> load() async {
+  /// [now] is the app's clock, not the wall clock.
+  ///
+  /// Passed in rather than read here because the twelve hour rule below is a
+  /// real decision about the user's data, and a decision made against
+  /// `DateTime.now()` cannot be tested: every test whose fixture is dated
+  /// anything but today would have its restored block silently thrown away, and
+  /// the test would be asserting the wall clock rather than the code.
+  static Future<FocusRun?> load({DateTime? now}) async {
     final prefs = await SharedPreferences.getInstance();
     final raw = prefs.getString(_key);
     if (raw == null) return null;
@@ -145,7 +152,8 @@ final class FocusStore {
 
       // A block from days ago is not resumed. Something went wrong, and
       // presenting a stale countdown is worse than dropping it quietly.
-      if (DateTime.now().toUtc().difference(started).inHours > 12) {
+      final asOf = now ?? DateTime.now().toUtc();
+      if (asOf.difference(started).inHours > 12) {
         await prefs.remove(_key);
         return null;
       }

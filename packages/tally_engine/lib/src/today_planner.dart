@@ -102,7 +102,7 @@ final class TodayPlanner {
     rows.sort((a, b) => a.entry.sortOrder.compareTo(b.entry.sortOrder));
 
     final plannedIds = {for (final row in rows) row.task.id};
-    final weekday = _weekdayOf(dayKey);
+    final weekday = weekdayOf(dayKey);
     final offered = tasks
         .where((t) => t.isDueOn(weekday) && !plannedIds.contains(t.id))
         .toList();
@@ -281,7 +281,11 @@ final class TodayPlanner {
         .toList();
   }
 
-  static int _weekdayOf(String dayKey) {
+  /// The ISO weekday (1 = Monday) a day key falls on.
+  ///
+  /// Public because the app also needs it: deciding which recurring tasks are
+  /// due today is the same question, asked outside this class.
+  static int weekdayOf(String dayKey) {
     final date = parseDayKey(dayKey);
     if (date == null) {
       throw ArgumentError.value(dayKey, 'dayKey', 'Not a YYYY-MM-DD day key');

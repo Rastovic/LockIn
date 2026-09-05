@@ -25,12 +25,13 @@
         </intent>
     </queries>
 
-    <!-- The watcher only exists to deliver a timely notice when the balance
-         runs out. The ledger itself is derived and recomputed in the app, so
-         the service holds no state and losing it costs a nudge rather than a
-         number. -->
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
+    <!-- POST_NOTIFICATIONS is for the focus block's countdown and its
+         end-of-block alarm. There is no longer a foreground service: the live
+         balance notice was removed, so the app posts notifications the user
+         asked for and nothing that is merely permanent.
+
+         RECEIVE_BOOT_COMPLETED is required by flutter_local_notifications to
+         re-arm scheduled alarms the OS dropped on reboot or app update. -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
 
@@ -68,27 +69,6 @@
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
         </activity>
-        <service
-            android:name=".WatcherService"
-            android:exported="false"
-            android:foregroundServiceType="specialUse">
-            <property
-                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
-                android:value="Tracks how long the user spends in the apps they
-                    chose to price, so the app can tell them the moment their
-                    earned balance runs out. The count itself is recomputed in
-                    the app; this service exists only to deliver that notice at
-                    the time it is useful." />
-        </service>
-
-        <receiver
-            android:name=".BootReceiver"
-            android:exported="false">
-            <intent-filter>
-                <action android:name="android.intent.action.BOOT_COMPLETED" />
-                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
-            </intent-filter>
-        </receiver>
 
         <!-- Don't delete the meta-data below.
              This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->
@@ -131,6 +111,7 @@
             android:name=".CaptureActivity"
             android:theme="@style/CaptureDialog"
             android:excludeFromRecents="true"
+            android:windowSoftInputMode="adjustResize|stateVisible"
             android:exported="false" />
 
         <receiver

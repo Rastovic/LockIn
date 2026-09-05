@@ -72,12 +72,19 @@ void main() {
 
   group('LedgerSettings', () {
     test('converts minutes to seconds', () {
-      const s = LedgerSettings(dailyAllowanceMinutes: 30);
+      const s = LedgerSettings(dailyAllowanceMinutes: 30, graceMinutes: 5);
       expect(s.dailyAllowanceSeconds, 1800);
       expect(s.rolloverCapSeconds, 3600);
       expect(s.graceSeconds, 300);
       expect(s.minEarnBlockSeconds, 300);
       expect(s.dailyEarnCapSeconds, 5400);
+    });
+
+    test('grace ships off', () {
+      // Pinned, because a five minute default is what it used to be and the
+      // number it changes is the one the whole app rests on.
+      expect(const LedgerSettings().graceMinutes, 0);
+      expect(const LedgerSettings().graceSeconds, 0);
     });
 
     test('the debt floor is stored positive and read negative', () {

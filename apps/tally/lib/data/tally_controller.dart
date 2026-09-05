@@ -7,8 +7,8 @@ import 'package:vitals_archive/vitals_archive.dart';
 import 'package:vitals_core/vitals_core.dart';
 import 'package:vitals_notify/vitals_notify.dart';
 
+import '../platform/android_focus_notice.dart';
 import '../platform/android_home_widget.dart';
-import '../platform/android_usage_source.dart';
 import 'app_database.dart';
 
 /// Holds the app's state and writes every change straight through.
@@ -28,6 +28,7 @@ class TallyController extends ChangeNotifier {
     UsageSource? usageSource,
     Notifier? notifier,
     AndroidHomeWidget? homeWidget,
+    AndroidFocusNotice? focusNotice,
     DateTime Function()? clock,
     // Assigned rather than declared as initialising formals: `this._field` in
     // a named parameter list does not stay named, and callers end up having to
@@ -37,6 +38,8 @@ class TallyController extends ChangeNotifier {
         _notifier = notifier,
         // ignore: prefer_initializing_formals
         _homeWidget = homeWidget,
+        // ignore: prefer_initializing_formals
+        _focusNotice = focusNotice,
         _clock = clock ?? (() => DateTime.now().toUtc()),
         _tasks = TaskRepository(db, installId: installId),
         _projects = ProjectRepository(db, installId: installId),
@@ -58,6 +61,7 @@ class TallyController extends ChangeNotifier {
   final UsageSource? _usage;
   final Notifier? _notifier;
   final AndroidHomeWidget? _homeWidget;
+  final AndroidFocusNotice? _focusNotice;
 
   /// The id the focus alarm is scheduled under.
   ///
@@ -155,7 +159,7 @@ class TallyController extends ChangeNotifier {
   Future<void> load() async {
     // Restored before anything else, so a block that was running when the
     // process died is on screen again rather than silently lost.
-    focus ??= await FocusStore.load();
+    focus ??= await FocusStore.load(now: now);
     // A restored block needs its alarm back: the process died, and Android
     // does not keep notifications scheduled by a process that is gone.
     if (focus != null) await _syncFocusAlarm();
@@ -166,6 +170,12 @@ class TallyController extends ChangeNotifier {
     await _drainCaptures();
     tasks = await _tasks.tasks();
     plan = await _tasks.planFor(dayKey);
+    await _planCaptured();
+    await _planRecurring();
+    await _settleExpiredFocus();
+    // After the task list is read, so a restored block can be named rather than
+    // saying "Focusing" at someone who knows exactly what they started.
+    await _syncFocusNotice();
     streaks = await _tasks.habitStreaks(dayKey: dayKey);
     await _loadSuggestionHistory();
     projects = await _projects.projects();
@@ -353,16 +363,18 @@ class TallyController extends ChangeNotifier {
       now: now,
     );
     spendByApp = await _loadSpendByApp();
-    await _pushSnapshot();
     await _pushWidget();
   }
 
   /// Redraws the home screen widget.
   ///
-  /// Called from the same place as the watcher snapshot, after a recompute,
-  /// so the widget is never showing a number the app has already moved past.
-  /// It is also the only push: ticking a task recomputes, and everything that
-  /// changes the plan goes through the same path.
+  /// Pushed after every recompute, so the widget is never showing a number the
+  /// app has already moved past. Since the balance notice and its background
+  /// service were removed, this is the only writer of the widget's minutes:
+  /// they are correct as of the last time the app was open and go stale after
+  /// that rather than ticking on their own. It is also the only push: ticking a
+  /// task recomputes, and everything that changes the plan goes through the
+  /// same path.
   Future<void> _pushWidget() async {
     final widget = _homeWidget;
     if (widget == null) return;
@@ -374,29 +386,6 @@ class TallyController extends ChangeNotifier {
       // access, so the widget simply says nothing about minutes instead.
       usageVisible: usageAccess == UsageAccess.granted,
       validUntil: _ledger.engine.dayStart(addDays(dayKey, 1)),
-    );
-  }
-
-  /// Tells the watcher where the balance stands.
-  ///
-  /// Pushed after every recompute, so the service's starting point is never
-  /// more stale than the last time the app was open. It is also what stops the
-  /// service running at all when nothing is being watched.
-  Future<void> _pushSnapshot() async {
-    final source = _usage;
-    if (source is! AndroidUsageSource) return;
-
-    final watched = await _watchedPackages();
-    await source.updateSnapshot(
-      spendableSeconds: ledger?.spendableSeconds ?? 0,
-      graceSeconds: ledger?.graceRemainingSeconds ?? 0,
-      asOf: now,
-      packages: watched,
-      dayKey: dayKey,
-      notificationsEnabled: true,
-    );
-    await source.setWatching(
-      active: watched.isNotEmpty && usageAccess == UsageAccess.granted,
     );
   }
 
@@ -515,6 +504,10 @@ class TallyController extends ChangeNotifier {
       habitWeekdays: draft.habitWeekdays,
     );
     tasks = await _tasks.tasks();
+    // A habit written this morning belongs on this morning's list. Waiting for
+    // the next load would mean creating a daily task and watching today stay
+    // unchanged, which reads as the repeat setting not having taken.
+    await _planRecurring();
     notifyListeners();
     return task;
   }
@@ -584,6 +577,7 @@ class TallyController extends ChangeNotifier {
     await _drainCaptures();
     tasks = await _tasks.tasks();
     plan = await _tasks.planFor(dayKey);
+    await _planCaptured();
     notifyListeners();
   }
 
@@ -669,7 +663,6 @@ class TallyController extends ChangeNotifier {
       toDay: dayKey,
       now: now,
     );
-    await _pushSnapshot();
     notifyListeners();
   }
 
@@ -714,6 +707,35 @@ class TallyController extends ChangeNotifier {
   Future<void> _saveFocus() async {
     await FocusStore.save(focus);
     await _syncFocusAlarm();
+    await _syncFocusNotice();
+  }
+
+  /// Keeps the countdown in the shade in step with the run.
+  ///
+  /// Rebuilt on every transition for the same reason as the alarm: pausing,
+  /// resuming and extending all move the end, and one post-or-cancel has no
+  /// states to get wrong.
+  ///
+  /// Cheap to repost - Android replaces the notification by id and the digits
+  /// are ticked by SystemUI from the end instant, so there is no timer here and
+  /// nothing to keep alive between transitions.
+  Future<void> _syncFocusNotice() async {
+    final notice = _focusNotice;
+    if (notice == null) return;
+
+    final run = focus;
+    if (run == null || !run.isRunning) {
+      await notice.hide();
+      return;
+    }
+
+    await notice.show(
+      run: run,
+      now: now,
+      taskTitle: run.taskId == null
+          ? null
+          : tasks.where((t) => t.id == run.taskId).firstOrNull?.title,
+    );
   }
 
   /// Keeps the end-of-block alarm in step with the run.
@@ -779,22 +801,52 @@ class TallyController extends ChangeNotifier {
     );
   }
 
+  /// Finishes a block whose time ran out while the app was away.
+  ///
+  /// The alarm rings on time, but ringing is all it does: the notification is
+  /// posted by Android from a receiver, with no Dart running behind it. Until
+  /// now the block was only *settled* by [FocusScreen] noticing the countdown
+  /// had reached zero, which needs the app open on that screen. So the timer
+  /// went off, the user put the phone down, and the task sat unticked until
+  /// they came back and ticked it by hand - having already done the work.
+  ///
+  /// Run on every load, after the plan is read, because [endFocus] ticks a plan
+  /// entry and cannot do that before there is a plan. Paused blocks are left
+  /// alone: [FocusRun.isComplete] is false while paused, so a block paused
+  /// overnight is still waiting rather than finished.
+  Future<void> _settleExpiredFocus() async {
+    final run = focus;
+    if (run == null || !run.isRunning) return;
+    final completedAt = run.completedAt(now);
+    if (completedAt == null) return;
+    // Settled at the instant the clock ran out, not at the instant the app was
+    // reopened. Otherwise a one hour block left overnight banks nine hours.
+    await endFocus(at: completedAt);
+  }
+
   /// Ends the block and banks whatever was worked.
   ///
   /// Giving up and finishing are the same path: both produce a session of the
   /// length actually focused, and the engine applies its usual rules. A block
   /// under the earning floor simply earns nothing, with nothing said about it.
-  Future<void> endFocus() async {
-    final run = focus?.finish(now);
+  /// [at] is when the block ended, defaulting to now.
+  ///
+  /// Passed explicitly only when settling a block that ran out while the app
+  /// was closed: the seconds credited are the seconds focused, and those ended
+  /// when the timer did.
+  Future<void> endFocus({DateTime? at}) async {
+    final endedAt = at ?? now;
+    final run = focus?.finish(endedAt);
     focus = null;
     await FocusStore.clear();
     await _notifier?.cancel(_focusAlarmId);
+    await _focusNotice?.hide();
     if (run == null) {
       notifyListeners();
       return;
     }
 
-    final session = run.toSession(now);
+    final session = run.toSession(endedAt);
     if (session != null) {
       await _tasks.addSession(session, dayKey: dayKey, now: now);
       ledger = await _ledger.recomputeAndStore(
@@ -812,7 +864,7 @@ class TallyController extends ChangeNotifier {
     // is stamped and the streak recomputed exactly as if it had been ticked by
     // hand - two paths to "done" that leave different state behind is how the
     // second currency quietly stops matching the first.
-    if (run.isComplete(now) && run.taskId != null) {
+    if (run.isComplete(endedAt) && run.taskId != null) {
       final entry = plan
           .where((e) => e.taskId == run.taskId && !e.isDone)
           .firstOrNull;
@@ -820,7 +872,6 @@ class TallyController extends ChangeNotifier {
     }
 
     // The widget shows the plan and the balance, and this changed both.
-    await _pushSnapshot();
     await _pushWidget();
     notifyListeners();
   }
@@ -1383,13 +1434,72 @@ class TallyController extends ChangeNotifier {
     if (widget == null) return;
 
     for (final title in await widget.drainCaptures()) {
-      await _tasks.createTask(
+      final task = await _tasks.createTask(
         kind: TaskKind.oneoff,
         title: title,
         now: now,
         needsSorting: true,
       );
+      _justCaptured.add(task.id);
     }
+  }
+
+  /// Puts every recurring task that is due today on today's plan.
+  ///
+  /// Habits and daily-repeating tasks used to be *offered*: they appeared in a
+  /// suggestion strip and had to be accepted, every single day. That is a tap
+  /// per habit per day to say yes to something already decided, and a day the
+  /// user never opened before evening looked empty when it was not.
+  ///
+  /// Now the day builds itself and the plan is edited instead. Removing a row
+  /// is still possible and still means "not today"; what is gone is having to
+  /// ask for the same thing every morning.
+  ///
+  /// Idempotent through [TodayPlanner.addToDay], which skips a task already on
+  /// the day - so a removed row does *not* come back on the next load, because
+  /// removal deletes the entry and this only adds what is missing. That is the
+  /// one rough edge: a habit dismissed for today reappears if the app is
+  /// reloaded. Accepted deliberately over the alternative, which is a second
+  /// per-day table recording refusals.
+  Future<void> _planRecurring() async {
+    final weekday = TodayPlanner.weekdayOf(dayKey);
+    final due = [
+      for (final task in tasks)
+        if (task.isDueOn(weekday)) task.id,
+    ];
+    if (due.isEmpty) return;
+
+    final before = plan.length;
+    plan = const TodayPlanner().addToDay(
+      dayKey: dayKey,
+      plan: plan,
+      taskIds: due,
+      source: PlanSource.habit,
+    );
+    // Only written when something was actually added: this runs on every load,
+    // and a save per load is a write per app open for no change.
+    if (plan.length != before) await _savePlan();
+  }
+
+  /// Ids drained from the widget and not yet put on today's plan.
+  ///
+  /// Held between the two steps because [_drainCaptures] runs before [plan] is
+  /// read from the database - planning inside the drain would write to a list
+  /// that the next line then overwrites.
+  final List<String> _justCaptured = [];
+
+  /// Puts anything just captured on today's plan.
+  ///
+  /// The inbox alone made the widget look broken: a line was typed on the home
+  /// screen, the app was opened, and today's list was unchanged. Sorting is
+  /// still deferred - the task keeps [Task.needsSorting] and still shows in the
+  /// inbox - but something written down today belongs on today's list, because
+  /// wanting to do it now is what made it worth interrupting for.
+  Future<void> _planCaptured() async {
+    if (_justCaptured.isEmpty) return;
+    final ids = [..._justCaptured];
+    _justCaptured.clear();
+    await addToToday(ids);
   }
 
   /// The last [days] days of per-app spend, for checking against the phone's

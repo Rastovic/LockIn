@@ -1,8 +1,12 @@
 package com.jelena.tally
 
 import android.app.Activity
+import android.content.Context
 import android.os.Bundle
+import android.view.KeyEvent
 import android.view.WindowManager
+import android.view.inputmethod.EditorInfo
+import android.view.inputmethod.InputMethodManager
 import android.widget.Button
 import android.widget.EditText
 import android.widget.Toast
@@ -28,11 +32,35 @@ class CaptureActivity : Activity() {
 
         val input = findViewById<EditText>(R.id.capture_input)
         // The keyboard comes up with the box: one tap from home screen to
-        // typing, or the widget has saved nobody anything.
+        // typing, or the widget has saved nobody anything. A translucent
+        // floating window does not always honour the soft-input flag on its
+        // own, so the field asks for the keyboard once it is laid out too.
         input.requestFocus()
         window.setSoftInputMode(
-            WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_VISIBLE,
+            WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_VISIBLE or
+                WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE,
         )
+        input.post {
+            val keyboard = getSystemService(Context.INPUT_METHOD_SERVICE)
+                as InputMethodManager
+            keyboard.showSoftInput(input, InputMethodManager.SHOW_IMPLICIT)
+        }
+
+        // The field asks the keyboard for a Done key; without this the key is
+        // drawn, closes the keyboard, and leaves the line sitting there
+        // unsaved. Enter is the same gesture from a hardware keyboard.
+        input.setOnEditorActionListener { _, actionId, event ->
+            val submitted = actionId == EditorInfo.IME_ACTION_DONE ||
+                actionId == EditorInfo.IME_ACTION_GO ||
+                actionId == EditorInfo.IME_ACTION_SEND ||
+                (
+                    event != null &&
+                        event.keyCode == KeyEvent.KEYCODE_ENTER &&
+                        event.action == KeyEvent.ACTION_DOWN
+                    )
+            if (submitted) save(input.text.toString())
+            submitted
+        }
 
         findViewById<Button>(R.id.capture_save).setOnClickListener {
             save(input.text.toString())

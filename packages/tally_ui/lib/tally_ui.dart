@@ -10,6 +10,7 @@ export 'src/format/durations.dart';
 export 'src/screens/accuracy_screen.dart';
 export 'src/screens/backup_sheet.dart';
 export 'src/screens/balance_screen.dart';
+export 'src/screens/duration_sheet.dart';
 export 'src/screens/focus_screen.dart';
 export 'src/screens/goals_screen.dart';
 export 'src/screens/insights_screen.dart';

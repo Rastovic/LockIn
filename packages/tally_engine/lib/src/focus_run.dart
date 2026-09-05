@@ -93,6 +93,26 @@ final class FocusRun {
 
   bool isComplete(DateTime now) => elapsedSeconds(now) >= target.inSeconds;
 
+  /// The wall-clock instant this block's clock reached its target.
+  ///
+  /// Null while there is still time left, or while paused - a paused block has
+  /// no end to aim at until it resumes.
+  ///
+  /// Exists so a block that ran out while the app was closed can be settled at
+  /// the moment it finished rather than at the moment it was noticed. Settling
+  /// at the moment of noticing means an hour block left overnight is banked as
+  /// nine hours focused, which is the app paying out for a phone on a table.
+  ///
+  /// The pauses are all closed by the time a block is complete, so the total
+  /// paused time is fixed and the instant is stable however late it is asked
+  /// for.
+  DateTime? completedAt(DateTime now) {
+    if (!isComplete(now)) return null;
+    return startedAt.add(
+      Duration(seconds: target.inSeconds + totalPausedSeconds(now)),
+    );
+  }
+
   /// Whether the phone-down bonus was earned.
   ///
   /// Requires the block to have been started as phone-down **and** the screen

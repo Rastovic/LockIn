@@ -66,6 +66,32 @@ void main() {
     expect(c.tasks.every((t) => t.kind == TaskKind.oneoff), isTrue);
   });
 
+  test('and land on today, not only in the inbox', () async {
+    // What made the widget look broken: a line was typed on the home screen,
+    // the app was opened, and today's list was unchanged. The inbox had it, but
+    // the inbox is not where anyone looks after writing something down.
+    queue = ['Book the dentist'];
+    final c = open(TallyDatabase(NativeDatabase.memory()));
+    await c.load();
+
+    expect(c.today.view.rows.map((r) => r.task.title), ['Book the dentist']);
+    expect(
+      c.tasks.single.needsSorting,
+      isTrue,
+      reason: 'still unsorted - planned is not the same as filed',
+    );
+  });
+
+  test('a capture is planned once, not again on every load', () async {
+    queue = ['Book the dentist'];
+    final db = TallyDatabase(NativeDatabase.memory());
+    final c = open(db);
+    await c.load();
+    await c.load();
+
+    expect(c.plan, hasLength(1));
+  });
+
   test('the queue is drained once, not re-imported on every load', () async {
     queue = ['Book the dentist'];
     final db = TallyDatabase(NativeDatabase.memory());

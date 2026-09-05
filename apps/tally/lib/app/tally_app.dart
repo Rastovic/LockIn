@@ -153,14 +153,10 @@ class _TallyAppState extends State<TallyApp> with WidgetsBindingObserver {
         model: c.today,
         onToggle: c.toggle,
         onReorder: c.reorder,
-        onStartFocus: (entry) {
-          final task = c.tasks.where((t) => t.id == entry.taskId).firstOrNull;
-          c.startFocus(
-            taskId: task?.id,
-            minutes: task?.estimateMinutes ?? 25,
-          );
-        },
-        onStartSession: () => c.startFocus(),
+        onStartFocus: (entry) => _startTaskFocus(
+          c.tasks.where((t) => t.id == entry.taskId).firstOrNull,
+        ),
+        onStartSession: () => _askDuration(),
         onAcceptHabit: (habit) =>
             c.addToToday([habit.id], source: PlanSource.habit),
         onAcceptSuggestion: c.acceptSuggestion,
@@ -168,6 +164,52 @@ class _TallyAppState extends State<TallyApp> with WidgetsBindingObserver {
         onOpenPool: _openPool,
         onOpenBalance: () => setState(() => _showBalance = true),
       );
+
+  /// Play on a task starts the clock. It does not ask.
+  ///
+  /// The estimate written on the task is the answer: someone who put "45 min"
+  /// on it decided how long when they wrote it, and asking again at the moment
+  /// they press play is the same decision twice. Pressing play on a row is a
+  /// commitment to that row, not the opening of a form.
+  ///
+  /// The sheet stays where the question is real. "Start focusing" carries no
+  /// task and so has no length to read, and a task nobody gave an estimate has
+  /// none either - both still ask.
+  void _startTaskFocus(Task? task) {
+    final minutes = task?.estimateMinutes;
+    if (task == null || minutes == null) {
+      _askDuration(taskId: task?.id, taskTitle: task?.title);
+      return;
+    }
+    c.startFocus(taskId: task.id, minutes: minutes);
+  }
+
+  /// Asks how long before the clock starts.
+  ///
+  /// Reached from "Start focusing", and from a task with no estimate to go on.
+  /// The length used to be decided for the user everywhere - the task's
+  /// estimate, or twenty-five minutes - and a timer whose length nobody chose
+  /// is one that gets abandoned halfway. Where there is an estimate, the choice
+  /// was already made; where there is not, it is made here.
+  Future<void> _askDuration({
+    String? taskId,
+    String? taskTitle,
+    int? suggestedMinutes,
+  }) async {
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (sheetContext) => DurationSheet(
+        taskTitle: taskTitle,
+        suggestedMinutes: suggestedMinutes,
+        onStart: (minutes) {
+          Navigator.of(sheetContext).pop();
+          c.startFocus(taskId: taskId, minutes: minutes);
+        },
+      ),
+    );
+  }
 
   /// Spending savings on something that is not a screen.
   Future<void> _openTreat() async {
@@ -518,10 +560,7 @@ class _TallyAppState extends State<TallyApp> with WidgetsBindingObserver {
         onCreate: () => _openSheet(initialKind: _segment ?? TaskKind.oneoff),
         onEdit: (task) => _openSheet(existing: task),
         onAddToToday: (task) => c.addToToday([task.id]),
-        onStartFocus: (task) => c.startFocus(
-          taskId: task.id,
-          minutes: task.estimateMinutes ?? 25,
-        ),
+        onStartFocus: (task) => _startTaskFocus(task),
         onCreateProject: _openProjectSheet,
         onAddToProject: (project) => _openSheet(
           initialKind: TaskKind.projectTask,
