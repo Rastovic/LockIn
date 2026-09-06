@@ -69,6 +69,14 @@ android {
             } else {
                 signingConfigs.getByName("debug")
             }
+            // See proguard-rules.pro: WorkManager arrives with the ads SDK and
+            // is Room-backed, and R8 strips the generated class Room looks up
+            // by name. Without these rules the release build crashes on launch
+            // while the debug build, which is not shrunk, runs fine.
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro",
+            )
         }
     }
 }
