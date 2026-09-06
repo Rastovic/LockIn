@@ -165,6 +165,24 @@ final class LocalNotifier implements Notifier {
     );
   }
 
+  @override
+  Future<void> scheduleDaily(Nudge nudge) async {
+    await initialise();
+    await _plugin.zonedSchedule(
+      nudge.id,
+      nudge.title,
+      nudge.body,
+      tz.TZDateTime.from(nudge.at, tz.local),
+      _detailsFor(nudge),
+      androidScheduleMode: await _scheduleMode(),
+      // The clock time is what repeats. Matching on time components rather
+      // than adding 24 hours is what keeps a 21:00 reminder at 21:00 through
+      // a DST change instead of sliding an hour.
+      matchDateTimeComponents: DateTimeComponents.time,
+      payload: nudge.tag,
+    );
+  }
+
   /// Exact when Android allows it, inexact when it does not.
   ///
   /// A focus block is a timer, and a timer Android batches at its convenience

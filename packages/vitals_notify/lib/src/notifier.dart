@@ -44,6 +44,19 @@ abstract interface class Notifier {
   /// Posts at [Nudge.at].
   Future<void> schedule(Nudge nudge);
 
+  /// Posts at [Nudge.at] and again at the same clock time every day.
+  ///
+  /// A separate call rather than a flag on [schedule], because the two have
+  /// different failure modes: a one-shot that never fires is a missed alarm,
+  /// a repeat that never fires is a feature that quietly stopped working and
+  /// is noticed weeks later.
+  ///
+  /// **The clock time is what repeats, not the interval.** A daily reminder set
+  /// for 21:00 has to stay at 21:00 across a DST change rather than sliding to
+  /// 20:00, which is why the implementation matches on time components instead
+  /// of adding 24 hours.
+  Future<void> scheduleDaily(Nudge nudge);
+
   Future<void> cancel(int id);
 
   Future<void> cancelAll();
@@ -63,6 +76,10 @@ final class RecordingNotifier implements Notifier {
   final List<Nudge> shown = [];
   final List<Nudge> scheduled = [];
   final List<int> cancelled = [];
+
+  /// Ids scheduled to repeat, so a test can tell a daily reminder from a
+  /// one-shot without inspecting the plugin.
+  final List<int> daily = [];
 
   NotificationPermission _permission = NotificationPermission.granted;
 
@@ -84,15 +101,23 @@ final class RecordingNotifier implements Notifier {
   Future<void> schedule(Nudge nudge) async => scheduled.add(nudge);
 
   @override
+  Future<void> scheduleDaily(Nudge nudge) async {
+    scheduled.add(nudge);
+    daily.add(nudge.id);
+  }
+
+  @override
   Future<void> cancel(int id) async {
     cancelled.add(id);
     scheduled.removeWhere((n) => n.id == id);
+    daily.remove(id);
   }
 
   @override
   Future<void> cancelAll() async {
     cancelled.addAll(scheduled.map((n) => n.id));
     scheduled.clear();
+    daily.clear();
   }
 
   @override
