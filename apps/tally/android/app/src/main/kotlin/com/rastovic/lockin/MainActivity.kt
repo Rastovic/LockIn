@@ -1,4 +1,4 @@
-package com.jelena.tally
+package com.rastovic.lockin
 
 import android.app.NotificationManager
 import android.content.Context

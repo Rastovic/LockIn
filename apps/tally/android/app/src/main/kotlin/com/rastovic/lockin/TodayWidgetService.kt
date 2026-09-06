@@ -1,4 +1,4 @@
-package com.jelena.tally
+package com.rastovic.lockin
 
 import android.content.Intent
 import android.widget.RemoteViews
