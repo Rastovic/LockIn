@@ -320,6 +320,15 @@ class TallyController extends ChangeNotifier {
     await _syncFocusAlarm();
   }
 
+  /// Fired when a block runs its full length, however it got there.
+  ///
+  /// Both routes end here: the screen's ticker reaching zero with the app
+  /// open, and [_settleExpiredFocus] closing a block that ran out while the
+  /// app was away. The second is the common one - the point of a block is to
+  /// put the phone down - so anything that reacts to "the user finished a
+  /// block" has to hang off this rather than off the screen.
+  void Function()? onFocusCompleted;
+
   Future<void> _saveSettings(LedgerSettings next) async {
     Future<void> put(String key, String value) async {
       final existing = await (db.select(db.settings)
@@ -945,6 +954,7 @@ class TallyController extends ChangeNotifier {
 
     // The widget shows the plan and the balance, and this changed both.
     await _pushWidget();
+    if (run.isComplete(endedAt)) onFocusCompleted?.call();
     notifyListeners();
   }
 

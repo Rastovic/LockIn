@@ -183,6 +183,47 @@ void main() {
     expect(notifier.scheduled, isEmpty);
   });
 
+  test('a block settled after the app was away still reports completion',
+      () async {
+    // Everything that reacts to "the user finished a block" hangs off this
+    // callback, and the usual way a block finishes is with the app closed.
+    // Firing only from the screen's ticker would mean the common case never
+    // reports at all.
+    final now = DateTime.utc(2026, 8, 13, 10);
+    SharedPreferences.setMockInitialValues({
+      'tally.focus': jsonEncode({
+        'id': '018f2c00-cccc-7000-8000-000000000003',
+        'startedAt':
+            now.subtract(const Duration(hours: 2)).millisecondsSinceEpoch,
+        'plannedSeconds': 45 * 60,
+        'extendedSeconds': 0,
+        'taskId': null,
+        'phoneDown': false,
+        'unlocked': false,
+        'pauses': <Object>[],
+      }),
+    });
+
+    var completed = 0;
+    final c = build(_RejectsPastDates(), at: now)
+      ..onFocusCompleted = () => completed++;
+    await c.load();
+
+    expect(completed, 1);
+  });
+
+  test('giving up early does not report completion', () async {
+    final c = build(RecordingNotifier());
+    c.startFocus(minutes: 45);
+    await Future<void>.delayed(Duration.zero);
+
+    var completed = 0;
+    c.onFocusCompleted = () => completed++;
+    await c.endFocus();
+
+    expect(completed, isZero);
+  });
+
   test('starting a block schedules an alarm for its end', () async {
     final notifier = RecordingNotifier();
     final c = build(notifier);

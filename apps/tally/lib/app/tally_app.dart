@@ -5,11 +5,13 @@ import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:vitals_ads/vitals_ads.dart';
 import 'package:vitals_archive/vitals_archive.dart';
 import 'package:tally_engine/tally_engine.dart';
 import 'package:tally_ui/tally_ui.dart';
 
 import '../data/tally_controller.dart';
+import 'ads.dart';
 import '../platform/android_usage_source.dart';
 
 /// The app.
@@ -28,6 +30,7 @@ class TallyApp extends StatefulWidget {
     required this.theme,
     required this.themeMode,
     required this.onTheme,
+    required this.ads,
     super.key,
   });
 
@@ -35,6 +38,7 @@ class TallyApp extends StatefulWidget {
   final TallyTheme theme;
   final ThemeMode themeMode;
   final void Function(TallyTheme, ThemeMode) onTheme;
+  final AdsController ads;
 
   @override
   State<TallyApp> createState() => _TallyAppState();
@@ -60,6 +64,10 @@ class _TallyAppState extends State<TallyApp> with WidgetsBindingObserver {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     c.addListener(_onChanged);
+    // Hung off the controller rather than off FocusScreen's ticker: a block
+    // usually ends with the phone face down and the app not running, and that
+    // route never touches the screen at all.
+    c.onFocusCompleted = () => unawaited(widget.ads.markCoreAction());
     c.load();
   }
 
@@ -116,6 +124,12 @@ class _TallyAppState extends State<TallyApp> with WidgetsBindingObserver {
       );
     }
 
+    // Stats and Settings are read, not worked in. Today and Tasks are where
+    // the user is ticking things off, and `MONETIZATION.md` rule 4 keeps a
+    // banner off any screen being acted on - Focus and Balance never reach
+    // here at all, they return above.
+    final bannerTab = _tab == 2 || _tab == 3;
+
     return Scaffold(
       body: switch (_tab) {
         0 => _buildToday(),
@@ -123,9 +137,27 @@ class _TallyAppState extends State<TallyApp> with WidgetsBindingObserver {
         2 => _buildStats(),
         _ => _buildSettings(),
       },
-      bottomNavigationBar: NavigationBar(
+      bottomNavigationBar: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          AdSlot(
+            gateway: widget.ads.gateway,
+            allowed: bannerTab && widget.ads.bannerAllowed(),
+          ),
+          NavigationBar(
         selectedIndex: _tab,
-        onDestinationSelected: (i) => setState(() => _tab = i),
+        onDestinationSelected: (i) {
+          // Leaving Stats is this app's one honest break point.
+          //
+          // Finishing a block is the obvious candidate and the wrong one:
+          // it happens with the app closed, so the ad would land on the
+          // next launch, which is both the worst moment for the user and
+          // the placement Play enforces against. Stats is read and then
+          // left, deliberately, with nothing in progress.
+          final leavingStats = _tab == 2 && i != 2;
+          setState(() => _tab = i);
+          if (leavingStats) unawaited(widget.ads.maybeShowInterstitial());
+        },
         destinations: const [
           NavigationDestination(
             icon: Icon(Icons.today_outlined),
@@ -146,6 +178,8 @@ class _TallyAppState extends State<TallyApp> with WidgetsBindingObserver {
             icon: Icon(Icons.settings_outlined),
             selectedIcon: Icon(Icons.settings),
             label: 'Settings',
+          ),
+        ],
           ),
         ],
       ),
