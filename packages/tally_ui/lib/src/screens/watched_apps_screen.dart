@@ -572,46 +572,51 @@ class _AccessCard extends StatelessWidget {
         ),
     };
 
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: tokens.surface,
-        borderRadius: BorderRadius.circular(14),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(title, style: text.bodyLarge),
-          const SizedBox(height: 6),
-          Text(body, style: text.bodyMedium),
-          if (access != UsageAccess.unavailable) ...[
-            const SizedBox(height: 14),
-            Semantics(
-              button: true,
-              label: 'Open Settings',
-              excludeSemantics: true,
-              child: GestureDetector(
-                onTap: onGrant,
-                behavior: HitTestBehavior.opaque,
-                child: Container(
-                  height: 48,
-                  alignment: Alignment.center,
-                  decoration: BoxDecoration(
-                    color: tokens.states.solvent,
-                    borderRadius: BorderRadius.circular(999),
-                  ),
-                  child: Text(
-                    'Open Settings',
-                    style: text.bodyLarge?.copyWith(
-                      color: tokens.bg,
-                      fontWeight: FontWeight.w700,
+    return Padding(
+      // Same gap _Fold leaves under itself, so the card does not sit flush
+      // against the section header below it.
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: tokens.surface,
+          borderRadius: BorderRadius.circular(14),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(title, style: text.bodyLarge),
+            const SizedBox(height: 6),
+            Text(body, style: text.bodyMedium),
+            if (access != UsageAccess.unavailable) ...[
+              const SizedBox(height: 14),
+              Semantics(
+                button: true,
+                label: 'Open Settings',
+                excludeSemantics: true,
+                child: GestureDetector(
+                  onTap: onGrant,
+                  behavior: HitTestBehavior.opaque,
+                  child: Container(
+                    height: 48,
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      color: tokens.states.solvent,
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                    child: Text(
+                      'Open Settings',
+                      style: text.bodyLarge?.copyWith(
+                        color: tokens.bg,
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                   ),
                 ),
               ),
-            ),
+            ],
           ],
-        ],
+        ),
       ),
     );
   }
