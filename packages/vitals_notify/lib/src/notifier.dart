@@ -41,6 +41,25 @@ abstract interface class Notifier {
   /// Posts immediately.
   Future<void> show(Nudge nudge);
 
+  /// Whether the OS will deliver a scheduled notification *on time*.
+  ///
+  /// **False does not mean nothing rings.** It means Android may batch the
+  /// delivery into a window minutes wide, which a reminder survives and a
+  /// timer does not: a block that ends at 14:00 and rings at 14:04 reads as
+  /// having never gone off.
+  ///
+  /// Separate from [permission] because it is a separate switch the user
+  /// controls separately, and because the two failures need different words
+  /// on screen - one is silence, the other is lateness.
+  Future<bool> canScheduleExactly();
+
+  /// Sends the user to the OS screen that grants exact scheduling.
+  ///
+  /// Returns whether it is available afterwards. **Never call this cold**:
+  /// it leaves the app for system settings, so the reason has to be on
+  /// screen and the user has to have asked for it.
+  Future<bool> requestExactScheduling();
+
   /// Posts at [Nudge.at].
   Future<void> schedule(Nudge nudge);
 
@@ -72,7 +91,7 @@ abstract interface class Notifier {
 ///
 /// Used in tests and on any surface where notifications are not wanted, so a
 /// caller never has to branch on whether notifications exist.
-final class RecordingNotifier implements Notifier {
+base class RecordingNotifier implements Notifier {
   final List<Nudge> shown = [];
   final List<Nudge> scheduled = [];
   final List<int> cancelled = [];
@@ -93,6 +112,21 @@ final class RecordingNotifier implements Notifier {
 
   @override
   Future<NotificationPermission> requestPermission() async => _permission;
+
+  /// What [canScheduleExactly] answers. Settable so a test can play the
+  /// common real case - the permission is off until it is asked for.
+  bool exactScheduling = true;
+
+  @override
+  Future<bool> canScheduleExactly() async => exactScheduling;
+
+  @override
+  Future<bool> requestExactScheduling() async {
+    exactRequests++;
+    return exactScheduling;
+  }
+
+  int exactRequests = 0;
 
   @override
   Future<void> show(Nudge nudge) async => shown.add(nudge);

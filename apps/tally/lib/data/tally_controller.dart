@@ -72,6 +72,13 @@ class TallyController extends ChangeNotifier {
   /// Notifications are denied, so no end-of-block alarm can ring.
   bool focusAlarmBlocked = false;
 
+  /// The alarm will ring, but Android may hold it for minutes.
+  ///
+  /// A separate flag from [focusAlarmBlocked] because it is a separate
+  /// switch with a separate fix, and because the two need different words:
+  /// one is "nothing will ring", this one is "it may ring late".
+  bool focusAlarmImprecise = false;
+
   bool _askedForNotifications = false;
 
   List<Task> tasks = const [];
@@ -156,7 +163,7 @@ class TallyController extends ChangeNotifier {
   /// Called on open and on resume, because the ledger is derived: whatever
   /// happened while the app was away is worked out from stored rows rather
   /// than from anything the app was keeping in its head.
-  Future<void> load() async {
+  Future<void> _load() async {
     // Restored before anything else, so a block that was running when the
     // process died is on screen again rather than silently lost.
     focus ??= await FocusStore.load(now: now);
@@ -182,8 +189,21 @@ class TallyController extends ChangeNotifier {
     await _reconcile();
     await loadWatchable();
     await loadGoals();
-    loading = false;
-    notifyListeners();
+  }
+
+  /// Loads, and guarantees the app leaves its blank loading state.
+  ///
+  /// `build` renders nothing at all while [loading] is true, so **any** step
+  /// of [_load] throwing used to leave the user on an empty screen with no
+  /// route out but reinstalling. A step that fails costs its own feature; it
+  /// must not cost the app.
+  Future<void> load() async {
+    try {
+      await _load();
+    } finally {
+      loading = false;
+      notifyListeners();
+    }
   }
 
   /// The installed-app list, merged with what is already watched.
@@ -286,6 +306,19 @@ class TallyController extends ChangeNotifier {
 
   /// Called with the new settings so the app can rebuild its controller.
   void Function(LedgerSettings)? onSettingsChanged;
+
+  /// Takes the user to the OS switch for exact alarms, then re-arms.
+  ///
+  /// Re-arming matters: the alarm already scheduled for the running block was
+  /// registered as inexact, and that does not change retroactively. Without
+  /// the reschedule, granting the permission would fix every future block and
+  /// not the one the user is sitting in front of.
+  Future<void> requestExactAlarms() async {
+    final notifier = _notifier;
+    if (notifier == null) return;
+    await notifier.requestExactScheduling();
+    await _syncFocusAlarm();
+  }
 
   Future<void> _saveSettings(LedgerSettings next) async {
     Future<void> put(String key, String value) async {
@@ -753,9 +786,21 @@ class TallyController extends ChangeNotifier {
     final notifier = _notifier;
     if (notifier == null) return;
 
+    final run = focus;
+
+    // **Checked before the cancel, because `cancel` also takes down a
+    // notification that has already been shown.**
+    //
+    // A block restored from storage can be past its end: the alarm has just
+    // rung, or is ringing as this runs, and opening the app is exactly what
+    // someone does when it does. Cancelling here wiped the ring off the
+    // screen a moment after it arrived, so the block looked like it had
+    // never finished. Nothing needs re-arming either - the instant has gone,
+    // and settling the block is a later step of [load].
+    if (run != null && run.isRunning && run.remainingSeconds(now) <= 0) return;
+
     await notifier.cancel(_focusAlarmId);
 
-    final run = focus;
     // Nothing to ring for: no block, a finished one, or one sitting paused
     // with no end time to aim at.
     if (run == null || !run.isRunning || run.isPaused) return;
@@ -782,14 +827,27 @@ class TallyController extends ChangeNotifier {
     }
     if (blocked) return;
 
+    // Asked every time, because it is revocable from system settings and
+    // because it is **off by default**: from Android 14 an app targeting a
+    // recent SDK does not get exact alarms until the user grants them, so
+    // the untouched state of every fresh install is a timer Android may
+    // deliver minutes late.
+    final exact = await notifier.canScheduleExactly();
+    if (exact == focusAlarmImprecise) {
+      focusAlarmImprecise = !exact;
+      notifyListeners();
+    }
+
     final endsAt = now.add(Duration(seconds: run.remainingSeconds(now)));
     await notifier.schedule(
       Nudge(
         id: _focusAlarmId,
-        // The user set this timer, so it is [NudgeKind.scheduled]: never
-        // capped by the nudge budget and never held back by quiet hours.
-        // Silently dropping a timer someone started is a broken app.
-        kind: NudgeKind.scheduled,
+        // The user set this timer, so it is [NudgeKind.alarm]: never capped
+        // by the nudge budget, never held back by quiet hours, and rung on
+        // the alarm stream. A block ends with the phone face down and the
+        // ringer low - that is the point of it - so a notification at
+        // notification volume is one you are meant to miss.
+        kind: NudgeKind.alarm,
         title: 'Time is up',
         body: run.target.inMinutes >= 60
             ? 'Your ${run.target.inHours} hour block is done.'
@@ -839,7 +897,21 @@ class TallyController extends ChangeNotifier {
     final run = focus?.finish(endedAt);
     focus = null;
     await FocusStore.clear();
-    await _notifier?.cancel(_focusAlarmId);
+
+    // **A block that ran its full length keeps its alarm.**
+    //
+    // The alarm is due at the very instant the block completes, and this
+    // method is reached at that same instant when the app is still alive in
+    // the background - the countdown keeps ticking there. Cancelling here
+    // beat the OS to it by a few milliseconds and killed the ring: the timer
+    // worked when Android had already killed the process and failed when it
+    // had not, which is the worst possible way for a timer to behave.
+    //
+    // Ending early is the opposite case: nothing has finished, and an alarm
+    // for a block the user abandoned must not ring.
+    if (run == null || !run.isComplete(endedAt)) {
+      await _notifier?.cancel(_focusAlarmId);
+    }
     await _focusNotice?.hide();
     if (run == null) {
       notifyListeners();

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -110,6 +111,8 @@ class _TallyAppState extends State<TallyApp> with WidgetsBindingObserver {
         onGiveUp: c.endFocus,
         onComplete: c.endFocus,
         alarmBlocked: c.focusAlarmBlocked,
+        alarmImprecise: c.focusAlarmImprecise,
+        onFixAlarm: () => unawaited(c.requestExactAlarms()),
       );
     }
 

@@ -10,6 +10,14 @@ enum NudgeKind {
   /// by a budget: silently dropping a reminder someone set is a broken app.
   scheduled,
 
+  /// A timer the user started, reaching its end.
+  ///
+  /// Uncapped like [scheduled], and louder: it rings on the alarm stream at
+  /// alarm volume, so it is heard with the phone face down and the ringer
+  /// low - which is the state a focus block puts the phone in. A reminder
+  /// that is merely *missable* is a different product from a timer.
+  alarm,
+
   /// The app decided this was worth interrupting for. **Capped.**
   nudge,
 
@@ -153,7 +161,9 @@ final class NudgePolicy {
     }
 
     // A reminder the user set for a time is never second-guessed.
-    if (nudge.kind == NudgeKind.scheduled) return NudgeDecision.send(nudge);
+    if (nudge.kind == NudgeKind.scheduled || nudge.kind == NudgeKind.alarm) {
+      return NudgeDecision.send(nudge);
+    }
 
     if (!nudge.quietHoursExempt &&
         isQuietHour(nudge.at, offsetMinutes: offsetMinutes)) {
@@ -194,6 +204,7 @@ final class NudgePolicy {
       NudgeKind.nudge => dailyNudgeCap,
       NudgeKind.milestone => dailyMilestoneCap,
       NudgeKind.scheduled => 1 << 30,
+      NudgeKind.alarm => 1 << 30,
     };
 
     if (sameDay.length >= cap) {

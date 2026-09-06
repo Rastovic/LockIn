@@ -32,6 +32,8 @@ class FocusScreen extends StatefulWidget {
     this.onComplete,
     this.clock,
     this.alarmBlocked = false,
+    this.alarmImprecise = false,
+    this.onFixAlarm,
     super.key,
   });
 
@@ -50,6 +52,17 @@ class FocusScreen extends StatefulWidget {
   /// is that people leave this screen during a block - if it cannot ring, the
   /// user has to know now, not by missing the end of a block later.
   final bool alarmBlocked;
+
+  /// The alarm will ring, but Android may hold it for minutes.
+  ///
+  /// Worth its own line rather than folding into [alarmBlocked]: a block that
+  /// ends at 14:00 and rings at 14:04 is not a quieter version of silence, it
+  /// is a timer the user stops trusting. Off by default on recent Android, so
+  /// this is the state a fresh install is in until someone says otherwise.
+  final bool alarmImprecise;
+
+  /// Opens the OS switch for exact alarms.
+  final VoidCallback? onFixAlarm;
 
   final VoidCallback? onPause;
   final VoidCallback? onResume;
@@ -151,6 +164,36 @@ class _FocusScreenState extends State<FocusScreen> {
                   'You can turn them on in your phone settings.',
                   style: text.labelMedium?.copyWith(color: tokens.states.low),
                   textAlign: TextAlign.center,
+                ),
+              ),
+            ],
+            if (!widget.alarmBlocked &&
+                widget.alarmImprecise &&
+                !run.isPaused) ...[
+              const SizedBox(height: 8),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 32),
+                child: Semantics(
+                  button: widget.onFixAlarm != null,
+                  label: 'Allow exact alarms',
+                  excludeSemantics: true,
+                  child: GestureDetector(
+                    onTap: widget.onFixAlarm,
+                    behavior: HitTestBehavior.opaque,
+                    child: Text(
+                      'Android may hold this alarm for a few minutes.'
+                      '${widget.onFixAlarm == null ? '' : ' Tap to allow '
+                          'exact alarms.'}',
+                      style: text.labelMedium?.copyWith(
+                        color: tokens.states.low,
+                        decoration: widget.onFixAlarm == null
+                            ? null
+                            : TextDecoration.underline,
+                        decorationColor: tokens.states.low,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
                 ),
               ),
             ],

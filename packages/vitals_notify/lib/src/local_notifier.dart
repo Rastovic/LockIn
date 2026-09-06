@@ -16,12 +16,17 @@ final class NudgeChannel {
     required this.name,
     required this.description,
     required this.importance,
+    this.usage = AudioAttributesUsage.notification,
   });
 
   final String id;
   final String name;
   final String description;
   final Importance importance;
+
+  /// Which audio stream the channel plays on. Alarm usage survives a silenced
+  /// ringer; notification usage does not.
+  final AudioAttributesUsage usage;
 
   static const nudges = NudgeChannel(
     id: 'nudges',
@@ -37,6 +42,26 @@ final class NudgeChannel {
     importance: Importance.high,
   );
 
+  /// The channel a timer rings on.
+  ///
+  /// **Alarm usage, not notification usage.** That is the whole difference:
+  /// it plays on the alarm stream, at alarm volume, so it is heard through a
+  /// silenced ringer and with the phone face down - which is exactly the
+  /// state a focus block puts the phone in. At [Importance.max] it also
+  /// arrives as a heads-up rather than a line in the shade.
+  ///
+  /// A separate id from [reminders] because **a channel is immutable once
+  /// created**: Android ignores every later change to its importance, sound
+  /// and vibration, so making an existing channel louder is impossible and
+  /// the only route is a new one.
+  static const alarms = NudgeChannel(
+    id: 'alarms',
+    name: 'Timer alarms',
+    description: 'The end of a timer you started.',
+    importance: Importance.max,
+    usage: AudioAttributesUsage.alarm,
+  );
+
   static const milestones = NudgeChannel(
     id: 'milestones',
     name: 'Milestones',
@@ -46,11 +71,12 @@ final class NudgeChannel {
 
   static NudgeChannel forKind(NudgeKind kind) => switch (kind) {
         NudgeKind.scheduled => reminders,
+        NudgeKind.alarm => alarms,
         NudgeKind.nudge => nudges,
         NudgeKind.milestone => milestones,
       };
 
-  static const all = [nudges, reminders, milestones];
+  static const all = [nudges, reminders, milestones, alarms];
 }
 
 /// The real [Notifier], on `flutter_local_notifications`.
@@ -93,6 +119,7 @@ final class LocalNotifier implements Notifier {
           channel.name,
           description: channel.description,
           importance: channel.importance,
+          audioAttributesUsage: channel.usage,
         ),
       );
     }
@@ -154,6 +181,14 @@ final class LocalNotifier implements Notifier {
   @override
   Future<void> schedule(Nudge nudge) async {
     await initialise();
+    // An instant that has already gone is nothing to post, not an error.
+    //
+    // The plugin throws on a past date, and a throw here reaches whatever was
+    // reconciling state and takes that down with it. Callers restore alarms
+    // for things that were running when the process died, so a time in the
+    // past is an ordinary case for them - it means the thing finished while
+    // the app was away, and the caller has its own handling for that.
+    if (!nudge.at.isAfter(DateTime.now())) return;
     await _plugin.zonedSchedule(
       nudge.id,
       nudge.title,
@@ -211,6 +246,13 @@ final class LocalNotifier implements Notifier {
     }
   }
 
+  @override
+  Future<bool> canScheduleExactly() async =>
+      await _scheduleMode() == AndroidScheduleMode.exactAllowWhileIdle;
+
+  @override
+  Future<bool> requestExactScheduling() => requestExactAlarms();
+
   /// Sends the user to the exact-alarm screen, if there is one.
   ///
   /// Returns whether exact alarms are usable afterwards.
@@ -247,10 +289,19 @@ final class LocalNotifier implements Notifier {
         channelDescription: channel.description,
         importance: channel.importance,
         priority: switch (nudge.kind) {
+          NudgeKind.alarm => Priority.max,
           NudgeKind.scheduled => Priority.high,
           NudgeKind.nudge => Priority.defaultPriority,
           NudgeKind.milestone => Priority.low,
         },
+        // Repeated on the notification as well as the channel: the channel
+        // decides how Android *may* treat it, these decide how this one is
+        // built. A timer marked as an alarm sorts above ordinary notices and
+        // is exempt from some batching.
+        category: nudge.kind == NudgeKind.alarm
+            ? AndroidNotificationCategory.alarm
+            : null,
+        audioAttributesUsage: channel.usage,
         // The body is one plain sentence, so it must not be truncated to a
         // fragment that reads as an error.
         styleInformation: BigTextStyleInformation(nudge.body),
