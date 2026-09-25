@@ -26,6 +26,8 @@ final class AdMobGateway implements AdGateway, AdMobGatewayRebuilds {
 
   bool _consent = false;
   bool _started = false;
+  bool _sdkStarted = false;
+  bool _privacyRequired = false;
 
   BannerAd? _banner;
   bool _bannerLoaded = false;
@@ -36,6 +38,9 @@ final class AdMobGateway implements AdGateway, AdMobGatewayRebuilds {
 
   @override
   bool get hasConsent => _consent;
+
+  @override
+  bool get privacyOptionsRequired => _privacyRequired;
 
   @override
   Future<void> initialise() async {
@@ -68,10 +73,43 @@ final class AdMobGateway implements AdGateway, AdMobGatewayRebuilds {
       },
     );
     await completer.future;
+    await _readConsent();
+  }
 
+  @override
+  Future<void> showPrivacyOptions() async {
+    final closed = Completer<void>();
+    try {
+      await ConsentForm.showPrivacyOptionsForm((error) {
+        if (error != null) {
+          onDiagnostic?.call('privacy options: ${error.message}');
+        }
+        if (!closed.isCompleted) closed.complete();
+      });
+    } on Object catch (error) {
+      onDiagnostic?.call('privacy options threw: $error');
+      if (!closed.isCompleted) closed.complete();
+    }
+    await closed.future;
+    await _readConsent();
+  }
+
+  /// Consent as UMP now has it, and the SDK started once it allows ads.
+  Future<void> _readConsent() async {
+    _privacyRequired =
+        await ConsentInformation.instance.getPrivacyOptionsRequirementStatus() ==
+            PrivacyOptionsRequirementStatus.required;
     _consent = await ConsentInformation.instance.canRequestAds();
-    if (!_consent) return;
-
+    if (!_consent) {
+      // Withdrawn: drop what is held, so nothing loaded under the old answer
+      // is shown under the new one.
+      _disposeBanner();
+      _interstitial?.dispose();
+      _interstitial = null;
+      return;
+    }
+    if (_sdkStarted) return;
+    _sdkStarted = true;
     await MobileAds.instance.initialize();
   }
 

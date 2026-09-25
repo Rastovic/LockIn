@@ -75,6 +75,8 @@ class WatchedAppsScreen extends StatelessWidget {
     this.onTheme,
     this.onOpenGoals,
     this.onOpenTour,
+    this.onPrivacyPolicy,
+    this.onPrivacyChoices,
     this.onCheckNumbers,
     this.onExportCsv,
     this.onOpenBackup,
@@ -103,6 +105,14 @@ class WatchedAppsScreen extends StatelessWidget {
 
   /// Everything the app can do, listed. See [TourScreen].
   final VoidCallback? onOpenTour;
+
+  /// Opens the privacy policy. Both stores require it to be reachable from
+  /// inside the app, not only from the listing.
+  final VoidCallback? onPrivacyPolicy;
+
+  /// Re-opens the ad consent form. Null outside the regions where consent was
+  /// asked for, since the form cannot be shown there.
+  final VoidCallback? onPrivacyChoices;
 
   /// Opens the comparison against the phone's own counter.
   final VoidCallback? onCheckNumbers;
@@ -368,7 +378,7 @@ class WatchedAppsScreen extends StatelessWidget {
                     ),
                   _Fold(
                     title: 'ELSEWHERE',
-                    summary: 'goals, backup, export',
+                    summary: 'goals, backup, export, privacy',
                     children: [
                   if (onOpenTour != null)
                     _LinkRow(
@@ -410,6 +420,20 @@ class WatchedAppsScreen extends StatelessWidget {
                       detail: 'A spreadsheet to read. Not a backup: it cannot '
                           'be loaded back in.',
                       onTap: onExportCsv!,
+                    ),
+                  if (onPrivacyChoices != null)
+                    _LinkRow(
+                      label: 'Privacy choices',
+                      detail: 'Change what you agreed to about ads.',
+                      onTap: onPrivacyChoices!,
+                    ),
+                  if (onPrivacyPolicy != null)
+                    _LinkRow(
+                      label: 'Privacy policy',
+                      // The honest summary first, the full text one tap away.
+                      detail: 'Your data stays on this phone. Ads are the one '
+                          'part that is not LockIn\'s.',
+                      onTap: onPrivacyPolicy!,
                     ),
                     ],
                   ),

@@ -13,6 +13,7 @@ import 'package:tally_ui/tally_ui.dart';
 import '../data/app_database.dart';
 import '../data/tally_controller.dart';
 import 'ads.dart';
+import '../platform/android_links.dart';
 import '../platform/android_usage_source.dart';
 
 /// The app.
@@ -653,6 +654,17 @@ class _TallyAppState extends State<TallyApp> with WidgetsBindingObserver {
         onTheme: widget.onTheme,
         onOpenGoals: () => setState(() => _showGoals = true),
         onOpenTour: () => setState(() => _showTour = true),
+        onPrivacyPolicy: () => unawaited(
+          const AndroidLinks().open(AndroidLinks.privacyPolicyUrl),
+        ),
+        // Read at build: consent resolves on launch, before Settings is ever
+        // reached, and the answer only changes through this same form.
+        onPrivacyChoices: widget.ads.gateway.privacyOptionsRequired
+            ? () async {
+                await widget.ads.gateway.showPrivacyOptions();
+                if (mounted) setState(() {});
+              }
+            : null,
         onCheckNumbers: () => setState(() => _showAccuracy = true),
         onExportCsv: _exportCsv,
         onOpenBackup: _openBackup,

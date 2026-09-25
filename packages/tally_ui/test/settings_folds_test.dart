@@ -8,7 +8,12 @@ import 'package:tally_ui/tally_ui.dart';
 /// It was one flat list: every watched app, then every rule, then the theme,
 /// then backup. Reaching Backup meant scrolling past the whole app list.
 void main() {
-  Widget screen({int apps = 3}) => MaterialApp(
+  Widget screen({
+    int apps = 3,
+    VoidCallback? onPrivacyPolicy,
+    VoidCallback? onPrivacyChoices,
+  }) =>
+      MaterialApp(
         theme: TallyThemeBuilder.build(TallyTheme.blush, Brightness.light),
         home: WatchedAppsScreen(
           apps: [
@@ -27,6 +32,8 @@ void main() {
           onOpenGoals: () {},
           onOpenBackup: () {},
           onExportCsv: () async {},
+          onPrivacyPolicy: onPrivacyPolicy,
+          onPrivacyChoices: onPrivacyChoices,
         ),
       );
 
@@ -71,6 +78,38 @@ void main() {
 
     expect(find.text('Backup and restore'), findsOneWidget);
     expect(find.text('Theme'), findsNothing, reason: 'others stay closed');
+  });
+
+  testWidgets('privacy policy and choices live under Elsewhere',
+      (tester) async {
+    var policy = 0;
+    var choices = 0;
+    await tester.pumpWidget(
+      screen(
+        onPrivacyPolicy: () => policy++,
+        onPrivacyChoices: () => choices++,
+      ),
+    );
+    await tester.tap(find.text('ELSEWHERE'));
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text('Privacy policy'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Privacy policy'));
+    await tester.ensureVisible(find.text('Privacy choices'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Privacy choices'));
+    expect((policy, choices), (1, 1));
+  });
+
+  testWidgets('no privacy choices where consent was never asked',
+      (tester) async {
+    // Outside the EEA and UK the consent form cannot be shown, so the row
+    // would be a button that does nothing.
+    await tester.pumpWidget(screen(onPrivacyPolicy: () {}));
+    await tester.tap(find.text('ELSEWHERE'));
+    await tester.pumpAndSettle();
+    expect(find.text('Privacy choices'), findsNothing);
+    expect(find.text('Privacy policy', skipOffstage: false), findsOneWidget);
   });
 
   group('blocking', () {

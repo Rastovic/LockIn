@@ -1511,3 +1511,22 @@ feature is one people swipe through without reading.
   where it lives. `tourSections` is public so the copy is tested against the
   same tone rules as the rest, and so a new feature has one place to be
   listed. "Show the tips again" resets the tips.
+
+## Privacy policy and privacy choices in Settings (2026-09-25)
+
+Release readiness check found both missing. Settings → Elsewhere now has:
+
+- **Privacy policy**, opening `https://rastovic.github.io/lockin/privacy/`
+  (source in `~/Documents/apps/site/`, meant for a public
+  `rastovic.github.io` repo that can host every portfolio app). Opened through
+  an `openUrl` case on the existing `tally/usage` channel rather than a
+  `url_launcher` dependency: one `ACTION_VIEW` intent does not need a plugin.
+  Only `https://` is accepted.
+- **Privacy choices**, re-opening the UMP form. UMP policy requires it where
+  consent was asked. `AdGateway` gained `privacyOptionsRequired` and
+  `showPrivacyOptions()`; the row is hidden where the requirement status is not
+  `required`, because outside the EEA/UK/CH the form cannot be shown and the
+  row would do nothing. After the form closes consent is re-read: withdrawn
+  drops held ads, granted starts the SDK if it never started.
+
+Ad unit ids are still Google's test ids, on purpose, for the closed test.

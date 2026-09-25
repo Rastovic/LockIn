@@ -63,6 +63,21 @@ abstract interface class AdGateway {
   /// ad returns false and the app carries on.
   Future<bool> showInterstitial();
 
+  /// Whether the consent provider requires a way back into its form.
+  ///
+  /// True where consent was asked for (the EEA and the UK). UMP policy then
+  /// requires a "Privacy choices" entry the user can reach at any time; where
+  /// it is false the form cannot be shown at all, so the entry is hidden
+  /// rather than offered as a button that does nothing.
+  bool get privacyOptionsRequired;
+
+  /// Re-opens the consent form so an earlier answer can be changed.
+  ///
+  /// Completes when the form closes. Consent is re-read afterwards: an answer
+  /// changed to "no" stops ads on the next build, and one changed to "yes"
+  /// starts the SDK if it never started.
+  Future<void> showPrivacyOptions();
+
   /// Releases native ad objects. Called when the owner is disposed.
   void dispose();
 }
@@ -89,6 +104,12 @@ final class NoAds implements AdGateway {
 
   @override
   Future<bool> showInterstitial() async => false;
+
+  @override
+  bool get privacyOptionsRequired => false;
+
+  @override
+  Future<void> showPrivacyOptions() async {}
 
   @override
   void dispose() {}
