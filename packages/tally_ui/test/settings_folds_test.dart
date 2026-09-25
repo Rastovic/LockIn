@@ -72,4 +72,94 @@ void main() {
     expect(find.text('Backup and restore'), findsOneWidget);
     expect(find.text('Theme'), findsNothing, reason: 'others stay closed');
   });
+
+  group('blocking', () {
+    Widget blockingScreen({
+      BlockMode? blocking,
+      bool blockerOn = false,
+      ValueChanged<BlockMode>? onBlocking,
+      VoidCallback? onOpen,
+      UsageAccess access = UsageAccess.granted,
+    }) =>
+        MaterialApp(
+          theme: TallyThemeBuilder.build(TallyTheme.aurora, Brightness.dark),
+          home: WatchedAppsScreen(
+            apps: const [],
+            settings: const LedgerSettings(),
+            access: access,
+            blocking: blocking,
+            blockerOn: blockerOn,
+            onBlocking: onBlocking,
+            onOpenBlockerSettings: onOpen,
+          ),
+        );
+
+    testWidgets('hidden where there is no blocker', (tester) async {
+      await tester.pumpWidget(blockingScreen());
+      expect(find.text('BLOCKING'), findsNothing);
+    });
+
+    testWidgets('hidden without usage access, which it counts from',
+        (tester) async {
+      await tester.pumpWidget(
+        blockingScreen(blocking: BlockMode.off, access: UsageAccess.denied),
+      );
+      expect(find.text('BLOCKING'), findsNothing);
+    });
+
+    testWidgets('the header says whether it can actually block',
+        (tester) async {
+      await tester.pumpWidget(blockingScreen(blocking: BlockMode.off));
+      expect(find.text('off'), findsOneWidget);
+
+      await tester.pumpWidget(blockingScreen(blocking: BlockMode.block));
+      expect(find.text('needs a switch in Settings'), findsOneWidget);
+
+      await tester.pumpWidget(
+        blockingScreen(blocking: BlockMode.block, blockerOn: true),
+      );
+      expect(find.text('block at zero'), findsOneWidget);
+
+      await tester.pumpWidget(
+        blockingScreen(blocking: BlockMode.remind, blockerOn: true),
+      );
+      expect(find.text('remind at zero'), findsOneWidget);
+    });
+
+    testWidgets('picking a mode hands it to the app', (tester) async {
+      BlockMode? picked;
+      await tester.pumpWidget(
+        blockingScreen(blocking: BlockMode.off, onBlocking: (v) => picked = v),
+      );
+      await tester.tap(find.text('BLOCKING'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Remind'));
+      expect(picked, BlockMode.remind);
+      await tester.tap(find.text('Block'));
+      expect(picked, BlockMode.block);
+    });
+
+    testWidgets('on without the system switch, the way to it is offered',
+        (tester) async {
+      var opened = false;
+      await tester.pumpWidget(
+        blockingScreen(blocking: BlockMode.block, onOpen: () => opened = true),
+      );
+      await tester.tap(find.text('BLOCKING'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Open Settings'));
+      expect(opened, isTrue);
+    });
+
+    testWidgets('the rules line stops promising nothing is blocked',
+        (tester) async {
+      await tester.pumpWidget(
+        blockingScreen(blocking: BlockMode.block, blockerOn: true),
+      );
+      await tester.tap(find.text('THE NUMBERS'));
+      await tester.pumpAndSettle();
+      expect(find.textContaining('nothing is ever blocked'), findsNothing);
+      expect(find.textContaining('covered at zero'), findsOneWidget);
+    });
+  });
 }

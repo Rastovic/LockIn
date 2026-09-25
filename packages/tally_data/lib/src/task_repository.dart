@@ -294,6 +294,64 @@ final class TaskRepository {
         );
   }
 
+  /// Stores the minutes a tick paid, under an id the caller derives from the
+  /// plan entry so an untick can find it again.
+  ///
+  /// An upsert rather than an insert: ticking, unticking and ticking again
+  /// reuses the id, and the second tick has to revive the tombstoned row
+  /// instead of colliding with it.
+  Future<void> putTickSession(
+    FocusSession session, {
+    required String dayKey,
+    required DateTime now,
+  }) async {
+    await db.into(db.sessions).insertOnConflictUpdate(
+          SessionsCompanion.insert(
+            id: session.id,
+            updatedAt: now.millisecondsSinceEpoch,
+            installId: installId,
+            dayKey: dayKey,
+            tzOffsetMinutes: now.timeZoneOffset.inMinutes,
+            startedAt: session.startedAt.millisecondsSinceEpoch,
+            endedAt: session.endedAt.millisecondsSinceEpoch,
+            taskId: Value(session.taskId),
+            phoneDownVerified: const Value(false),
+            deletedAt: const Value(null),
+          ),
+        );
+  }
+
+  /// Tombstones one session. A no-op when there is none by that id.
+  Future<void> removeSession(String id, {required DateTime now}) async {
+    final stamp = now.millisecondsSinceEpoch;
+    await (db.update(db.sessions)
+          ..where((t) => t.id.equals(id))
+          ..where((t) => t.deletedAt.isNull()))
+        .write(
+      SessionsCompanion(deletedAt: Value(stamp), updatedAt: Value(stamp)),
+    );
+  }
+
+  /// Seconds already focused on [taskId] during [dayKey], leaving out the
+  /// session with id [excludeId].
+  Future<int> focusedSecondsFor({
+    required String taskId,
+    required String dayKey,
+    String? excludeId,
+  }) async {
+    final rows = await (db.select(db.sessions)
+          ..where((t) => t.taskId.equals(taskId))
+          ..where((t) => t.dayKey.equals(dayKey))
+          ..where((t) => t.deletedAt.isNull()))
+        .get();
+    var total = 0;
+    for (final row in rows) {
+      if (row.id == excludeId) continue;
+      total += ((row.endedAt - row.startedAt) / 1000).floor();
+    }
+    return total;
+  }
+
   /// Current streak per habit, counted back from [dayKey].
   ///
   /// A streak is derived from the plan rather than stored, on the same rule as

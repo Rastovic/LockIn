@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:flutter/material.dart' show Brightness, Color, ThemeMode;
 import 'package:flutter/services.dart';
 import 'package:tally_engine/tally_engine.dart';
 import 'package:tally_ui/tally_ui.dart';
@@ -51,27 +52,69 @@ final class AndroidHomeWidget {
     }
   }
 
+  /// The picked theme, so the widgets draw the app's palette rather than one
+  /// of their own.
+  ///
+  /// Both brightness variants are sent with the picked mode. With "system"
+  /// the phone's night mode can flip while the app is closed, and Kotlin then
+  /// picks the matching set on its next render without Dart running.
+  Future<void> pushTheme(TallyTheme theme, ThemeMode mode) async {
+    try {
+      await channel.invokeMethod<void>(
+          'updateWidgetTheme', themePayload(theme, mode));
+    } on MissingPluginException {
+      // Any platform that is not Android, including the web preview.
+    } on PlatformException {
+      // A widget in the old colours is far smaller than an app that will not
+      // open.
+    }
+  }
+
+  /// What [pushTheme] sends. Public so the contract can be tested.
+  static Map<String, Object> themePayload(TallyTheme theme, ThemeMode mode) {
+    String palette(Brightness brightness) {
+      final t = TallyTokens.of(theme, brightness);
+      int argb(Color c) => c.toARGB32();
+      return jsonEncode({
+        // The opaque ground, not a surface: the in-app cards are
+        // translucent over the app's own background, and over a wallpaper
+        // that would read as a smudge.
+        'bg': argb(t.bg),
+        'ink': argb(t.ink),
+        'inkMuted': argb(t.inkMuted),
+        'inkFaint': argb(t.inkFaint),
+        'field': argb(t.surfaceStrong),
+        'solvent': argb(t.states.solvent),
+        'low': argb(t.states.low),
+        'borrowing': argb(t.states.borrowing),
+      });
+    }
+
+    return {
+      'mode': switch (mode) {
+        ThemeMode.light => 'light',
+        ThemeMode.dark => 'dark',
+        ThemeMode.system => 'system',
+      },
+      'light': palette(Brightness.light),
+      'dark': palette(Brightness.dark),
+    };
+  }
+
   Future<void> push({
     required TodayView view,
     required String dateLabel,
     required int spendableSeconds,
     required bool usageVisible,
     required DateTime validUntil,
+    TodayView? next,
+    String nextDateLabel = '',
+    DateTime? nextValidUntil,
   }) async {
-    final rows = [
-      for (final row in view.rows.take(maxRows))
-        {
-          'title': row.task.title,
-          'done': row.entry.doneAt != null,
-          // Resolved here. Kotlin never learns what a sticker id means.
-          'glyph': stickerGlyphs[row.task.stickerId] ?? '',
-        },
-    ];
-
     try {
       await channel.invokeMethod<void>('updateTodayWidget', {
         'dateLabel': dateLabel,
-        'rows': jsonEncode(rows),
+        'rows': jsonEncode(_rows(view)),
         'doneCount': view.doneCount,
         'totalCount': view.rows.length,
         'spendableSeconds': spendableSeconds,
@@ -83,6 +126,18 @@ final class AndroidHomeWidget {
         // timezone. Sending the answer keeps the day rule in one place and
         // leaves Kotlin with a single comparison.
         'validUntilMillis': validUntil.millisecondsSinceEpoch,
+        // Tomorrow's plan, drawn once [validUntil] passes and until
+        // [nextValidUntil]. The day boundary arrives while the app is closed,
+        // and without this the widget could only say "open the app" until it
+        // was. Only sent together with its end, so Kotlin never shows it
+        // open-ended.
+        if (next != null && nextValidUntil != null) ...{
+          'nextDateLabel': nextDateLabel,
+          'nextRows': jsonEncode(_rows(next)),
+          'nextDoneCount': next.doneCount,
+          'nextTotalCount': next.rows.length,
+          'nextValidUntilMillis': nextValidUntil.millisecondsSinceEpoch,
+        },
       });
     } on MissingPluginException {
       // Any platform that is not Android, including the web preview.
@@ -91,4 +146,14 @@ final class AndroidHomeWidget {
       // smaller problem than an app that will not open.
     }
   }
+
+  static List<Map<String, Object>> _rows(TodayView view) => [
+        for (final row in view.rows.take(maxRows))
+          {
+            'title': row.task.title,
+            'done': row.entry.doneAt != null,
+            // Resolved here. Kotlin never learns what a sticker id means.
+            'glyph': stickerGlyphs[row.task.stickerId] ?? '',
+          },
+      ];
 }

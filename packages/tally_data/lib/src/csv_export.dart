@@ -30,7 +30,7 @@ final class CsvExport {
           ..orderBy([(t) => OrderingTerm(expression: t.dayKey)]))
         .get();
 
-    buffer.writeln('# lockIn day ledger');
+    buffer.writeln('# LockIn day ledger');
     buffer.writeln(
       'day,allowance_min,earned_min,spent_min,grace_min,'
       'unrepayable_min,closing_balance_min,closing_savings_min,solvent',

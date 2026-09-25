@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  The narrowest configuration that can tell which app is in front:
+  window-state changes only, no window content, no gestures, no key events.
+  This is the whole of what the Play accessibility declaration claims.
+-->
+<accessibility-service xmlns:android="http://schemas.android.com/apk/res/android"
+    android:accessibilityEventTypes="typeWindowStateChanged"
+    android:accessibilityFeedbackType="feedbackGeneric"
+    android:accessibilityFlags="flagDefault"
+    android:canRetrieveWindowContent="false"
+    android:notificationTimeout="100"
+    android:description="@string/blocker_description"
+    android:summary="@string/blocker_summary" />

@@ -41,7 +41,7 @@ android {
     defaultConfig {
         // Locked at the first Play upload: the (applicationId, signing key)
         // pair *is* the app on Play and neither half can be changed after.
-        // `tally` was the working name; the app ships as lockIn.
+        // `tally` was the working name; the app ships as LockIn.
         applicationId = "com.rastovic.lockin"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.

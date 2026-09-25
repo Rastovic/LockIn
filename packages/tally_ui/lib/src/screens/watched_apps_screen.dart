@@ -47,6 +47,19 @@ final class WatchableApp {
 /// informed rather than guessed. Suggested defaults are offered but never
 /// pre-ticked: an app that starts counting your time without you saying so is
 /// the behaviour this whole product exists to be the opposite of.
+/// What happens when a watched app is opened with no minutes left.
+enum BlockMode {
+  /// Nothing. The app only counts.
+  off,
+
+  /// A page says the minutes are gone, with "Continue anyway". Time spent
+  /// after that goes on the balance as debt, the same as with blocking off.
+  remind,
+
+  /// The same page with no way past it but earning more.
+  block,
+}
+
 class WatchedAppsScreen extends StatelessWidget {
   const WatchedAppsScreen({
     required this.apps,
@@ -64,6 +77,10 @@ class WatchedAppsScreen extends StatelessWidget {
     this.onCheckNumbers,
     this.onExportCsv,
     this.onOpenBackup,
+    this.blocking,
+    this.blockerOn = false,
+    this.onBlocking,
+    this.onOpenBlockerSettings,
     super.key,
   });
 
@@ -87,6 +104,15 @@ class WatchedAppsScreen extends StatelessWidget {
   final VoidCallback? onCheckNumbers;
   final Future<void> Function()? onExportCsv;
   final VoidCallback? onOpenBackup;
+
+  /// What happens at zero minutes. Null hides the section, for a platform
+  /// with no blocker.
+  final BlockMode? blocking;
+
+  /// The system accessibility switch. Remind and block both need it.
+  final bool blockerOn;
+  final ValueChanged<BlockMode>? onBlocking;
+  final VoidCallback? onOpenBlockerSettings;
 
   int get _watchedCount => apps.where((a) => a.watching).length;
 
@@ -156,6 +182,43 @@ class WatchedAppsScreen extends StatelessWidget {
                             onToggle: (value) => onToggle?.call(app, value),
                           ),
                         if (apps.isEmpty) _NoApps(),
+                      ],
+                    ),
+                  if (blocking != null && access == UsageAccess.granted)
+                    _Fold(
+                      title: 'BLOCKING',
+                      summary: switch ((blocking!, blockerOn)) {
+                        (BlockMode.off, _) => 'off',
+                        (_, false) => 'needs a switch in Settings',
+                        (BlockMode.remind, true) => 'remind at zero',
+                        (BlockMode.block, true) => 'block at zero',
+                      },
+                      children: [
+                        _RuleChoice(
+                          title: 'At zero minutes',
+                          detail: switch (blocking!) {
+                            BlockMode.off =>
+                              'Watched apps open as usual. The balance just '
+                                  'goes into debt.',
+                            BlockMode.remind =>
+                              'A page says your minutes are gone. You can '
+                                  'continue anyway, and that time goes on '
+                                  'your balance as debt.',
+                            BlockMode.block =>
+                              'A watched app is covered until you focus to '
+                                  'earn more. No way past it.',
+                          },
+                          options: const {
+                            'Off': BlockMode.off,
+                            'Remind': BlockMode.remind,
+                            'Block': BlockMode.block,
+                          },
+                          selected: blocking!,
+                          onPick: (value) =>
+                              onBlocking?.call(value as BlockMode),
+                        ),
+                        if (blocking != BlockMode.off && !blockerOn)
+                          _BlockerCard(onOpen: onOpenBlockerSettings),
                       ],
                     ),
                   _Fold(
@@ -246,8 +309,16 @@ class WatchedAppsScreen extends StatelessWidget {
                   Text(
                     // Stated once, plainly, because it is the rule that makes
                     // the whole ledger mean anything.
-                    'Debt stops at −${settings.debtFloorMinutes} minutes, and '
-                    'nothing is ever blocked.',
+                    switch (blocking) {
+                      BlockMode.block => 'Debt stops at '
+                          '−${settings.debtFloorMinutes} minutes. Watched '
+                          'apps are covered at zero.',
+                      BlockMode.remind => 'Debt stops at '
+                          '−${settings.debtFloorMinutes} minutes. Watched '
+                          'apps remind you at zero.',
+                      _ => 'Debt stops at −${settings.debtFloorMinutes} '
+                          'minutes, and nothing is ever blocked.',
+                    },
                     style: text.labelMedium,
                   ),
                     ],
@@ -276,7 +347,7 @@ class WatchedAppsScreen extends StatelessWidget {
                     ),
                     _RuleChoice(
                       title: 'Light or dark',
-                      detail: 'Following the system means lockIn changes when '
+                      detail: 'Following the system means LockIn changes when '
                           'your phone does.',
                       options: const {
                         'Dark': ThemeMode.dark,
@@ -300,7 +371,7 @@ class WatchedAppsScreen extends StatelessWidget {
                       label: 'Check the numbers',
                       // Named for what it answers rather than what it does.
                       // "Diagnostics" would be read as something for me.
-                      detail: 'Compare what lockIn counted against what your '
+                      detail: 'Compare what LockIn counted against what your '
                           'phone says.',
                       onTap: onCheckNumbers!,
                     ),
@@ -547,6 +618,64 @@ class _RuleChoice extends StatelessWidget {
   }
 }
 
+/// The second switch blocking needs, which only the user can flip.
+class _BlockerCard extends StatelessWidget {
+  const _BlockerCard({required this.onOpen});
+
+  final VoidCallback? onOpen;
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.tokens;
+    final text = Theme.of(context).textTheme;
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: tokens.surface,
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('One more switch, in Settings', style: text.bodyLarge),
+          const SizedBox(height: 6),
+          Text(
+            'Find LockIn under Accessibility and turn it on. Nothing is '
+            'covered until you do.',
+            style: text.bodyMedium,
+          ),
+          const SizedBox(height: 14),
+          Semantics(
+            button: true,
+            label: 'Open Accessibility settings',
+            excludeSemantics: true,
+            child: GestureDetector(
+              onTap: onOpen,
+              behavior: HitTestBehavior.opaque,
+              child: Container(
+                height: 48,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: tokens.states.solvent,
+                  borderRadius: BorderRadius.circular(999),
+                ),
+                child: Text(
+                  'Open Settings',
+                  style: text.bodyLarge?.copyWith(
+                    color: tokens.bg,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _AccessCard extends StatelessWidget {
   const _AccessCard({required this.access, required this.onGrant});
 
@@ -561,11 +690,11 @@ class _AccessCard extends StatelessWidget {
     final (title, body) = switch (access) {
       UsageAccess.unavailable => (
           'This device cannot report app usage',
-          'lockIn works as a planner and a focus timer, but the spending half '
+          'LockIn works as a planner and a focus timer, but the spending half '
               'of it needs an API this device does not have.',
         ),
       _ => (
-          'lockIn needs usage access to see what you spend',
+          'LockIn needs usage access to see what you spend',
           'Android grants this in Settings rather than in the app. Nothing is '
               'sent anywhere: the numbers are read on the phone and stay on '
               'it. Without it, the plan and the timer still work.',

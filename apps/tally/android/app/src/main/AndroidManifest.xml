@@ -43,7 +43,7 @@
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
 
     <application
-        android:label="lockIn"
+        android:label="LockIn"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher"
         android:roundIcon="@mipmap/ic_launcher_round">
@@ -135,6 +135,35 @@
                 android:name="android.appwidget.provider"
                 android:resource="@xml/capture_widget_info" />
         </receiver>
+
+        <!-- Covers a watched app once the minutes run out. An accessibility
+             service because it is the one API that reports the app in front
+             the moment it changes; usage stats only report it after the fact,
+             and polling them needs a foreground service this app gave up.
+             Window-state events only, no window content: see
+             xml/app_blocker.xml. Needs the Play accessibility declaration. -->
+        <service
+            android:name=".AppBlockerService"
+            android:label="@string/blocker_label"
+            android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.accessibilityservice.AccessibilityService" />
+            </intent-filter>
+            <meta-data
+                android:name="android.accessibilityservice"
+                android:resource="@xml/app_blocker" />
+        </service>
+
+        <!-- The block screen. Its own task and out of Recents, so it cannot be
+             swiped back to or used to reopen the covered app. -->
+        <activity
+            android:name=".BlockActivity"
+            android:theme="@android:style/Theme.Material.NoActionBar"
+            android:taskAffinity="com.rastovic.lockin.block"
+            android:launchMode="singleTask"
+            android:excludeFromRecents="true"
+            android:exported="false" />
 
         <!-- flutter_local_notifications declares only permissions in its own
              manifest: **the receivers that deliver a scheduled notification

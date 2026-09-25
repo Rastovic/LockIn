@@ -29,10 +29,20 @@ class CaptureWidgetProvider : AppWidgetProvider() {
 
         fun render(context: Context, manager: AppWidgetManager, ids: IntArray) {
             val waiting = CaptureQueue(context).count
+            val palette = WidgetTheme(context).palette()
 
             for (id in ids) {
                 val views =
                     RemoteViews(context.packageName, R.layout.widget_capture)
+
+                views.setInt(R.id.capture_bg, "setColorFilter", palette.bg)
+                views.setInt(
+                    R.id.capture_bg,
+                    "setImageAlpha",
+                    WidgetTheme.CARD_ALPHA,
+                )
+                views.setTextColor(R.id.capture_plus, palette.solvent)
+                views.setTextColor(R.id.capture_waiting, palette.inkMuted)
 
                 // The count is the reassurance. A captured line lives outside
                 // the app's database until it next runs, and with nothing on

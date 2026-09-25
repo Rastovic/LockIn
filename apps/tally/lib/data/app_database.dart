@@ -2,7 +2,7 @@ import 'dart:convert';
 
 import 'package:drift_flutter/drift_flutter.dart';
 import 'package:flutter/material.dart' show ThemeMode;
-import 'package:tally_ui/tally_ui.dart' show TallyTheme;
+import 'package:tally_ui/tally_ui.dart' show BlockMode, TallyTheme;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:tally_data/tally_data.dart';
 import 'package:tally_engine/tally_engine.dart';
@@ -200,7 +200,7 @@ final class FocusStore {
 ///
 /// Preferences rather than the database, and deliberately **not** in a backup:
 /// this is a measurement of *this phone* against *this phone's* own counter.
-/// Carried to a new device it would compare lockIn's numbers against readings
+/// Carried to a new device it would compare LockIn's numbers against readings
 /// taken on hardware that is no longer involved, which is worse than having no
 /// reading at all. Same reasoning that keeps `usage_checkpoints` local.
 final class AccuracyReports {
@@ -232,5 +232,29 @@ final class AccuracyReports {
       return;
     }
     await prefs.setInt(key, minutes);
+  }
+}
+
+/// What happens when a watched app is opened with no minutes left.
+///
+/// A device preference rather than a ledger setting, like the theme: it only
+/// does anything with this phone's accessibility switch on, so a restored
+/// backup should not turn it on for a phone where that switch is off.
+final class BlockPreference {
+  const BlockPreference._();
+
+  static const _key = 'tally.blockMode';
+
+  static Future<BlockMode> load() async {
+    final prefs = await SharedPreferences.getInstance();
+    return BlockMode.values.firstWhere(
+      (m) => m.name == prefs.getString(_key),
+      orElse: () => BlockMode.off,
+    );
+  }
+
+  static Future<void> save(BlockMode mode) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_key, mode.name);
   }
 }

@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import '../format/durations.dart';
 import '../theme/tally_theme_data.dart';
 
-/// One watched app's day, as lockIn counted it.
+/// One watched app's day, as LockIn counted it.
 final class AccuracyApp {
   const AccuracyApp({
     required this.packageName,
@@ -15,7 +15,7 @@ final class AccuracyApp {
   final String packageName;
   final String label;
 
-  /// What lockIn counted.
+  /// What LockIn counted.
   final int seconds;
 
   /// What the user read off Digital Wellbeing, if they have entered it.
@@ -23,7 +23,7 @@ final class AccuracyApp {
 
   int get minutes => wholeMinutes(seconds);
 
-  /// Positive means lockIn counted more than the phone did.
+  /// Positive means LockIn counted more than the phone did.
   int? get differenceMinutes =>
       reportedMinutes == null ? null : minutes - reportedMinutes!;
 }
@@ -42,17 +42,17 @@ final class AccuracyDay {
   bool get hasAnything => apps.isNotEmpty;
 }
 
-/// Checking lockIn's numbers against the phone's own.
+/// Checking LockIn's numbers against the phone's own.
 ///
 /// **This is the app's foundation, and it is the one thing the app cannot
-/// check for itself.** Every screen in lockIn is arithmetic on top of one
+/// check for itself.** Every screen in LockIn is arithmetic on top of one
 /// measurement: how long a watched app was in the foreground. If that
 /// measurement is wrong then the balance, the statement, the insights and the
 /// streak are all confidently wrong together, and no amount of internal
 /// consistency would reveal it.
 ///
 /// So the comparison is a screen rather than a note in a plan. It puts what
-/// lockIn counted next to a box for what Digital Wellbeing says, keeps the
+/// LockIn counted next to a box for what Digital Wellbeing says, keeps the
 /// answer, and states plainly how much disagreement is normal. A check nobody
 /// records is a check that gets done once and forgotten.
 class AccuracyScreen extends StatelessWidget {
@@ -129,7 +129,7 @@ class AccuracyScreen extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Everything in lockIn is arithmetic on one '
+                          'Everything in LockIn is arithmetic on one '
                           'measurement: how long a watched app was open. If '
                           'that is wrong, every other number is wrong with it '
                           'and nothing inside the app would show it.',
@@ -314,9 +314,9 @@ class _AppRowState extends State<_AppRow> {
                     '${d.abs()} minute${d.abs() == 1 ? '' : 's'} apart. That '
                         'is within rounding.',
                   final d when d > 0 =>
-                    'lockIn counted $d minutes more than your phone did.',
+                    'LockIn counted $d minutes more than your phone did.',
                   final d =>
-                    'lockIn counted ${-d} minutes less than your phone did.',
+                    'LockIn counted ${-d} minutes less than your phone did.',
                 },
                 style: text.labelMedium?.copyWith(color: verdictColour),
               ),

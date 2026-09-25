@@ -268,10 +268,8 @@ class _PoolRow extends StatelessWidget {
           ),
           child: Row(
             children: [
-              if (task.stickerId != null) ...[
-                StickerChip(stickerId: task.stickerId!),
-                const SizedBox(width: 10),
-              ],
+              StickerChip(stickerId: task.stickerId),
+              const SizedBox(width: 10),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,

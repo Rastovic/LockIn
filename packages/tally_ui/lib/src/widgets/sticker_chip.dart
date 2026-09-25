@@ -14,21 +14,31 @@ import '../theme/tally_theme_data.dart';
 /// overshoots once and comes back rather than springing.
 class StickerChip extends StatefulWidget {
   const StickerChip({
-    required this.stickerId,
+    this.stickerId,
     this.stamped = false,
     this.size = 26,
+    this.stampOnMount = false,
     super.key,
   });
 
   /// Which sticker. Rendered as its glyph until the drawn assets land in
   /// Phase 5c; the id is what persists either way.
-  final String stickerId;
+  ///
+  /// Null draws [defaultStickerGlyph]. A task without a sticker used to have
+  /// no chip at all, which left its title starting further left than every
+  /// row around it; the fallback keeps the list on one edge. It is display
+  /// only - nothing is stored, so the sticker sheet never counts it.
+  final String? stickerId;
 
   /// True once the task is complete. Transitioning false to true runs the
   /// stamp.
   final bool stamped;
 
   final double size;
+
+  /// Runs the stamp on first build, for a chip that is new to the tree but
+  /// represents a task that was just completed.
+  final bool stampOnMount;
 
   @override
   State<StickerChip> createState() => _StickerChipState();
@@ -61,6 +71,25 @@ class _StickerChipState extends State<StickerChip>
       weight: 25,
     ),
   ]).animate(_controller);
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.stamped && widget.stampOnMount) {
+      // After the first frame, because reduced motion is read from the
+      // MediaQuery and there is no context to read it from yet.
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        if (MediaQuery.disableAnimationsOf(context)) {
+          _controller.value = 1;
+        } else {
+          _controller.forward(from: 0);
+        }
+      });
+    } else if (widget.stamped) {
+      _controller.value = 1;
+    }
+  }
 
   @override
   void didUpdateWidget(StickerChip old) {
@@ -102,7 +131,7 @@ class _StickerChipState extends State<StickerChip>
         ),
         alignment: Alignment.center,
         child: Text(
-          stickerGlyphs[widget.stickerId] ?? '·',
+          stickerGlyphs[widget.stickerId] ?? defaultStickerGlyph,
           style: TextStyle(fontSize: widget.size * 0.52),
           // The glyph is decorative; the row's title already names the task.
           semanticsLabel: '',
@@ -111,6 +140,9 @@ class _StickerChipState extends State<StickerChip>
     );
   }
 }
+
+/// What a task with no sticker shows.
+const defaultStickerGlyph = '📌';
 
 /// Stand-in glyphs for the 24 base stickers.
 ///

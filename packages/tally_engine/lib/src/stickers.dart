@@ -226,7 +226,7 @@ final class StickerCatalog {
         (c) => c.planningStreak >= 30),
     _u('challenge', 'rosette', 'Complete the weekly challenge',
         (c) => c.challengesCompleted >= 1),
-    _u('year_one', 'candle on a cake', 'Use lockIn for a year',
+    _u('year_one', 'candle on a cake', 'Use LockIn for a year',
         (c) => c.daysSinceInstall >= 365),
   ];
 

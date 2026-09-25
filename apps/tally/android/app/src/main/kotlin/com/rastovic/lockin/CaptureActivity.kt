@@ -2,6 +2,8 @@ package com.rastovic.lockin
 
 import android.app.Activity
 import android.content.Context
+import android.content.res.ColorStateList
+import android.graphics.PorterDuff
 import android.os.Bundle
 import android.view.KeyEvent
 import android.view.WindowManager
@@ -9,6 +11,7 @@ import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.InputMethodManager
 import android.widget.Button
 import android.widget.EditText
+import android.widget.TextView
 import android.widget.Toast
 
 /**
@@ -31,6 +34,7 @@ class CaptureActivity : Activity() {
         setContentView(R.layout.activity_capture)
 
         val input = findViewById<EditText>(R.id.capture_input)
+        applyPalette(input)
         // The keyboard comes up with the box: one tap from home screen to
         // typing, or the widget has saved nobody anything. A translucent
         // floating window does not always honour the soft-input flag on its
@@ -66,6 +70,19 @@ class CaptureActivity : Activity() {
             save(input.text.toString())
         }
         findViewById<Button>(R.id.capture_cancel).setOnClickListener { finish() }
+    }
+
+    /** The picked app theme, the same palette the widget that opened this draws. */
+    private fun applyPalette(input: EditText) {
+        val palette = WidgetTheme(applicationContext).palette()
+        findViewById<android.view.View>(R.id.capture_card).background
+            ?.mutate()?.setColorFilter(palette.bg, PorterDuff.Mode.SRC_IN)
+        input.background?.mutate()?.setColorFilter(palette.field, PorterDuff.Mode.SRC_IN)
+        findViewById<TextView>(R.id.capture_title).setTextColor(palette.ink)
+        input.setTextColor(palette.ink)
+        input.setHintTextColor(ColorStateList.valueOf(palette.inkFaint))
+        findViewById<Button>(R.id.capture_cancel).setTextColor(palette.inkMuted)
+        findViewById<Button>(R.id.capture_save).setTextColor(palette.solvent)
     }
 
     private fun save(text: String) {

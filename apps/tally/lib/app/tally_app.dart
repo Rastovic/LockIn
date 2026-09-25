@@ -146,18 +146,9 @@ class _TallyAppState extends State<TallyApp> with WidgetsBindingObserver {
           ),
           NavigationBar(
         selectedIndex: _tab,
-        onDestinationSelected: (i) {
-          // Leaving Stats is this app's one honest break point.
-          //
-          // Finishing a block is the obvious candidate and the wrong one:
-          // it happens with the app closed, so the ad would land on the
-          // next launch, which is both the worst moment for the user and
-          // the placement Play enforces against. Stats is read and then
-          // left, deliberately, with nothing in progress.
-          final leavingStats = _tab == 2 && i != 2;
-          setState(() => _tab = i);
-          if (leavingStats) unawaited(widget.ads.maybeShowInterstitial());
-        },
+        // Banners only. The full-screen ad on leaving Stats was removed at
+        // the user's request (2026-09-17): it covered the whole app.
+        onDestinationSelected: (i) => setState(() => _tab = i),
         destinations: const [
           NavigationDestination(
             icon: Icon(Icons.today_outlined),
@@ -573,7 +564,40 @@ class _TallyAppState extends State<TallyApp> with WidgetsBindingObserver {
         onCheckNumbers: () => setState(() => _showAccuracy = true),
         onExportCsv: _exportCsv,
         onOpenBackup: _openBackup,
+        blocking: c.blockMode,
+        blockerOn: c.blockerOn,
+        onBlocking: _setBlocking,
+        onOpenBlockerSettings: _openBlockerSettings,
       );
+
+  /// Leaving off starts with the disclosure, every time.
+  ///
+  /// Play requires the reason for an accessibility service to be shown, and
+  /// agreed to, in the app before the user is sent to the system switch. It is
+  /// also the same rule the usage-access step follows: the reason before the
+  /// ask.
+  Future<void> _setBlocking(BlockMode mode) async {
+    // Moving between remind and block, or turning it off, changes nothing
+    // about what the service can see, so there is nothing new to disclose.
+    if (mode == BlockMode.off || c.blockMode != BlockMode.off) {
+      await c.setBlockMode(mode);
+      return;
+    }
+    final agreed = await showModalBottomSheet<bool>(
+      context: context,
+      backgroundColor: Theme.of(context).extension<TallyTokens>()!.bg,
+      builder: (context) => const _BlockingDisclosure(),
+    );
+    if (agreed != true) return;
+    await c.setBlockMode(mode);
+    if (!c.blockerOn) await _openBlockerSettings();
+  }
+
+  Future<void> _openBlockerSettings() async {
+    await c.openBlockerSettings();
+    // No callback when the user comes back from Settings; the resume reload
+    // re-checks the switch.
+  }
 
   /// The one check the app cannot run on itself.
   Widget _buildAccuracy() => FutureBuilder<List<AccuracyDay>>(
@@ -596,6 +620,7 @@ class _TallyAppState extends State<TallyApp> with WidgetsBindingObserver {
         }),
         onCreate: () => _openSheet(initialKind: _segment ?? TaskKind.oneoff),
         onEdit: (task) => _openSheet(existing: task),
+        onDelete: _confirmDeleteTask,
         onAddToToday: (task) => c.addToToday([task.id]),
         onStartFocus: (task) => _startTaskFocus(task),
         onCreateProject: _openProjectSheet,
@@ -655,6 +680,25 @@ class _TallyAppState extends State<TallyApp> with WidgetsBindingObserver {
         onConfirm: () {
           Navigator.of(sheetContext).pop();
           c.deleteProject(project.id);
+        },
+        onCancel: () => Navigator.of(sheetContext).pop(),
+      ),
+    );
+  }
+
+  /// Reached by holding a row on the Tasks tab, so deleting no longer means
+  /// opening the task and scrolling to the bottom of its sheet.
+  Future<void> _confirmDeleteTask(Task task) async {
+    await showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (sheetContext) => ConfirmSheet(
+        title: 'Delete ${task.title}?',
+        detail: 'It leaves your lists and today\'s plan.',
+        confirmLabel: 'Delete task',
+        onConfirm: () {
+          Navigator.of(sheetContext).pop();
+          c.deleteTask(task.id);
         },
         onCancel: () => Navigator.of(sheetContext).pop(),
       ),
@@ -753,6 +797,74 @@ class _StatsSwitcher extends StatelessWidget {
             const SizedBox(width: 8),
           ],
         ],
+      ),
+    );
+  }
+}
+
+/// What the accessibility service does, stated before it is switched on.
+class _BlockingDisclosure extends StatelessWidget {
+  const _BlockingDisclosure();
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = Theme.of(context).extension<TallyTokens>()!;
+    final text = Theme.of(context).textTheme;
+
+    Widget button(String label, {required bool primary, required bool value}) =>
+        Semantics(
+          button: true,
+          label: label,
+          excludeSemantics: true,
+          child: GestureDetector(
+            onTap: () => Navigator.of(context).pop(value),
+            behavior: HitTestBehavior.opaque,
+            child: Container(
+              height: 48,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: primary ? tokens.states.solvent : tokens.surface,
+                borderRadius: BorderRadius.circular(999),
+              ),
+              child: Text(
+                label,
+                style: text.bodyLarge?.copyWith(
+                  color: primary ? tokens.bg : tokens.inkMuted,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+          ),
+        );
+
+    return SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(20, 24, 20, 16),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Step in at zero', style: text.headlineMedium),
+            const SizedBox(height: 12),
+            Text(
+              'LockIn uses Android\'s accessibility service for this. It '
+              'only sees which app is opened, so it can show a page over the '
+              'apps you watch once your minutes run out.',
+              style: text.bodyMedium,
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'It does not read what is on screen or what you type, and '
+              'nothing is sent anywhere. Turn it off here or in Settings at '
+              'any time.',
+              style: text.bodyMedium,
+            ),
+            const SizedBox(height: 20),
+            button('Agree and open Settings', primary: true, value: true),
+            const SizedBox(height: 8),
+            button('Not now', primary: false, value: false),
+          ],
+        ),
       ),
     );
   }

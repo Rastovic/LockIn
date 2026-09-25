@@ -150,7 +150,16 @@ class TodayScreen extends StatelessWidget {
   }
 }
 
-class _PlanList extends StatelessWidget {
+/// The plan, then what is already done.
+///
+/// **Done rows move to their own section at the end** rather than staying in
+/// place struck through. Mixed in, a half-finished day reads as one long list
+/// and the eye has to skip the finished rows to find the next thing; split,
+/// the top of the screen is always what is left.
+///
+/// Only the open rows are reorderable. The order of finished work has no
+/// meaning, and dragging something into the done pile is what the tick is for.
+class _PlanList extends StatefulWidget {
   const _PlanList({
     required this.model,
     this.onToggle,
@@ -172,8 +181,38 @@ class _PlanList extends StatelessWidget {
   final void Function(Task habit)? onAcceptHabit;
 
   @override
+  State<_PlanList> createState() => _PlanListState();
+}
+
+class _PlanListState extends State<_PlanList> {
+  /// Entries seen open while this list has been on screen.
+  ///
+  /// A row that is ticked is rebuilt in the done section as a new widget, so
+  /// the sticker never sees its own false-to-true change and the stamp would
+  /// not play. Remembering what was open lets the done section stamp exactly
+  /// the rows that were just ticked, and not every finished row on app open.
+  final _seenOpen = <String>{};
+
+  @override
   Widget build(BuildContext context) {
+    final model = widget.model;
     final view = model.view;
+    final tokens = context.tokens;
+    final text = Theme.of(context).textTheme;
+
+    final open = [for (final row in view.rows) if (!row.isDone) row];
+    final done = [for (final row in view.rows) if (row.isDone) row];
+    final justDone = {
+      for (final row in done)
+        if (_seenOpen.contains(row.entry.id)) row.entry.id,
+    };
+    _seenOpen
+      ..removeAll(justDone)
+      ..addAll(open.map((row) => row.entry.id));
+
+    // The planner orders the whole plan, done rows included, so a position
+    // in the open list has to be translated back into the full one.
+    int fullIndex(int openIndex) => view.rows.indexOf(open[openIndex]);
 
     return ListView(
       padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
@@ -182,15 +221,16 @@ class _PlanList extends StatelessWidget {
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
           buildDefaultDragHandles: false,
-          itemCount: view.rows.length,
+          itemCount: open.length,
           // onReorderItem rather than onReorder: it reports the destination
           // as a final position, where the older callback reported an
           // insertion index that runs one high when moving down. The planner
           // takes a final position, so this removes an off-by-one that would
           // only show when dragging downwards.
-          onReorderItem: (from, to) => onReorder?.call(from, to),
+          onReorderItem: (from, to) =>
+              widget.onReorder?.call(fullIndex(from), fullIndex(to)),
           itemBuilder: (context, index) {
-            final row = view.rows[index];
+            final row = open[index];
             return Padding(
               key: ValueKey(row.entry.id),
               padding: const EdgeInsets.only(bottom: 6),
@@ -198,14 +238,14 @@ class _PlanList extends StatelessWidget {
                 index: index,
                 child: TaskRow(
                   title: row.task.title,
-                  done: row.isDone,
+                  done: false,
                   stickerId: row.stickerId,
                   estimateMinutes: row.task.estimateMinutes,
                   subtitle: row.avoidedDays > 0
                       ? 'avoided ${row.avoidedDays} days'
                       : null,
-                  onToggle: () => onToggle?.call(row.entry),
-                  onStartFocus: () => onStartFocus?.call(row.entry),
+                  onToggle: () => widget.onToggle?.call(row.entry),
+                  onStartFocus: () => widget.onStartFocus?.call(row.entry),
                 ),
               ),
             );
@@ -216,17 +256,54 @@ class _PlanList extends StatelessWidget {
             padding: const EdgeInsets.only(bottom: 6),
             child: _OfferedHabit(
               habit: habit,
-              onAccept: () => onAcceptHabit?.call(habit),
+              onAccept: () => widget.onAcceptHabit?.call(habit),
             ),
           ),
-        _AddFromList(onTap: onOpenPool),
+        _AddFromList(onTap: widget.onOpenPool),
+        if (done.isNotEmpty) ...[
+          Padding(
+            padding: const EdgeInsets.fromLTRB(8, 16, 8, 8),
+            child: Row(
+              children: [
+                Icon(
+                  Icons.check_circle_rounded,
+                  size: 14,
+                  color: tokens.states.solvent,
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  'DONE · ${done.length} of ${view.rows.length}',
+                  style: text.labelSmall
+                      ?.copyWith(color: tokens.states.solvent),
+                ),
+              ],
+            ),
+          ),
+          for (final row in done)
+            Padding(
+              key: ValueKey('done-${row.entry.id}'),
+              padding: const EdgeInsets.only(bottom: 6),
+              child: TaskRow(
+                title: row.task.title,
+                done: true,
+                showGrip: false,
+                stampOnMount: justDone.contains(row.entry.id),
+                stickerId: row.stickerId,
+                estimateMinutes: row.task.estimateMinutes,
+                // Unticking stays one tap away, for a mis-tap.
+                onToggle: () => widget.onToggle?.call(row.entry),
+              ),
+            ),
+        ],
         if (model.graceNotice != null)
           _Notice(text: model.graceNotice!)
         else if (model.suggestion != null)
           _Suggestion(
             item: model.suggestion!,
-            onAccept: () => onAcceptSuggestion?.call(model.suggestion!),
-            onDismiss: () => onDismissSuggestion?.call(model.suggestion!),
+            onAccept: () =>
+                widget.onAcceptSuggestion?.call(model.suggestion!),
+            onDismiss: () =>
+                widget.onDismissSuggestion?.call(model.suggestion!),
           ),
       ],
     );

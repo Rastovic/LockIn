@@ -15,6 +15,7 @@ private class TodayRowFactory(
 ) : RemoteViewsService.RemoteViewsFactory {
 
     private var rows: List<TodayWidgetStore.Row> = emptyList()
+    private var palette: WidgetTheme.Palette? = null
 
     override fun onCreate() = Unit
 
@@ -27,6 +28,7 @@ private class TodayRowFactory(
      */
     override fun onDataSetChanged() {
         rows = TodayWidgetStore(context).rows
+        palette = WidgetTheme(context).palette()
     }
 
     override fun onDestroy() {
@@ -38,6 +40,7 @@ private class TodayRowFactory(
     override fun getViewAt(position: Int): RemoteViews {
         val views = RemoteViews(context.packageName, R.layout.widget_task_row)
         val row = rows.getOrNull(position) ?: return views
+        val palette = palette ?: WidgetTheme(context).palette()
 
         views.setTextViewText(R.id.row_title, row.title)
         views.setTextViewText(R.id.row_glyph, row.glyph)
@@ -45,13 +48,11 @@ private class TodayRowFactory(
 
         // Done rows dim rather than vanish. The day's shape is the point, and
         // a list that empties as you work tells you nothing about it.
-        views.setInt(
+        views.setTextColor(
             R.id.row_title,
-            "setTextColor",
-            context.getColor(
-                if (row.done) R.color.widget_ink_faint else R.color.widget_ink,
-            ),
+            if (row.done) palette.inkFaint else palette.ink,
         )
+        views.setTextColor(R.id.row_mark, palette.solvent)
 
         // Filled by the template on the parent list. Empty because the whole
         // widget opens the same screen; without it the rows are not clickable

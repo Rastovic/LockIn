@@ -1,9 +1,8 @@
 /// A completed focus block: the only thing in the app that earns minutes.
 ///
-/// **Ticking a task earns nothing.** A checkbox that pays scroll time is
-/// farmable in ten seconds and the ledger stops meaning anything, so completion
-/// pays a sticker on a separate currency instead. That rule is enforced here by
-/// omission: there is no task-completion input to this engine at all.
+/// Ticking a task earns too, since 2026-09-24, but not through a second
+/// input: the app banks the unfocused part of the task's estimate as an
+/// ordinary 1.0x session, so the engine still knows only sessions.
 final class FocusSession {
   FocusSession({
     required this.id,

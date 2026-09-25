@@ -1,9 +1,11 @@
 import 'dart:convert';
 
+import 'package:flutter/material.dart' show Brightness, ThemeMode;
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tally/platform/android_home_widget.dart';
 import 'package:tally_engine/tally_engine.dart';
+import 'package:tally_ui/tally_ui.dart';
 
 /// What the home screen widget is handed.
 ///
@@ -87,6 +89,48 @@ void main() {
     expect(rows[1]['done'], isFalse);
   });
 
+  test('sends tomorrow ahead, so the widget is not blank at the boundary',
+      () async {
+    // The day rolls over while the app is closed. Without the next day in
+    // hand the widget could only ask to be opened until it was.
+    await const AndroidHomeWidget().push(
+      view: viewOf([task('Dishes')]),
+      dateLabel: 'Fri 14 August',
+      spendableSeconds: 900,
+      usageVisible: true,
+      validUntil: DateTime.utc(2026, 8, 15, 4),
+      next: viewOf([task('Gym', sticker: 'gym'), task('Read')]),
+      nextDateLabel: 'Sat 15 August',
+      nextValidUntil: DateTime.utc(2026, 8, 16, 4),
+    );
+
+    final args = calls.single.arguments as Map;
+    expect(args['nextDateLabel'], 'Sat 15 August');
+    expect(args['nextTotalCount'], 2);
+    expect(args['nextDoneCount'], 0);
+    expect(args['nextValidUntilMillis'],
+        DateTime.utc(2026, 8, 16, 4).millisecondsSinceEpoch);
+    final rows = jsonDecode(args['nextRows'] as String) as List;
+    expect(rows.map((r) => r['title']), ['Gym', 'Read']);
+    expect(rows[0]['glyph'], stickerGlyphs['gym']);
+  });
+
+  test('sends no next day without its end', () async {
+    // An open-ended tomorrow would be drawn forever.
+    await const AndroidHomeWidget().push(
+      view: viewOf([task('Dishes')]),
+      dateLabel: 'Fri 14 August',
+      spendableSeconds: 0,
+      usageVisible: false,
+      validUntil: DateTime.utc(2026, 8, 15, 4),
+      next: viewOf([task('Gym')]),
+    );
+
+    final args = calls.single.arguments as Map;
+    expect(args.containsKey('nextRows'), isFalse);
+    expect(args.containsKey('nextValidUntilMillis'), isFalse);
+  });
+
   test('says nothing about minutes without usage access', () async {
     // A confident zero would be a claim the app cannot make yet, and it would
     // read as "you have spent everything" rather than "this is switched off".
@@ -161,5 +205,57 @@ void main() {
     // The count is the real one, so the widget's summary never lies about the
     // day just because the list was trimmed for transport.
     expect(args['totalCount'], 200);
+  });
+
+  test('the widgets are sent the picked theme, both brightnesses', () async {
+    // The widgets used to draw a fixed Blush palette, so on the default Aurora
+    // theme a pink card sat beside a near-black, mint app.
+    await const AndroidHomeWidget()
+        .pushTheme(TallyTheme.aurora, ThemeMode.system);
+
+    final call = calls.single;
+    expect(call.method, 'updateWidgetTheme');
+    final args = call.arguments as Map;
+    expect(args['mode'], 'system');
+
+    final dark = jsonDecode(args['dark'] as String) as Map;
+    final light = jsonDecode(args['light'] as String) as Map;
+    final auroraDark = TallyTokens.of(TallyTheme.aurora, Brightness.dark);
+    final auroraLight = TallyTokens.of(TallyTheme.aurora, Brightness.light);
+    expect(dark['bg'], auroraDark.bg.toARGB32());
+    expect(dark['solvent'], auroraDark.states.solvent.toARGB32());
+    expect(light['ink'], auroraLight.ink.toARGB32());
+    expect(light['borrowing'], auroraLight.states.borrowing.toARGB32());
+  });
+
+  test('a forced mode in the app holds on the home screen', () {
+    String modeOf(ThemeMode mode) =>
+        AndroidHomeWidget.themePayload(TallyTheme.blush, mode)['mode']!
+            as String;
+    expect(modeOf(ThemeMode.dark), 'dark');
+    expect(modeOf(ThemeMode.light), 'light');
+  });
+
+  test('every palette key the Kotlin side reads is present', () {
+    final payload =
+        AndroidHomeWidget.themePayload(TallyTheme.blush, ThemeMode.system);
+    for (final key in ['light', 'dark']) {
+      final palette = jsonDecode(payload[key]! as String) as Map;
+      // WidgetTheme.parse reads exactly these; a missing one drops the whole
+      // palette back to the fallback colours.
+      expect(
+        palette.keys,
+        containsAll(<String>[
+          'bg',
+          'ink',
+          'inkMuted',
+          'inkFaint',
+          'field',
+          'solvent',
+          'low',
+          'borrowing',
+        ]),
+      );
+    }
   });
 }

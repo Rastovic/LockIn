@@ -12,6 +12,7 @@ import 'app/onboarding_flow.dart';
 import 'app/tally_app.dart';
 import 'data/app_database.dart';
 import 'data/tally_controller.dart';
+import 'platform/android_app_blocker.dart';
 import 'platform/android_focus_notice.dart';
 import 'platform/android_home_widget.dart';
 import 'platform/android_usage_source.dart';
@@ -80,12 +81,21 @@ class _TallyRootState extends State<TallyRoot> {
   late TallyTheme _theme = widget.theme;
   late ThemeMode _mode = widget.themeMode;
 
+  @override
+  void initState() {
+    super.initState();
+    // Every launch, not only on a change: a widget placed before this build
+    // has never been told the theme and would keep its fallback colours.
+    unawaited(const AndroidHomeWidget().pushTheme(_theme, _mode));
+  }
+
   void _setTheme(TallyTheme theme, ThemeMode mode) {
     setState(() {
       _theme = theme;
       _mode = mode;
     });
     ThemePreference.save(theme, mode);
+    unawaited(const AndroidHomeWidget().pushTheme(theme, mode));
   }
   late TallyController _controller = _build();
 
@@ -104,6 +114,7 @@ class _TallyRootState extends State<TallyRoot> {
         notifier: _notifier,
         homeWidget: const AndroidHomeWidget(),
         focusNotice: const AndroidFocusNotice(),
+        appBlocker: const AndroidAppBlocker(),
       )..onSettingsChanged = (next) {
           setState(() {
             _settings = next;
@@ -113,7 +124,7 @@ class _TallyRootState extends State<TallyRoot> {
 
   @override
   Widget build(BuildContext context) => MaterialApp(
-        title: 'lockIn',
+        title: 'LockIn',
         debugShowCheckedModeBanner: false,
         theme: TallyThemeBuilder.build(_theme, Brightness.light),
         darkTheme: TallyThemeBuilder.build(_theme, Brightness.dark),

@@ -1,5 +1,6 @@
 package com.rastovic.lockin
 
+import android.app.AlarmManager
 import android.app.PendingIntent
 import android.appwidget.AppWidgetManager
 import android.appwidget.AppWidgetProvider
@@ -46,23 +47,73 @@ class TodayWidgetProvider : AppWidgetProvider() {
             Intent.ACTION_TIME_CHANGED,
             Intent.ACTION_TIMEZONE_CHANGED,
             Intent.ACTION_BOOT_COMPLETED,
+            ACTION_DAY_ROLLOVER,
             -> TodayWidgetStore.refresh(context)
         }
     }
 
     companion object {
 
+        /** Sent by the alarm set in [scheduleRollover]. */
+        private const val ACTION_DAY_ROLLOVER =
+            "com.rastovic.lockin.WIDGET_DAY_ROLLOVER"
+
+        /**
+         * Wakes the widget at the next day boundary.
+         *
+         * The boundary is 4am by default, and nothing Android broadcasts
+         * marks it: DATE_CHANGED is midnight and `updatePeriodMillis` can lag
+         * by half an hour. Inexact on purpose - an exact alarm needs a
+         * permission the user would have to grant for a widget, and a few
+         * minutes of drift at 4am is invisible. One alarm, replaced on every
+         * render, so there is never more than one pending.
+         */
+        private fun scheduleRollover(context: Context, store: TodayWidgetStore) {
+            val alarms = context.getSystemService(AlarmManager::class.java)
+                ?: return
+            val pending = PendingIntent.getBroadcast(
+                context,
+                0,
+                Intent(context, TodayWidgetProvider::class.java)
+                    .setAction(ACTION_DAY_ROLLOVER),
+                PendingIntent.FLAG_IMMUTABLE or
+                    PendingIntent.FLAG_UPDATE_CURRENT,
+            )
+            val at = store.nextBoundaryMillis
+            if (at == 0L) {
+                alarms.cancel(pending)
+                return
+            }
+            // A second past the boundary, so the redraw lands on the new day
+            // rather than racing the comparison that decides it.
+            alarms.setAndAllowWhileIdle(AlarmManager.RTC, at + 1_000L, pending)
+        }
+
         fun render(context: Context, manager: AppWidgetManager, ids: IntArray) {
             val store = TodayWidgetStore(context)
+            if (ids.isNotEmpty()) scheduleRollover(context, store)
 
-            // Past the day boundary with nothing new written, which happens
-            // whenever the app has not been opened since. Yesterday's list is
-            // hidden rather than relabelled: a widget that is confidently
-            // wrong is worse than one that admits it needs opening.
+            // Past the day boundary and past the next day Dart sent ahead too,
+            // which takes two days without opening the app. Until then the
+            // store hands over the next day's plan on its own; after it the
+            // old list is hidden rather than relabelled: a widget that is
+            // confidently wrong is worse than one that admits it needs opening.
             val stale = store.isStale
+            val palette = WidgetTheme(context).palette()
 
             for (id in ids) {
                 val views = RemoteViews(context.packageName, R.layout.widget_today)
+
+                views.setInt(R.id.widget_bg, "setColorFilter", palette.bg)
+                // Translucent, so the wallpaper reads through the card.
+                views.setInt(
+                    R.id.widget_bg,
+                    "setImageAlpha",
+                    WidgetTheme.CARD_ALPHA,
+                )
+                views.setTextColor(R.id.widget_date, palette.inkMuted)
+                views.setTextColor(R.id.widget_count, palette.inkMuted)
+                views.setTextColor(R.id.widget_empty, palette.inkFaint)
 
                 views.setTextViewText(
                     R.id.widget_date,
@@ -90,6 +141,13 @@ class TodayWidgetProvider : AppWidgetProvider() {
                 // zero would be a claim the app cannot make yet.
                 if (store.usageVisible && !stale) {
                     views.setViewVisibility(R.id.widget_balance, View.VISIBLE)
+                    // The same state colour the app's balance strip uses, so
+                    // amber and red mean on the home screen what they mean
+                    // inside.
+                    views.setTextColor(
+                        R.id.widget_balance,
+                        palette.balanceColor(store.spendableSeconds),
+                    )
                     views.setTextViewText(
                         R.id.widget_balance,
                         formatMinutes(store.spendableSeconds),

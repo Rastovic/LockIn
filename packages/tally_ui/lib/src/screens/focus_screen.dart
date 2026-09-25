@@ -274,10 +274,8 @@ class _TaskChip extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          if (stickerId != null) ...[
-            StickerChip(stickerId: stickerId!, size: 22),
-            const SizedBox(width: 8),
-          ],
+          StickerChip(stickerId: stickerId, size: 22),
+          const SizedBox(width: 8),
           Text(title, style: Theme.of(context).textTheme.bodyLarge),
         ],
       ),

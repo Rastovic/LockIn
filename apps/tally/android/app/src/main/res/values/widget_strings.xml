@@ -2,7 +2,7 @@
 <resources>
     <string name="widget_title">Today</string>
     <string name="widget_empty">Nothing planned yet.</string>
-    <string name="widget_new_day">New day. Open lockIn to plan it.</string>
+    <string name="widget_new_day">New day. Open LockIn to plan it.</string>
     <string name="widget_description">Today\'s plan, and what is left to spend.</string>
     <string name="capture_plus">+</string>
     <string name="capture_prompt">Jot something down</string>
@@ -14,4 +14,14 @@
     <string name="capture_cancel">Cancel</string>
     <string name="capture_saved">Saved. Sort it later.</string>
     <string name="capture_widget_description">Capture a task without opening the app.</string>
+    <string name="block_title">Out of minutes</string>
+    <string name="block_body">This app is on your watched list. Focus in LockIn to earn more time.</string>
+    <string name="block_body_stale">New day. Open LockIn to add today\'s free minutes, or focus to earn more.</string>
+    <string name="block_body_remind">This app is on your watched list. If you continue, the time goes on your balance as debt.</string>
+    <string name="block_continue">Continue anyway</string>
+    <string name="block_open">Open LockIn</string>
+    <string name="block_close">Close</string>
+    <string name="blocker_label">LockIn app blocker</string>
+    <string name="blocker_summary">Covers your watched apps when your minutes run out.</string>
+    <string name="blocker_description">LockIn uses this to see which app is opened, so it can cover the apps you chose to watch once your minutes run out. It does not read what is on screen or what you type, and nothing is sent anywhere.</string>
 </resources>

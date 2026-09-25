@@ -1,9 +1,12 @@
-import 'package:flutter/widgets.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:vitals_ads/vitals_ads.dart';
 
 /// The app's side of [AdPolicy]: it holds the counters the rules read, keeps
 /// them across launches, and is the only thing the UI talks to.
+///
+/// **Banners only.** The interstitial was removed at the user's request: it
+/// still exists in `vitals_ads` for other apps, but nothing here loads or shows
+/// one, so no full-screen ad can appear.
 ///
 /// **Every question has a safe answer before [start] finishes.** The banner
 /// asks on the first frame, and a controller that answered "allowed" while
@@ -36,39 +39,17 @@ final class AdsController {
     _session = AdSession(sessionCount: count, coldStartAt: DateTime.now());
     await gateway.initialise();
     _ready = true;
-    await _preloadIfEligible();
-  }
-
-  /// Fetches an interstitial only for a user who could actually be shown one.
-  ///
-  /// On a first session, or before the first finished block, this does
-  /// nothing: the ad could not be shown however long it waited, and an
-  /// unfillable request is counted against the app's match rate.
-  Future<void> _preloadIfEligible() async {
-    if (!policy.mayPreload(
-      session: _session,
-      isPro: isPro,
-      hasConsent: gateway.hasConsent,
-      coreActionComplete: _coreActionDone,
-    )) {
-      return;
-    }
-    await gateway.prepareInterstitial();
   }
 
   /// Records that the user has reached the point of the app at least once.
   ///
-  /// In lockIn that is finishing a focus block: before that has happened the
+  /// In LockIn that is finishing a focus block: before that has happened the
   /// ledger has never paid out, and the app has not yet shown what it is for.
   Future<void> markCoreAction() async {
     if (_coreActionDone) return;
     _coreActionDone = true;
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_coreActionKey, true);
-
-    // The gate the user just passed is the one preloading was waiting on, and
-    // the break point is seconds away.
-    await _preloadIfEligible();
   }
 
   /// Whether a banner may be drawn under the current screen.
@@ -86,34 +67,6 @@ final class AdsController {
         coreActionComplete: _coreActionDone,
         screenBusy: screenBusy,
       );
-
-  /// Shows a full-screen ad if the caps allow one, and records it if shown.
-  ///
-  /// Returns nothing the caller has to act on: whether an ad appeared must
-  /// never change what the app does next.
-  Future<void> maybeShowInterstitial() async {
-    if (!_ready) return;
-    final now = DateTime.now();
-    final refusal = policy.refuse(
-      placement: AdPlacement.interstitial,
-      session: _session,
-      now: now,
-      isPro: isPro,
-      hasConsent: gateway.hasConsent,
-      coreActionComplete: _coreActionDone,
-      // Asked here rather than trusted from the call site: a caller that
-      // *looks* foreground can still be reached from a timer that kept
-      // running after the user left, and AdMob blocks serving for an app
-      // that shows full-screen ads from the background.
-      appForegrounded: WidgetsBinding.instance.lifecycleState ==
-          AppLifecycleState.resumed,
-    );
-    if (refusal != null) return;
-
-    if (await gateway.showInterstitial()) {
-      _session = _session.recordInterstitial(now);
-    }
-  }
 
   void dispose() => gateway.dispose();
 }

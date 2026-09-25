@@ -10,8 +10,8 @@ import 'sticker_chip.dart';
 /// and title read as one unit starting near the left edge, and keeps every
 /// tappable thing in one place.
 ///
-/// **Ticking earns nothing.** It stamps the sticker, and that separation is
-/// enforced all the way down in the engine.
+/// Ticking stamps the sticker and pays the task's estimate, as a session the
+/// controller banks. The row itself knows nothing about minutes.
 class TaskRow extends StatelessWidget {
   const TaskRow({
     required this.title,
@@ -22,6 +22,7 @@ class TaskRow extends StatelessWidget {
     this.onToggle,
     this.onStartFocus,
     this.showGrip = true,
+    this.stampOnMount = false,
     super.key,
   });
 
@@ -37,6 +38,10 @@ class TaskRow extends StatelessWidget {
   final VoidCallback? onStartFocus;
   final bool showGrip;
 
+  /// Plays the sticker's stamp as the row appears, for a row that was just
+  /// ticked and has been rebuilt in the done section.
+  final bool stampOnMount;
+
   @override
   Widget build(BuildContext context) {
     final tokens = context.tokens;
@@ -46,8 +51,16 @@ class TaskRow extends StatelessWidget {
       label: title,
       checked: done,
       child: Container(
+        // A done row is tinted with the solvent colour, so finished work
+        // reads as a different kind of row at a glance, not only as
+        // struck-through text.
         decoration: BoxDecoration(
-          color: tokens.surface,
+          color: done
+              ? Color.alphaBlend(
+                  tokens.states.solvent.withValues(alpha: 0.12),
+                  tokens.surface,
+                )
+              : tokens.surface,
           borderRadius: BorderRadius.circular(14),
         ),
         padding: const EdgeInsets.fromLTRB(8, 6, 6, 6),
@@ -57,10 +70,12 @@ class TaskRow extends StatelessWidget {
               Icon(Icons.drag_indicator, size: 16, color: tokens.inkFaint),
               const SizedBox(width: 4),
             ],
-            if (stickerId != null) ...[
-              StickerChip(stickerId: stickerId!, stamped: done),
-              const SizedBox(width: 10),
-            ],
+            StickerChip(
+              stickerId: stickerId,
+              stamped: done,
+              stampOnMount: stampOnMount,
+            ),
+            const SizedBox(width: 10),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,

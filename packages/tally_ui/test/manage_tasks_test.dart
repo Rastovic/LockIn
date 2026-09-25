@@ -35,6 +35,7 @@ Widget manage({
   Set<String> planned = const {},
   ValueChanged<TaskKind?>? onSegment,
   void Function(Task)? onEdit,
+  void Function(Task)? onDelete,
   void Function(Task)? onAdd,
   VoidCallback? onCreate,
 }) =>
@@ -49,6 +50,7 @@ Widget manage({
         segment: segment,
         onSegment: onSegment ?? (_) {},
         onEdit: onEdit,
+        onDelete: onDelete,
         onAddToToday: onAdd,
         onCreate: onCreate,
       ),
@@ -461,10 +463,48 @@ void main() {
       // The label is asserted separately from the tap: a control can be
       // reachable by a screen reader and still be off-screen for a finger.
       expect(find.bySemanticsLabel('Delete task'), findsOneWidget);
-      await tester.ensureVisible(find.text('Delete'));
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('Delete'));
+      // In the header, so it is on screen without scrolling to the bottom.
+      await tester.tap(find.bySemanticsLabel('Delete task'));
       expect(deleted, 1);
+    });
+
+    testWidgets('the sticker is picked from its own sheet, next to the title',
+        (tester) async {
+      TaskDraft? saved;
+      usePhoneViewport(tester);
+      await tester.pumpWidget(
+        wrap(Scaffold(body: TaskSheet(onSave: (d) => saved = d))),
+      );
+      await tester.enterText(find.byType(TextField).first, 'Run');
+      await tester.tap(find.bySemanticsLabel('Choose a sticker'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.bySemanticsLabel('run'));
+      await tester.pumpAndSettle();
+      expect(find.bySemanticsLabel('Change sticker'), findsOneWidget);
+      await tapScrolled(tester, 'Add task');
+      expect(saved?.stickerId, 'run');
+    });
+
+    testWidgets('picking the default sticker clears one that was set',
+        (tester) async {
+      TaskDraft? saved;
+      usePhoneViewport(tester);
+      await tester.pumpWidget(
+        wrap(
+          Scaffold(
+            body: TaskSheet(
+              existing: task('Run', sticker: 'run'),
+              onSave: (d) => saved = d,
+            ),
+          ),
+        ),
+      );
+      await tester.tap(find.bySemanticsLabel('Change sticker'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.bySemanticsLabel('Default sticker'));
+      await tester.pumpAndSettle();
+      await tapScrolled(tester, 'Save');
+      expect(saved?.stickerId, isNull);
     });
 
     testWidgets('creating does not offer delete', (tester) async {
@@ -475,5 +515,23 @@ void main() {
       expect(find.bySemanticsLabel('Delete task'), findsNothing);
       expect(find.text('New task'), findsOneWidget);
     });
+  });
+
+  testWidgets('holding a row asks to delete it, a tap still edits',
+      (tester) async {
+    final deleted = <String>[];
+    final edited = <String>[];
+    await tester.pumpWidget(
+      manage(
+        tasks: [task('Dishes')],
+        onDelete: (t) => deleted.add(t.id),
+        onEdit: (t) => edited.add(t.id),
+      ),
+    );
+    await tester.longPress(find.text('Dishes'));
+    expect(deleted, ['Dishes']);
+    expect(edited, isEmpty);
+    await tester.tap(find.text('Dishes'));
+    expect(edited, ['Dishes']);
   });
 }

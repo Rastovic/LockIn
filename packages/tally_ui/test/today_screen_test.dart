@@ -142,6 +142,73 @@ void main() {
       list.onReorderItem!(0, 2);
       expect(moves, [(0, 2)], reason: 'a final position, unadjusted');
     });
+
+    testWidgets('done rows move to their own section after the open ones',
+        (tester) async {
+      final tasks = [task('a'), task('b'), task('c')];
+      var plan = planner.addToDay(
+        dayKey: today,
+        plan: const [],
+        taskIds: ['a', 'b', 'c'],
+      );
+      plan = planner
+          .complete(
+            plan: plan,
+            entryId: plan.first.id,
+            tasks: tasks,
+            at: now,
+            dayKey: today,
+          )
+          .plan;
+
+      await tester.pumpWidget(wrap(TodayScreen(model: modelFor(tasks, plan))));
+
+      expect(find.text('DONE · 1 of 3'), findsOneWidget);
+      final y = {
+        for (final t in ['a', 'b', 'c', 'DONE · 1 of 3'])
+          t: tester.getTopLeft(find.text(t)).dy,
+      };
+      expect(y['b']!, lessThan(y['DONE · 1 of 3']!));
+      expect(y['c']!, lessThan(y['DONE · 1 of 3']!));
+      expect(y['a']!, greaterThan(y['DONE · 1 of 3']!));
+    });
+
+    testWidgets('with done rows mixed in, a drag reports full-plan positions',
+        (tester) async {
+      // Only the open rows are reorderable, and the planner orders the whole
+      // plan. Dragging c onto b in the open list is 2 -> 1 in the full plan.
+      final moves = <(int, int)>[];
+      final tasks = [task('a'), task('b'), task('c')];
+      var plan = planner.addToDay(
+        dayKey: today,
+        plan: const [],
+        taskIds: ['a', 'b', 'c'],
+      );
+      plan = planner
+          .complete(
+            plan: plan,
+            entryId: plan.first.id,
+            tasks: tasks,
+            at: now,
+            dayKey: today,
+          )
+          .plan;
+
+      await tester.pumpWidget(
+        wrap(
+          TodayScreen(
+            model: modelFor(tasks, plan),
+            onReorder: (from, to) => moves.add((from, to)),
+          ),
+        ),
+      );
+
+      final list = tester.widget<ReorderableListView>(
+        find.byType(ReorderableListView),
+      );
+      list.onReorderItem!(1, 0);
+      expect(moves, [(2, 1)]);
+    });
   });
 
   group('completion', () {

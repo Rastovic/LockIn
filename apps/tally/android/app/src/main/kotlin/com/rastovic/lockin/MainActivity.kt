@@ -87,8 +87,64 @@ class MainActivity : FlutterActivity() {
                             call.argument<Boolean>("usageVisible") ?: false,
                         validUntil =
                             call.argument<Long>("validUntilMillis") ?: 0L,
+                        next = call.argument<Long>("nextValidUntilMillis")
+                            ?.let { until ->
+                                TodayWidgetStore.Next(
+                                    dateLabel = call.argument<String>(
+                                        "nextDateLabel",
+                                    ) ?: "",
+                                    rowsJson = call.argument<String>(
+                                        "nextRows",
+                                    ) ?: "[]",
+                                    done = call.argument<Int>(
+                                        "nextDoneCount",
+                                    ) ?: 0,
+                                    total = call.argument<Int>(
+                                        "nextTotalCount",
+                                    ) ?: 0,
+                                    validUntil = until,
+                                )
+                            },
                     )
                     TodayWidgetStore.refresh(applicationContext)
+                    result.success(null)
+                }
+
+                // The picked theme, so the widgets stop drawing a palette of
+                // their own. Both brightness variants come over; Kotlin only
+                // decides which one applies at render time. See WidgetTheme.
+                "updateWidgetTheme" -> {
+                    WidgetTheme(applicationContext).write(
+                        mode = call.argument<String>("mode") ?: "system",
+                        lightJson = call.argument<String>("light") ?: "",
+                        darkJson = call.argument<String>("dark") ?: "",
+                    )
+                    TodayWidgetStore.refresh(applicationContext)
+                    CaptureWidgetProvider.refresh(applicationContext)
+                    result.success(null)
+                }
+
+                // What the app blocker subtracts from. Dart keeps the count;
+                // see BlockStore.
+                "updateBlocking" -> {
+                    BlockStore(applicationContext).write(
+                        enabled = call.argument<Boolean>("enabled") ?: false,
+                        hard = call.argument<Boolean>("hard") ?: true,
+                        packagesJson = call.argument<String>("packages") ?: "[]",
+                        spendableSeconds =
+                            call.argument<Int>("spendableSeconds") ?: 0,
+                        asOfMillis = call.argument<Long>("asOfMillis") ?: 0L,
+                        validUntilMillis =
+                            call.argument<Long>("validUntilMillis") ?: 0L,
+                    )
+                    result.success(null)
+                }
+
+                "blockerOn" ->
+                    result.success(AppBlockerService.isOn(applicationContext))
+
+                "openBlockerSettings" -> {
+                    AppBlockerService.openSettings(applicationContext)
                     result.success(null)
                 }
 

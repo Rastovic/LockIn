@@ -16,7 +16,7 @@ AccuracyDay day(List<AccuracyApp> apps) =>
 /// measurement is wrong, everything is confidently wrong together and nothing
 /// inside the app would reveal it.
 void main() {
-  testWidgets('shows what lockIn counted, per app', (tester) async {
+  testWidgets('shows what LockIn counted, per app', (tester) async {
     await tester.pumpWidget(
       wrap(
         AccuracyScreen(
@@ -80,7 +80,7 @@ void main() {
       ),
     );
     expect(
-      find.text('lockIn counted 18 minutes more than your phone did.'),
+      find.text('LockIn counted 18 minutes more than your phone did.'),
       findsOneWidget,
     );
   });

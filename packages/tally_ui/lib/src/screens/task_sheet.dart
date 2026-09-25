@@ -108,8 +108,6 @@ class _TaskSheetState extends State<TaskSheet> {
   late bool _canSave = (widget.existing?.title ?? '').trim().isNotEmpty;
   late Set<int> _weekdays = {...?widget.existing?.habitWeekdays};
 
-  bool _pickingSticker = false;
-
   @override
   void dispose() {
     _title.removeListener(_onTitleChanged);
@@ -138,6 +136,25 @@ class _TaskSheetState extends State<TaskSheet> {
     if (draft.isValid) widget.onSave(draft);
   }
 
+  Future<void> _pickSticker() async {
+    final picked = await showModalBottomSheet<_StickerChoice>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (context) => _StickerPicker(selected: _sticker),
+    );
+    if (picked != null) setState(() => _sticker = picked.id);
+  }
+
+  /// Order, reworked after use: what the task is, how long it takes, when it
+  /// comes back, and only then the optional words.
+  ///
+  /// How long used to sit at the very bottom under a sticker grid that could
+  /// open to half the sheet. It is the field the day plan actually runs on,
+  /// so it now follows the title, and the sticker has shrunk to a button
+  /// beside the title - which is where it shows up on every row anyway.
+  ///
+  /// The save button sits outside the scroll so it is always on screen, and
+  /// delete moved up to the header rather than under everything else.
   @override
   Widget build(BuildContext context) {
     final tokens = context.tokens;
@@ -152,120 +169,126 @@ class _TaskSheetState extends State<TaskSheet> {
           borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
         ),
         padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
-        // Scrollable, and capped below the full screen height. With a keyboard
-        // up on a small phone this content is taller than the space it has,
-        // and a sheet that clips its own save button is unusable.
+        // Capped below the full screen height. With a keyboard up on a small
+        // phone this content is taller than the space it has, so the fields
+        // scroll and the save button stays put.
         constraints: BoxConstraints(
           maxHeight: MediaQuery.sizeOf(context).height * 0.9,
         ),
-        child: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Center(
-                child: Container(
-                  width: 36,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: tokens.surfaceStrong,
-                    borderRadius: BorderRadius.circular(999),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: Container(
+                width: 36,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: tokens.surfaceStrong,
+                  borderRadius: BorderRadius.circular(999),
+                ),
+              ),
+            ),
+            const SizedBox(height: 14),
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    editing ? 'Edit task' : 'New task',
+                    style: text.titleLarge,
                   ),
                 ),
-              ),
-              const SizedBox(height: 18),
-              Text(editing ? 'Edit task' : 'New task', style: text.titleLarge),
-              const SizedBox(height: 16),
-              if (widget.projectName == null) ...[
-                _KindPicker(
-                  selected: _kind,
-                  onChanged: (kind) => setState(() => _kind = kind),
-                ),
-                const SizedBox(height: 16),
-              ] else ...[
-                Text('IN PROJECT', style: text.labelSmall),
-                const SizedBox(height: 6),
-                Text(widget.projectName!, style: text.bodyLarge),
-                const SizedBox(height: 16),
-              ],
-              _TitleField(controller: _title, kind: _kind),
-              const SizedBox(height: 10),
-              _NoteField(controller: _note, kind: _kind),
-              const SizedBox(height: 16),
-              _StickerRow(
-                selected: _sticker,
-                expanded: _pickingSticker,
-                onToggle: () =>
-                    setState(() => _pickingSticker = !_pickingSticker),
-                onPick: (id) => setState(() {
-                  _sticker = _sticker == id ? null : id;
-                  _pickingSticker = false;
-                }),
-              ),
-              // Every kind except a habit, which already repeats on its own
-              // weekdays and would otherwise carry two schedules at once.
-              if (_kind != TaskKind.habit) ...[
-                const SizedBox(height: 16),
-                _RepeatRow(
-                  selected: _repeat,
-                  onPick: (value) => setState(() => _repeat = value),
-                ),
-              ],
-              // A quick task has no timer. Offering one would invite an
-              // estimate on something that takes two seconds, and every
-              // estimate the wheel can produce is longer than the task.
-              if (_kind != TaskKind.quick) ...[
-                const SizedBox(height: 16),
-                _EstimateRow(
-                  selected: _estimate,
-                  onPick: (minutes) => setState(() => _estimate = minutes),
-                ),
-              ],
-              // Only habits are scheduled. A dread task has no week dots because
-              // the whole point of it is that it has no schedule.
-              if (_kind == TaskKind.habit) ...[
-                const SizedBox(height: 16),
-                _WeekdayRow(
-                  selected: _weekdays,
-                  onToggle: (day) => setState(() {
-                    _weekdays = {..._weekdays};
-                    if (!_weekdays.remove(day)) _weekdays.add(day);
-                  }),
-                ),
-              ],
-              const SizedBox(height: 24),
-              _SaveButton(
-                label: editing ? 'Save' : 'Add task',
-                enabled: _canSave,
-                onTap: _save,
-              ),
-              if (editing && widget.onDelete != null) ...[
-                const SizedBox(height: 8),
-                Center(
-                  child: Semantics(
+                if (editing && widget.onDelete != null)
+                  Semantics(
                     button: true,
                     label: 'Delete task',
                     excludeSemantics: true,
                     child: GestureDetector(
                       onTap: widget.onDelete,
                       behavior: HitTestBehavior.opaque,
-                      child: Container(
+                      child: SizedBox(
+                        width: 44,
                         height: 44,
-                        alignment: Alignment.center,
-                        padding: const EdgeInsets.symmetric(horizontal: 20),
-                        child: Text(
-                          'Delete',
-                          style: text.bodyLarge?.copyWith(
-                            color: tokens.states.borrowing,
-                          ),
+                        child: Icon(
+                          Icons.delete_outline_rounded,
+                          size: 22,
+                          color: tokens.states.borrowing,
                         ),
                       ),
                     ),
                   ),
-                ),
               ],
-            ],
-          ),
+            ),
+            const SizedBox(height: 12),
+            Flexible(
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    if (widget.projectName == null) ...[
+                      _KindPicker(
+                        selected: _kind,
+                        onChanged: (kind) => setState(() => _kind = kind),
+                      ),
+                      const SizedBox(height: 16),
+                    ] else ...[
+                      Text('IN PROJECT', style: text.labelSmall),
+                      const SizedBox(height: 6),
+                      Text(widget.projectName!, style: text.bodyLarge),
+                      const SizedBox(height: 16),
+                    ],
+                    _TitleField(
+                      controller: _title,
+                      kind: _kind,
+                      sticker: _sticker,
+                      onPickSticker: _pickSticker,
+                    ),
+                    // A quick task has no timer. Offering one would invite an
+                    // estimate on something that takes two seconds, and every
+                    // estimate the wheel can produce is longer than the task.
+                    if (_kind != TaskKind.quick) ...[
+                      const SizedBox(height: 16),
+                      _EstimateRow(
+                        selected: _estimate,
+                        onPick: (minutes) =>
+                            setState(() => _estimate = minutes),
+                      ),
+                    ],
+                    // Every kind except a habit, which already repeats on its
+                    // own weekdays and would otherwise carry two schedules.
+                    if (_kind != TaskKind.habit) ...[
+                      const SizedBox(height: 16),
+                      _RepeatRow(
+                        selected: _repeat,
+                        onPick: (value) => setState(() => _repeat = value),
+                      ),
+                    ],
+                    // Only habits are scheduled. A dread task has no week dots
+                    // because the whole point of it is that it has no schedule.
+                    if (_kind == TaskKind.habit) ...[
+                      const SizedBox(height: 16),
+                      _WeekdayRow(
+                        selected: _weekdays,
+                        onToggle: (day) => setState(() {
+                          _weekdays = {..._weekdays};
+                          if (!_weekdays.remove(day)) _weekdays.add(day);
+                        }),
+                      ),
+                    ],
+                    const SizedBox(height: 16),
+                    _NoteField(controller: _note, kind: _kind),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            _SaveButton(
+              label: editing ? 'Save' : 'Add task',
+              enabled: _canSave,
+              onTap: _save,
+            ),
+          ],
         ),
       ),
     );
@@ -368,10 +391,17 @@ class _KindPicker extends StatelessWidget {
 }
 
 class _TitleField extends StatelessWidget {
-  const _TitleField({required this.controller, required this.kind});
+  const _TitleField({
+    required this.controller,
+    required this.kind,
+    required this.sticker,
+    required this.onPickSticker,
+  });
 
   final TextEditingController controller;
   final TaskKind kind;
+  final String? sticker;
+  final VoidCallback onPickSticker;
 
   /// A hint per kind, written as the user would say it out loud.
   ///
@@ -396,26 +426,74 @@ class _TitleField extends StatelessWidget {
       children: [
         Text('TITLE', style: text.labelSmall),
         const SizedBox(height: 8),
-        TextField(
-      controller: controller,
-      autofocus: true,
-      textCapitalization: TextCapitalization.sentences,
-      style: Theme.of(context).textTheme.bodyLarge,
-      cursorColor: tokens.states.solvent,
-      decoration: InputDecoration(
-        hintText: hints[kind],
-        hintStyle: Theme.of(context).textTheme.bodyMedium,
-        filled: true,
-        fillColor: tokens.surface,
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: BorderSide.none,
-        ),
-        contentPadding: const EdgeInsets.symmetric(
-          horizontal: 14,
-          vertical: 14,
-        ),
-      ),
+        Row(
+          children: [
+            // The sticker, as the task's icon. It was a full-width row that
+            // opened a 24-sticker grid in the middle of the sheet; beside the
+            // title it takes no room of its own and sits where every list
+            // shows it.
+            Semantics(
+              button: true,
+              label: sticker == null ? 'Choose a sticker' : 'Change sticker',
+              excludeSemantics: true,
+              child: GestureDetector(
+                onTap: onPickSticker,
+                behavior: HitTestBehavior.opaque,
+                child: Container(
+                  width: 52,
+                  height: 52,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    color: tokens.surface,
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: Stack(
+                    clipBehavior: Clip.none,
+                    children: [
+                      StickerChip(stickerId: sticker, size: 34),
+                      Positioned(
+                        right: -8,
+                        bottom: -8,
+                        child: Container(
+                          width: 18,
+                          height: 18,
+                          decoration: BoxDecoration(
+                            color: tokens.states.solvent,
+                            shape: BoxShape.circle,
+                          ),
+                          child: Icon(Icons.edit, size: 11, color: tokens.bg),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: TextField(
+                controller: controller,
+                autofocus: true,
+                textCapitalization: TextCapitalization.sentences,
+                style: text.bodyLarge,
+                cursorColor: tokens.states.solvent,
+                decoration: InputDecoration(
+                  hintText: hints[kind],
+                  hintStyle: text.bodyMedium,
+                  filled: true,
+                  fillColor: tokens.surface,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(14),
+                    borderSide: BorderSide.none,
+                  ),
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 15,
+                  ),
+                ),
+              ),
+            ),
+          ],
         ),
       ],
     );
@@ -424,9 +502,10 @@ class _TitleField extends StatelessWidget {
 
 /// The longer version, under the title.
 ///
-/// Four lines tall rather than one, because a field the height of a title
+/// Two lines tall rather than one, because a field the height of a title
 /// invites a title-length answer, and this one exists for the sentences that
-/// did not fit. Optional everywhere, and nothing reads it: it holds what the
+/// did not fit. It grows as it is typed into, and sits last because it is the
+/// one field nobody has to fill. Optional everywhere, and nothing reads it: it holds what the
 /// task involves or why it has been sitting there, and no part of the ledger
 /// is allowed to care.
 class _NoteField extends StatelessWidget {
@@ -464,7 +543,7 @@ class _NoteField extends StatelessWidget {
         const SizedBox(height: 8),
         TextField(
           controller: controller,
-          minLines: 4,
+          minLines: 2,
           maxLines: 6,
           textCapitalization: TextCapitalization.sentences,
           keyboardType: TextInputType.multiline,
@@ -490,106 +569,91 @@ class _NoteField extends StatelessWidget {
   }
 }
 
-/// Choosing a sticker.
+/// What the sticker picker returns. A wrapper so "no sticker" is a choice
+/// that can be told apart from dismissing the sheet.
+final class _StickerChoice {
+  const _StickerChoice(this.id);
+
+  final String? id;
+}
+
+/// Choosing a sticker, in its own small sheet.
 ///
-/// Was a small "STICKER" label with a quiet "Choose" pushed to the far right,
-/// which read as two unrelated things and disappeared into the sheet. It is
-/// now one control that says what it does, at the same size as before: the
-/// problem was never that it was too small, it was that nothing marked it as
-/// something you could press.
-///
-/// It carries the accent only while **nothing is chosen**. Once a sticker is
-/// picked the sticker itself is the colour on that row, and a tinted button
-/// beside it would compete with the thing it just set.
-class _StickerRow extends StatelessWidget {
-  const _StickerRow({
-    required this.selected,
-    required this.expanded,
-    required this.onToggle,
-    required this.onPick,
-  });
+/// Opening the grid inline pushed How long half a screen down for a choice
+/// that is decoration. Here it opens over the task sheet and closes on the
+/// first tap, and the task sheet keeps its shape.
+class _StickerPicker extends StatelessWidget {
+  const _StickerPicker({required this.selected});
 
   final String? selected;
-  final bool expanded;
-  final VoidCallback onToggle;
-  final ValueChanged<String> onPick;
 
   @override
   Widget build(BuildContext context) {
     final tokens = context.tokens;
     final text = Theme.of(context).textTheme;
-    final empty = selected == null;
-    final accent = tokens.states.solvent;
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Semantics(
-          button: true,
-          expanded: expanded,
-          label: empty ? 'Choose a sticker' : 'Change sticker',
-          excludeSemantics: true,
-          child: GestureDetector(
-            onTap: onToggle,
-            behavior: HitTestBehavior.opaque,
-            child: Container(
-              height: 52,
-              padding: const EdgeInsets.symmetric(horizontal: 14),
-              decoration: BoxDecoration(
-                color: empty
-                    ? accent.withValues(alpha: 0.14)
-                    : tokens.surface,
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(
-                  color: empty ? accent.withValues(alpha: 0.5) : tokens.surface,
-                ),
-              ),
-              child: Row(
-                children: [
-                  if (!empty) ...[
-                    StickerChip(stickerId: selected!),
-                    const SizedBox(width: 10),
-                  ],
-                  Text(
-                    empty ? 'Choose a sticker' : 'Change sticker',
-                    style: text.bodyLarge?.copyWith(
-                      color: empty ? accent : tokens.ink,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  const Spacer(),
-                  Icon(
-                    expanded ? Icons.expand_less : Icons.expand_more,
-                    size: 20,
-                    color: empty ? accent : tokens.inkFaint,
-                  ),
-                ],
+    Widget cell({required String? id, required String label}) {
+      final isSelected = id == selected;
+      return Semantics(
+        button: true,
+        selected: isSelected,
+        label: label,
+        excludeSemantics: true,
+        child: GestureDetector(
+          onTap: () => Navigator.of(context).pop(_StickerChoice(id)),
+          behavior: HitTestBehavior.opaque,
+          child: Container(
+            padding: const EdgeInsets.all(3),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: isSelected ? tokens.states.solvent : tokens.bg,
+                width: 2,
               ),
             ),
+            child: StickerChip(stickerId: id, size: 40),
           ),
         ),
-        if (expanded)
-          Padding(
-            padding: const EdgeInsets.only(top: 10),
-            child: Wrap(
-              spacing: 8,
-              runSpacing: 8,
+      );
+    }
+
+    return Container(
+      decoration: BoxDecoration(
+        color: tokens.bg,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+      ),
+      padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+      child: SafeArea(
+        top: false,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: Container(
+                width: 36,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: tokens.surfaceStrong,
+                  borderRadius: BorderRadius.circular(999),
+                ),
+              ),
+            ),
+            const SizedBox(height: 18),
+            Text('Sticker', style: text.titleLarge),
+            const SizedBox(height: 14),
+            Wrap(
+              spacing: 6,
+              runSpacing: 6,
               children: [
+                cell(id: null, label: 'Default sticker'),
                 for (final sticker in StickerCatalog.base)
-                  Semantics(
-                    button: true,
-                    label: sticker.id,
-                    excludeSemantics: true,
-                    child: GestureDetector(
-                      onTap: () => onPick(sticker.id),
-                      behavior: HitTestBehavior.opaque,
-                      child: StickerChip(stickerId: sticker.id, size: 38),
-                    ),
-                  ),
+                  cell(id: sticker.id, label: sticker.id),
               ],
             ),
-          ),
-      ],
+          ],
+        ),
+      ),
     );
   }
 }

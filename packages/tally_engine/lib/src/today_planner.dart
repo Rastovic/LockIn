@@ -69,8 +69,8 @@ final class TodayView {
 /// The day layer: what is planned, what is offered, what carries over.
 ///
 /// Pure Dart, alongside [LedgerEngine] and sharing nothing with it. The two
-/// engines never call each other, which is the structural reason a checkbox
-/// cannot move the balance.
+/// engines never call each other. A tick does pay minutes, but the controller
+/// does that by banking a session, not through anything in here.
 final class TodayPlanner {
   const TodayPlanner();
 

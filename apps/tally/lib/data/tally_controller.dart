@@ -7,6 +7,7 @@ import 'package:vitals_archive/vitals_archive.dart';
 import 'package:vitals_core/vitals_core.dart';
 import 'package:vitals_notify/vitals_notify.dart';
 
+import '../platform/android_app_blocker.dart';
 import '../platform/android_focus_notice.dart';
 import '../platform/android_home_widget.dart';
 import 'app_database.dart';
@@ -29,6 +30,7 @@ class TallyController extends ChangeNotifier {
     Notifier? notifier,
     AndroidHomeWidget? homeWidget,
     AndroidFocusNotice? focusNotice,
+    AndroidAppBlocker? appBlocker,
     DateTime Function()? clock,
     // Assigned rather than declared as initialising formals: `this._field` in
     // a named parameter list does not stay named, and callers end up having to
@@ -40,6 +42,8 @@ class TallyController extends ChangeNotifier {
         _homeWidget = homeWidget,
         // ignore: prefer_initializing_formals
         _focusNotice = focusNotice,
+        // ignore: prefer_initializing_formals
+        _appBlocker = appBlocker,
         _clock = clock ?? (() => DateTime.now().toUtc()),
         _tasks = TaskRepository(db, installId: installId),
         _projects = ProjectRepository(db, installId: installId),
@@ -62,6 +66,20 @@ class TallyController extends ChangeNotifier {
   final Notifier? _notifier;
   final AndroidHomeWidget? _homeWidget;
   final AndroidFocusNotice? _focusNotice;
+  final AndroidAppBlocker? _appBlocker;
+
+  /// The user's choice of what happens at zero minutes.
+  BlockMode blockMode = BlockMode.off;
+
+  /// The system accessibility switch, which only the user can flip.
+  bool blockerOn = false;
+
+  /// When usage was last read into the stored spend.
+  ///
+  /// The blocker subtracts usage since this instant, not since the last
+  /// recompute: ticking a task recomputes without re-reading usage, and
+  /// counting from then would forgive the minutes in between.
+  DateTime? _spendReadAt;
 
   /// The id the focus alarm is scheduled under.
   ///
@@ -171,6 +189,8 @@ class TallyController extends ChangeNotifier {
     // does not keep notifications scheduled by a process that is gone.
     if (focus != null) await _syncFocusAlarm();
     usageAccess = await _usage?.access() ?? UsageAccess.unavailable;
+    blockMode = await BlockPreference.load();
+    blockerOn = await _appBlocker?.isOn() ?? false;
     // Before anything reads the task list: a line captured from the home
     // screen is a task the user has already written down, and it should be
     // there the first time they look rather than after the next reload.
@@ -391,6 +411,7 @@ class TallyController extends ChangeNotifier {
 
     if (source != null && watched.isNotEmpty) {
       final from = _ledger.engine.dayStart(dayKey);
+      _spendReadAt = now;
       final spans = await source.spans(
         from: from,
         to: now,
@@ -406,6 +427,7 @@ class TallyController extends ChangeNotifier {
     );
     spendByApp = await _loadSpendByApp();
     await _pushWidget();
+    await _pushBlocking();
   }
 
   /// Redraws the home screen widget.
@@ -420,6 +442,7 @@ class TallyController extends ChangeNotifier {
   Future<void> _pushWidget() async {
     final widget = _homeWidget;
     if (widget == null) return;
+    final tomorrow = addDays(dayKey, 1);
     await widget.push(
       view: today.view,
       dateLabel: _formatDate(now),
@@ -427,8 +450,72 @@ class TallyController extends ChangeNotifier {
       // A confident zero would be a claim the app cannot make without usage
       // access, so the widget simply says nothing about minutes instead.
       usageVisible: usageAccess == UsageAccess.granted,
+      validUntil: _ledger.engine.dayStart(tomorrow),
+      next: await _previewDay(tomorrow),
+      nextDateLabel: _formatDate(_ledger.engine.dayStart(tomorrow)),
+      nextValidUntil: _ledger.engine.dayStart(addDays(tomorrow, 1)),
+    );
+  }
+
+  /// [dayKey]'s plan as the next load will build it, without saving it.
+  ///
+  /// Whatever is already planned for that day plus every recurring task due
+  /// on it: the same two steps [_load] and [_planRecurring] take, so the
+  /// widget shows at the day boundary what the app will show when opened.
+  /// Nothing is written - the day is built for real once the app runs on it.
+  Future<TodayView> _previewDay(String dayKey) async {
+    final weekday = TodayPlanner.weekdayOf(dayKey);
+    const planner = TodayPlanner();
+    final plan = planner.addToDay(
+      dayKey: dayKey,
+      plan: await _tasks.planFor(dayKey),
+      taskIds: [
+        for (final task in tasks)
+          if (task.isDueOn(weekday)) task.id,
+      ],
+      source: PlanSource.habit,
+    );
+    return planner.buildToday(
+      dayKey: dayKey,
+      tasks: tasks,
+      plan: plan,
+      now: _ledger.engine.dayStart(dayKey),
+    );
+  }
+
+  /// Hands the blocker today's figure.
+  ///
+  /// Pushed wherever the widget is, so the two never disagree about the
+  /// balance. Sent disabled without usage access: the blocker would be
+  /// subtracting from spend it cannot see, and a block with no count behind
+  /// it is a guess.
+  Future<void> _pushBlocking() async {
+    final blocker = _appBlocker;
+    if (blocker == null) return;
+    await blocker.push(
+      enabled: blockMode != BlockMode.off &&
+          usageAccess == UsageAccess.granted,
+      hard: blockMode == BlockMode.block,
+      packages: await _watchedPackages(),
+      spendableSeconds: ledger?.spendableSeconds ?? 0,
+      asOf: _spendReadAt ?? now,
       validUntil: _ledger.engine.dayStart(addDays(dayKey, 1)),
     );
+  }
+
+  /// Sets what happens at zero minutes.
+  ///
+  /// The system switch is separate and only the user can flip it, so remind
+  /// or block does nothing by itself until [blockerOn] is true too.
+  Future<void> setBlockMode(BlockMode mode) async {
+    blockMode = mode;
+    await BlockPreference.save(mode);
+    await _pushBlocking();
+    notifyListeners();
+  }
+
+  Future<void> openBlockerSettings() async {
+    await _appBlocker?.openSettings();
   }
 
   /// Today's spend per app, worst first.
@@ -635,8 +722,23 @@ class TallyController extends ChangeNotifier {
     await _savePlan();
   }
 
-  Future<void> toggle(PlanEntry entry) async {
+  /// Ticks or unticks a plan entry.
+  ///
+  /// **Ticking pays the task's estimate**, changed 2026-09-24 at the user's
+  /// request: the work was often done without starting the timer, and a tick
+  /// that paid nothing left the balance saying the day had not happened. It is
+  /// banked as an ordinary 1.0x session ending now, so the engine applies its
+  /// usual floor, ratio and daily cap and there is no second earning path.
+  ///
+  /// Only the part of the estimate not already focused on that task today is
+  /// paid, so a timed block plus a tick never counts the same minutes twice.
+  /// [payMinutes] is false when the focus timer itself completes the task,
+  /// since that block has already been banked. Unticking takes the tick's
+  /// minutes back and leaves real focus sessions alone.
+  Future<void> toggle(PlanEntry entry, {bool payMinutes = true}) async {
     const planner = TodayPlanner();
+    final tickId = _tickSessionId(entry);
+    var ledgerChanged = false;
 
     if (entry.isDone) {
       plan = planner
@@ -647,6 +749,8 @@ class TallyController extends ChangeNotifier {
         dayKey: dayKey,
         now: now,
       );
+      await _tasks.removeSession(tickId, now: now);
+      ledgerChanged = true;
     } else {
       final result = planner.complete(
         plan: plan,
@@ -659,11 +763,62 @@ class TallyController extends ChangeNotifier {
       if (result.stamp != null) {
         await _tasks.addStamp(result.stamp!, now: now);
       }
+      if (payMinutes) ledgerChanged = await _payForTick(entry, tickId);
     }
 
     await _savePlan();
     streaks = await _tasks.habitStreaks(dayKey: dayKey);
+    if (ledgerChanged) {
+      ledger = await _ledger.recomputeAndStore(
+        fromDay: addDays(dayKey, -30),
+        toDay: dayKey,
+        now: now,
+      );
+      await _pushWidget();
+      await _pushBlocking();
+    }
     notifyListeners();
+  }
+
+  /// One tick session per plan entry, so an untick removes exactly it.
+  ///
+  /// The entry's own UUID with the version digit set to 8. Ids are capped at
+  /// 36 characters, so a prefix does not fit, and this stays a well-formed
+  /// UUID that the v7 generator can never produce for anything else.
+  static String _tickSessionId(PlanEntry entry) =>
+      entry.id.length == 36 && entry.id[14] == '7'
+          ? '${entry.id.substring(0, 14)}8${entry.id.substring(15)}'
+          : entry.id;
+
+  /// Banks the unfocused part of the task's estimate. False when nothing was
+  /// owed: no estimate, or the timer already covered it.
+  Future<bool> _payForTick(PlanEntry entry, String tickId) async {
+    final task = tasks.where((t) => t.id == entry.taskId).firstOrNull;
+    final estimate = task?.estimateSeconds ?? 0;
+    if (estimate <= 0) return false;
+
+    final focused = await _tasks.focusedSecondsFor(
+      taskId: entry.taskId,
+      dayKey: dayKey,
+      excludeId: tickId,
+    );
+    final owed = estimate - focused;
+    if (owed <= 0) return false;
+
+    // A second back from now: the engine counts a session only once it has
+    // ended strictly before the instant it computes at.
+    final endedAt = now.subtract(const Duration(seconds: 1));
+    await _tasks.putTickSession(
+      FocusSession(
+        id: tickId,
+        startedAt: endedAt.subtract(Duration(seconds: owed)),
+        endedAt: endedAt,
+        taskId: entry.taskId,
+      ),
+      dayKey: dayKey,
+      now: now,
+    );
+    return true;
   }
 
   Future<void> reorder(int from, int to) async {
@@ -949,11 +1104,12 @@ class TallyController extends ChangeNotifier {
       final entry = plan
           .where((e) => e.taskId == run.taskId && !e.isDone)
           .firstOrNull;
-      if (entry != null) await toggle(entry);
+      if (entry != null) await toggle(entry, payMinutes: false);
     }
 
     // The widget shows the plan and the balance, and this changed both.
     await _pushWidget();
+    await _pushBlocking();
     if (run.isComplete(endedAt)) onFocusCompleted?.call();
     notifyListeners();
   }
@@ -1589,7 +1745,7 @@ class TallyController extends ChangeNotifier {
   ///
   /// Reads `day_spend`, which is the same derived table the Statement's
   /// breakdown uses. Deliberately not a fresh query against
-  /// `UsageStatsManager`: the point of the check is to test **what lockIn
+  /// `UsageStatsManager`: the point of the check is to test **what LockIn
   /// stored**, and re-reading the source would compare the phone against
   /// itself and pass no matter what.
   Future<List<AccuracyDay>> accuracyDays({int days = 7}) async {

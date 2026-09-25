@@ -201,8 +201,9 @@ class _WhatItDoes extends StatelessWidget {
           child: Text(
             // The differentiator, stated first rather than buried. Every app in
             // this category blocks, and that is why they get uninstalled.
-            'lockIn never blocks anything. It keeps an honest count and lets '
-            'the number do the work.',
+            // Blocking now exists, but only if the user turns it on.
+            'LockIn never blocks anything unless you ask it to. It keeps an '
+            'honest count and lets the number do the work.',
             style: text.bodyLarge,
           ),
         ),
@@ -227,16 +228,16 @@ class _UsageAccess extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(24, 20, 24, 20),
       children: [
         Text(
-          granted ? 'Usage access is on.' : 'lockIn needs to see\nwhat you use.',
+          granted ? 'Usage access is on.' : 'LockIn needs to see\nwhat you use.',
           style: text.headlineMedium,
         ),
         const SizedBox(height: 14),
         Text(
           granted
-              ? 'That is the only permission lockIn asks for that it cannot do '
+              ? 'That is the only permission LockIn asks for that it cannot do '
                   'without.'
               : 'Android keeps app usage behind a permission you grant in '
-                  'Settings rather than in the app. Without it lockIn cannot '
+                  'Settings rather than in the app. Without it LockIn cannot '
                   'tell when you are scrolling, so the balance would never '
                   'move.',
           style: text.bodyMedium,
@@ -253,7 +254,7 @@ class _UsageAccess extends StatelessWidget {
           ),
           (
             'Only the apps you pick',
-            'lockIn reads how long an app was open, for the apps you choose. '
+            'LockIn reads how long an app was open, for the apps you choose. '
                 'It cannot see inside them.',
           ),
           (
@@ -301,7 +302,7 @@ class _UsageAccess extends StatelessWidget {
         if (access == UsageAccess.unavailable) ...[
           const SizedBox(height: 12),
           Text(
-            'This device does not offer usage access at all. lockIn still works '
+            'This device does not offer usage access at all. LockIn still works '
             'as a planner and a focus timer.',
             style: text.bodyMedium,
           ),
@@ -417,9 +418,9 @@ class _Notifications extends StatelessWidget {
         const SizedBox(height: 14),
         Text(
           granted
-              ? 'lockIn is ready. Plan a day, focus on something, and watch what '
+              ? 'LockIn is ready. Plan a day, focus on something, and watch what '
                   'it costs when you scroll.'
-              : 'lockIn can tell you the moment your balance hits zero, so you '
+              : 'LockIn can tell you the moment your balance hits zero, so you '
                   'get five free minutes of warning before you start '
                   'borrowing.',
           style: text.bodyMedium,
@@ -429,7 +430,7 @@ class _Notifications extends StatelessWidget {
           Text(
             // The cap is stated up front. An app that promises restraint and
             // then sends six notifications gets all of them turned off.
-            'Three a day at most, and all of them can be turned off. lockIn '
+            'Three a day at most, and all of them can be turned off. LockIn '
             'does not send streaks, tips, or anything trying to pull you back '
             'in.',
             style: text.bodyMedium,

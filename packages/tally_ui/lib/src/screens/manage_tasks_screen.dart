@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:tally_engine/tally_engine.dart';
 
 import '../format/durations.dart';
@@ -52,6 +53,7 @@ class ManageTasksScreen extends StatelessWidget {
     this.inbox = false,
     this.onCreate,
     this.onEdit,
+    this.onDelete,
     this.onAddToToday,
     this.onStartFocus,
     this.onInbox,
@@ -79,6 +81,10 @@ class ManageTasksScreen extends StatelessWidget {
 
   final VoidCallback? onCreate;
   final void Function(Task task)? onEdit;
+
+  /// Holding a row. The screen only reports it; the caller confirms, so a
+  /// long press that was meant as a scroll cannot lose a task on its own.
+  final void Function(Task task)? onDelete;
   final void Function(Task task)? onAddToToday;
   final void Function(Task task)? onStartFocus;
 
@@ -234,6 +240,12 @@ class ManageTasksScreen extends StatelessWidget {
         padding: const EdgeInsets.only(bottom: 6),
         child: GestureDetector(
           onTap: () => onEdit?.call(task),
+          onLongPress: onDelete == null
+              ? null
+              : () {
+                  HapticFeedback.mediumImpact();
+                  onDelete!(task);
+                },
           behavior: HitTestBehavior.opaque,
           child: TaskRow(
             title: task.title,

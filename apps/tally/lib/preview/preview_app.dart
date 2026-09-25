@@ -135,7 +135,7 @@ class _PreviewAppState extends State<PreviewApp> {
     }
 
     return MaterialApp(
-      title: 'lockIn preview',
+      title: 'LockIn preview',
       debugShowCheckedModeBanner: false,
       theme: TallyThemeBuilder.build(_theme, _brightness),
       home: _PreviewShell(
@@ -292,7 +292,7 @@ class _Controls extends StatelessWidget {
         padding: const EdgeInsets.all(20),
         children: [
           const Text(
-            'lockIn preview',
+            'LockIn preview',
             style: TextStyle(
               color: Color(0xFFE8ECF1),
               fontSize: 17,

@@ -1,5 +1,5 @@
 name: lockin_workspace
-description: lockIn - a day planner with a screen-time ledger underneath, and the shared packages it stands on.
+description: LockIn - a day planner with a screen-time ledger underneath, and the shared packages it stands on.
 publish_to: none
 
 environment:

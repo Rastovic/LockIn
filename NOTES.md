@@ -1393,3 +1393,96 @@ stops matching the first.**
 
 `endFocus` was also not pushing the snapshot or the widget, so a finished block
 left the home screen showing the old plan and the old balance.
+
+## Widgets follow the app's theme, banners only, and apps are covered at zero (2026-09-17)
+
+Three requests in one sitting.
+
+**The widgets drew a palette of their own.** `widget_colors.xml` was Blush, so
+on the default Aurora theme a pink card sat beside a near-black, mint app. Dart
+now sends both brightness sets of the picked theme plus the picked mode
+(`updateWidgetTheme`, `WidgetTheme.kt`), on every launch and every change.
+Kotlin only picks light or dark at render time, so "system" still flips with
+the phone while the app is closed. The balance takes the state colour the app's
+strip uses. RemoteViews cannot recolour a shape drawable, so each widget's card
+is now an `ImageView` behind the content, tinted with `setColorFilter`, which
+keeps the rounded corners. The resource colours stay as the fallback for a
+widget placed before the app has run. No font work was needed: the app uses no
+custom font files on Android, so both already draw Roboto.
+
+**No more interstitial.** The user asked for banners only. `AdsController` no
+longer preloads or shows one and leaving Stats does nothing. `vitals_ads` still
+has the interstitial for other apps; nothing in lockIn calls it.
+
+**Blocking, which reverses a stated stance.** "Nothing is ever blocked" was the
+app's line, and the rules text said so. The user wants watched apps covered
+once the minutes run out, and wants Play eventually. So it is opt-in, off by
+default, and the rules line changes only when it is on.
+
+- **An accessibility service, window-state events only, no window content.**
+  It is the one API that reports the app in front the moment it changes.
+  Polling usage stats needs the foreground service this app already gave up.
+  **Play gate:** the accessibility declaration form. Approval is not guaranteed
+  for a non-accessibility use. The in-app disclosure sheet appears before the
+  user is sent to Settings, as the policy requires. If Play refuses, the
+  fallback is a `specialUse` foreground service polling usage stats plus
+  `SYSTEM_ALERT_WINDOW`, which is a harder review, not an easier one.
+- **The BalanceSnapshot seam again.** Dart writes the spendable figure with the
+  instant usage was last *read* (`_spendReadAt`), not the last recompute.
+  Ticking a task recomputes without re-reading, and counting from then would
+  forgive the minutes in between. There is a test for exactly that.
+- **No polling.** On entering a watched app the service schedules one check for
+  the moment the balance would reach zero. Leaving cancels it. The keyboard and
+  the shade raise their own windows and are ignored, or typing would cancel it.
+- **Past the day boundary it keeps subtracting from the old figure**, which only
+  errs towards blocking. The block screen then says to open lockIn, which
+  recomputes and pushes the new day's allowance. Working that out in Kotlin
+  would be a second copy of the ledger.
+- **Sent disabled without usage access.** A block with no count behind it is a
+  guess.
+- **The block screen has no "five more minutes".** A bypass one tap away is a
+  nag, not a block. It is a plain activity like the capture box, so it appears
+  before a Flutter cold start could.
+
+Not yet run on a device: the emulator on this machine does not take screenshots
+(see above), and no phone was connected. Kotlin compiles and the APK builds.
+Dart side is covered by `test/app_blocker_test.dart` and the blocking group in
+`settings_folds_test.dart`.
+
+**Later the same day: a middle setting.** Blocking is now Off / Remind /
+Block (`BlockMode`, stored as `tally.blockMode`). Remind shows the same page
+with **Continue anyway**. The time after it is counted like any other, so it
+lands as debt, which is the app's original stance with one pause in front of
+it. Block has no way past it. Details that were easy to get wrong:
+
+- **Remind does not send the user home first.** The app stays underneath, so
+  continuing returns them to where they were. Close and Back both go to the
+  launcher explicitly, because a plain `finish` would drop them into the app.
+- **A pass, held until they switch to a different app.** Without it, the
+  relaunch after "Continue anyway" is itself a watched app opening at zero,
+  and the page comes straight back. Our own windows never end the pass,
+  because the relaunch goes through the page closing. The next real visit
+  reminds again.
+- **The disclosure is shown only when leaving Off.** Moving between Remind and
+  Block changes nothing about what the service can see.
+
+## The widget shows the new day without the app being opened (2026-09-25)
+
+**Bug:** past the day boundary the Today widget went blank ("open the app")
+until the app ran, because Dart only ever sent today's plan and the widget,
+rightly, would not relabel yesterday's list.
+
+**Fix:** every widget push also carries tomorrow, built the way `_load` builds
+a day - entries already planned for it plus every recurring task due on it -
+without writing anything (`_previewDay`). `TodayWidgetStore.showingNext` holds
+between the end of today and the end of tomorrow, and every getter reads the
+next-day keys while it does, so the frame and the list adapter never disagree.
+The balance is hidden on the next day: it depends on how the day before
+closed, which only the app can work out.
+
+The 4am boundary is not a moment Android announces (DATE_CHANGED is midnight,
+`updatePeriodMillis` can lag 30 minutes), so the provider sets one inexact
+`setAndAllowWhileIdle` alarm for the next boundary on every render. No exact
+alarm permission. Two days without opening the app still falls back to the
+"open the app" state - there is no data for that day, and a wrong list is
+worse than an honest blank.
