@@ -14,6 +14,8 @@ Widget onboarding({
   List<WatchableAppSummary> apps = const [],
   bool notifications = false,
   VoidCallback? onNext,
+  VoidCallback? onBack,
+  VoidCallback? onSkip,
   VoidCallback? onGrantUsage,
   VoidCallback? onGrantNotifications,
   void Function(String, bool)? onToggleApp,
@@ -25,6 +27,8 @@ Widget onboarding({
         apps: apps,
         notificationsGranted: notifications,
         onNext: onNext,
+        onBack: onBack,
+        onSkip: onSkip,
         onGrantUsage: onGrantUsage,
         onGrantNotifications: onGrantNotifications,
         onToggleApp: onToggleApp,
@@ -37,11 +41,60 @@ String allText(WidgetTester tester) => tester
     .join(' ');
 
 void main() {
+  group('the cards', () {
+    testWidgets('the first two teach planning and earning', (tester) async {
+      await tester.pumpWidget(onboarding(step: OnboardingStep.plan));
+      expect(find.textContaining('one list'), findsOneWidget);
+      expect(find.textContaining('add themselves'), findsOneWidget);
+
+      await tester.pumpWidget(onboarding(step: OnboardingStep.earn));
+      expect(find.textContaining('earns minutes'), findsOneWidget);
+      expect(find.textContaining('pays its estimate'), findsOneWidget);
+    });
+
+    testWidgets('a swipe turns the page both ways', (tester) async {
+      var next = 0;
+      var back = 0;
+      await tester.pumpWidget(
+        onboarding(
+          step: OnboardingStep.earn,
+          onNext: () => next++,
+          onBack: () => back++,
+        ),
+      );
+      await tester.fling(
+          find.textContaining('earns minutes'), const Offset(-300, 0), 1500);
+      await tester.fling(
+          find.textContaining('earns minutes'), const Offset(300, 0), 1500);
+      expect((next, back), (1, 1));
+    });
+
+    testWidgets('the setup steps do not swipe', (tester) async {
+      // A stray swipe past a permission ask would skip the reason for it.
+      var next = 0;
+      await tester.pumpWidget(
+        onboarding(step: OnboardingStep.usageAccess, onNext: () => next++),
+      );
+      await tester.fling(find.textContaining('Nothing is uploaded'),
+          const Offset(-300, 0), 1500);
+      expect(next, 0);
+    });
+
+    testWidgets('the cards can be skipped straight to setup', (tester) async {
+      var skipped = 0;
+      await tester.pumpWidget(
+        onboarding(step: OnboardingStep.plan, onSkip: () => skipped++),
+      );
+      await tester.tap(find.text('Skip to setup'));
+      expect(skipped, 1);
+    });
+  });
+
   group('what it does', () {
     testWidgets('states the loop and the differentiator', (tester) async {
       await tester.pumpWidget(onboarding(step: OnboardingStep.what));
 
-      expect(find.textContaining('you earn minutes'), findsOneWidget);
+      expect(find.textContaining('minutes you earned'), findsWidgets);
       // Every app in this category blocks, and that is why they get
       // uninstalled. Saying so first is the pitch.
       expect(find.textContaining('never blocks anything'), findsOneWidget);
@@ -256,7 +309,7 @@ void main() {
     testWidgets('progress reflects the step', (tester) async {
       await tester.pumpWidget(onboarding(step: OnboardingStep.what));
       expect(find.byType(OnboardingScreen), findsOneWidget);
-      expect(OnboardingStep.values, hasLength(4));
+      expect(OnboardingStep.values, hasLength(6));
     });
 
     testWidgets('no step cheers, scolds or shouts', (tester) async {

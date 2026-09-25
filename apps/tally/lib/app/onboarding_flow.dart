@@ -27,7 +27,7 @@ class OnboardingFlow extends StatefulWidget {
 
 class _OnboardingFlowState extends State<OnboardingFlow>
     with WidgetsBindingObserver {
-  OnboardingStep _step = OnboardingStep.what;
+  OnboardingStep _step = OnboardingStep.plan;
   bool _notificationsGranted = false;
 
   final _notifier = LocalNotifier();
@@ -63,6 +63,10 @@ class _OnboardingFlowState extends State<OnboardingFlow>
 
   Future<void> _next() async {
     switch (_step) {
+      case OnboardingStep.plan:
+        setState(() => _step = OnboardingStep.earn);
+      case OnboardingStep.earn:
+        setState(() => _step = OnboardingStep.what);
       case OnboardingStep.what:
         setState(() => _step = OnboardingStep.usageAccess);
       case OnboardingStep.usageAccess:
@@ -80,6 +84,14 @@ class _OnboardingFlowState extends State<OnboardingFlow>
     }
   }
 
+  /// Back through the cards only. The setup steps are not stepped back into:
+  /// each one either asked already or can be changed later in Settings.
+  void _back() {
+    final i = _step.index;
+    if (!_step.isIntro || i == 0) return;
+    setState(() => _step = OnboardingStep.values[i - 1]);
+  }
+
   Future<void> _grantUsage() async {
     await const AndroidUsageSource().requestAccess();
     // Belt and braces alongside the resume handler: some launchers return
@@ -93,33 +105,42 @@ class _OnboardingFlowState extends State<OnboardingFlow>
     final result = await _notifier.requestPermission();
     if (!mounted) return;
     setState(
-      () => _notificationsGranted =
-          result == NotificationPermission.granted,
+      () => _notificationsGranted = result == NotificationPermission.granted,
     );
   }
 
   @override
-  Widget build(BuildContext context) => OnboardingScreen(
-        step: _step,
-        access: c.usageAccess,
-        notificationsGranted: _notificationsGranted,
-        apps: [
-          for (final app in c.watchable)
-            WatchableAppSummary(
-              packageName: app.packageName,
-              label: app.label,
-              recentSeconds: app.recentSeconds,
-              watching: app.watching,
-            ),
-        ],
-        onNext: _next,
-        onGrantUsage: _grantUsage,
-        onGrantNotifications: _grantNotifications,
-        onToggleApp: (packageName, watching) {
-          final app = c.watchable
-              .where((a) => a.packageName == packageName)
-              .firstOrNull;
-          if (app != null) c.setWatching(app, watching);
-        },
-      );
+  Widget build(BuildContext context) => PopScope(
+    // System back walks the cards backwards instead of closing the app
+    // from the middle of first run.
+    canPop: !_step.isIntro || _step == OnboardingStep.plan,
+    onPopInvokedWithResult: (didPop, _) {
+      if (!didPop) _back();
+    },
+    child: OnboardingScreen(
+      step: _step,
+      access: c.usageAccess,
+      notificationsGranted: _notificationsGranted,
+      apps: [
+        for (final app in c.watchable)
+          WatchableAppSummary(
+            packageName: app.packageName,
+            label: app.label,
+            recentSeconds: app.recentSeconds,
+            watching: app.watching,
+          ),
+      ],
+      onNext: _next,
+      onBack: _back,
+      onSkip: () => setState(() => _step = OnboardingStep.usageAccess),
+      onGrantUsage: _grantUsage,
+      onGrantNotifications: _grantNotifications,
+      onToggleApp: (packageName, watching) {
+        final app = c.watchable
+            .where((a) => a.packageName == packageName)
+            .firstOrNull;
+        if (app != null) c.setWatching(app, watching);
+      },
+    ),
+  );
 }

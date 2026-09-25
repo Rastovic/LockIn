@@ -10,6 +10,7 @@ import 'package:vitals_archive/vitals_archive.dart';
 import 'package:tally_engine/tally_engine.dart';
 import 'package:tally_ui/tally_ui.dart';
 
+import '../data/app_database.dart';
 import '../data/tally_controller.dart';
 import 'ads.dart';
 import '../platform/android_usage_source.dart';
@@ -57,6 +58,12 @@ class _TallyAppState extends State<TallyApp> with WidgetsBindingObserver {
   bool _inbox = false;
   bool _showBalance = false;
 
+  /// Tips dismissed so far. Empty until read, and nothing is shown until then
+  /// so a tip already dismissed never flashes up on launch.
+  Set<Tip> _seenTips = const {};
+  int _daysSinceFirstRun = 0;
+  bool _tipsLoaded = false;
+
   TallyController get c => widget.controller;
 
   @override
@@ -69,7 +76,69 @@ class _TallyAppState extends State<TallyApp> with WidgetsBindingObserver {
     // route never touches the screen at all.
     c.onFocusCompleted = () => unawaited(widget.ads.markCoreAction());
     c.load();
+    unawaited(_loadTips());
   }
+
+  Future<void> _loadTips() async {
+    final state = await TipsState.load(now: c.now);
+    if (!mounted) return;
+    setState(() {
+      _seenTips = state.seen;
+      _daysSinceFirstRun = state.daysSinceFirstRun;
+      _tipsLoaded = true;
+    });
+  }
+
+  Widget? _tipCard(TipSurface? surface) {
+    if (!_tipsLoaded || surface == null) return null;
+    final tip = pickTip(
+      surface: surface,
+      seen: _seenTips,
+      daysSinceFirstRun: _daysSinceFirstRun,
+      blockingOff: c.blockMode == BlockMode.off,
+    );
+    if (tip == null) return null;
+    return TipCard(
+      key: ValueKey(tip),
+      tip: tip,
+      onDismiss: () {
+        setState(() => _seenTips = {..._seenTips, tip});
+        unawaited(TipsState.markSeen(_seenTips));
+      },
+    );
+  }
+
+  /// A full screen with its tip under it. The screen gives up its bottom
+  /// inset to the card, which sits above the system bar in its place.
+  Widget _withTip(Widget screen, TipSurface surface) {
+    final card = _tipCard(surface);
+    if (card == null) return screen;
+    return Material(
+      color: Theme.of(context).extension<TallyTokens>()!.bg,
+      child: Column(
+        children: [
+          Expanded(
+            child: MediaQuery.removePadding(
+              context: context,
+              removeBottom: true,
+              child: screen,
+            ),
+          ),
+          SafeArea(top: false, child: card),
+        ],
+      ),
+    );
+  }
+
+  /// The tab's own surface, or null on a screen opened from it.
+  TipSurface? get _tabSurface => switch (_tab) {
+        0 => TipSurface.today,
+        1 => TipSurface.tasks,
+        2 => TipSurface.stats,
+        _ => _showGoals || _showAccuracy || _showTour
+            ? null
+            : TipSurface.settings,
+      };
 
   @override
   void dispose() {
@@ -97,10 +166,13 @@ class _TallyAppState extends State<TallyApp> with WidgetsBindingObserver {
     }
 
     if (_showBalance) {
-      return BalanceScreen(
-        model: c.balanceModel,
-        onClose: () => setState(() => _showBalance = false),
-        onTreat: c.balanceModel.savingsSeconds > 0 ? _openTreat : null,
+      return _withTip(
+        BalanceScreen(
+          model: c.balanceModel,
+          onClose: () => setState(() => _showBalance = false),
+          onTreat: c.balanceModel.savingsSeconds > 0 ? _openTreat : null,
+        ),
+        TipSurface.balance,
       );
     }
 
@@ -108,19 +180,22 @@ class _TallyAppState extends State<TallyApp> with WidgetsBindingObserver {
       final task = run.taskId == null
           ? null
           : c.tasks.where((t) => t.id == run.taskId).firstOrNull;
-      return FocusScreen(
-        run: run,
-        earnRatio: c.settings.earnRatio,
-        taskTitle: task?.title ?? 'Focus',
-        stickerId: task?.stickerId,
-        onPause: c.pauseFocus,
-        onResume: c.resumeFocus,
-        onExtend: c.extendFocus,
-        onGiveUp: c.endFocus,
-        onComplete: c.endFocus,
-        alarmBlocked: c.focusAlarmBlocked,
-        alarmImprecise: c.focusAlarmImprecise,
-        onFixAlarm: () => unawaited(c.requestExactAlarms()),
+      return _withTip(
+        FocusScreen(
+          run: run,
+          earnRatio: c.settings.earnRatio,
+          taskTitle: task?.title ?? 'Focus',
+          stickerId: task?.stickerId,
+          onPause: c.pauseFocus,
+          onResume: c.resumeFocus,
+          onExtend: c.extendFocus,
+          onGiveUp: c.endFocus,
+          onComplete: c.endFocus,
+          alarmBlocked: c.focusAlarmBlocked,
+          alarmImprecise: c.focusAlarmImprecise,
+          onFixAlarm: () => unawaited(c.requestExactAlarms()),
+        ),
+        TipSurface.focus,
       );
     }
 
@@ -140,6 +215,7 @@ class _TallyAppState extends State<TallyApp> with WidgetsBindingObserver {
       bottomNavigationBar: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
+          ?_tipCard(_tabSurface),
           AdSlot(
             gateway: widget.ads.gateway,
             allowed: bannerTab && widget.ads.bannerAllowed(),
@@ -387,6 +463,7 @@ class _TallyAppState extends State<TallyApp> with WidgetsBindingObserver {
 
   bool _showGoals = false;
   bool _showAccuracy = false;
+  bool _showTour = false;
 
   Widget _buildGoals() => GoalsScreen(
         goals: c.goals,
@@ -540,7 +617,21 @@ class _TallyAppState extends State<TallyApp> with WidgetsBindingObserver {
     );
   }
 
-  Widget _buildSettings() => _showAccuracy
+  Widget _buildTour() => TourScreen(
+        onBack: () => setState(() => _showTour = false),
+        onReplayTips: () async {
+          await TipsState.reset();
+          if (!mounted) return;
+          setState(() {
+            _seenTips = const {};
+            _showTour = false;
+          });
+        },
+      );
+
+  Widget _buildSettings() => _showTour
+      ? _buildTour()
+      : _showAccuracy
       ? _buildAccuracy()
       : _showGoals
           ? _buildGoals()
@@ -561,6 +652,7 @@ class _TallyAppState extends State<TallyApp> with WidgetsBindingObserver {
         themeMode: widget.themeMode,
         onTheme: widget.onTheme,
         onOpenGoals: () => setState(() => _showGoals = true),
+        onOpenTour: () => setState(() => _showTour = true),
         onCheckNumbers: () => setState(() => _showAccuracy = true),
         onExportCsv: _exportCsv,
         onOpenBackup: _openBackup,

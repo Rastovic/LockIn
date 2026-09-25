@@ -1486,3 +1486,28 @@ The 4am boundary is not a moment Android announces (DATE_CHANGED is midnight,
 alarm permission. Two days without opening the app still falls back to the
 "open the app" state - there is no data for that day, and a wrong list is
 worse than an honest blank.
+
+## Onboarding teaches the loop, the rest explains itself in place (2026-09-25)
+
+Asked for a walkthrough of everything the app does. Built as three layers
+rather than one long slideshow, because a first run that explains every
+feature is one people swipe through without reading.
+
+- **First run: three cards, the loop only.** Plan (a day is one list), earn
+  (ticking pays the estimate, play starts a block), spend (the old "what it
+  does" screen). They swipe both ways and system back walks them backwards;
+  the first two offer "Skip to setup". The permission steps do not swipe - a
+  stray fling past an ask would skip the reason for it.
+- **One-time tips, where the thing lives.** Today, Tasks, Stats, Settings,
+  Focus and Balance each explain themselves once, as a card above the nav bar
+  (or under the full screen) with "Got it". One card at a time, the screen's
+  own first. Two are held back and shown only on Today: the home screen widget
+  after 2 days, blocking after 4 and only while it is off. State is
+  `TipsState` in preferences, not the database: it is about this phone's
+  person learning this install, and a restore onto a new phone should explain
+  itself again.
+- **The tour: Settings → Elsewhere → What LockIn can do.** Every feature,
+  grouped Plan / Earn / Spend / Home screen / Look back / Elsewhere, each with
+  where it lives. `tourSections` is public so the copy is tested against the
+  same tone rules as the rest, and so a new feature has one place to be
+  listed. "Show the tips again" resets the tips.

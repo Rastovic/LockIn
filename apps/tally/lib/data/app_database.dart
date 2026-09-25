@@ -2,7 +2,7 @@ import 'dart:convert';
 
 import 'package:drift_flutter/drift_flutter.dart';
 import 'package:flutter/material.dart' show ThemeMode;
-import 'package:tally_ui/tally_ui.dart' show BlockMode, TallyTheme;
+import 'package:tally_ui/tally_ui.dart' show BlockMode, TallyTheme, Tip;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:tally_data/tally_data.dart';
 import 'package:tally_engine/tally_engine.dart';
@@ -55,6 +55,54 @@ final class OnboardingState {
   static Future<void> markDone() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_key, true);
+  }
+}
+
+/// Which one-time tips have been dismissed, and when the app first ran.
+///
+/// In preferences for the same reason as the theme: it is about this phone's
+/// person learning this install, not about their data. A restored backup on a
+/// new phone should explain itself again.
+final class TipsState {
+  const TipsState({required this.seen, required this.daysSinceFirstRun});
+
+  final Set<Tip> seen;
+  final int daysSinceFirstRun;
+
+  static const _seenKey = 'tally.tipsSeen';
+  static const _firstRunKey = 'tally.firstRunMillis';
+
+  /// Reads the state, stamping the first run if this is it.
+  static Future<TipsState> load({required DateTime now}) async {
+    final prefs = await SharedPreferences.getInstance();
+    var first = prefs.getInt(_firstRunKey);
+    if (first == null) {
+      first = now.millisecondsSinceEpoch;
+      await prefs.setInt(_firstRunKey, first);
+    }
+    final names = prefs.getStringList(_seenKey) ?? const [];
+    final days = now
+        .difference(DateTime.fromMillisecondsSinceEpoch(first, isUtc: true))
+        .inDays;
+    return TipsState(
+      seen: {
+        for (final tip in Tip.values)
+          if (names.contains(tip.name)) tip,
+      },
+      daysSinceFirstRun: days < 0 ? 0 : days,
+    );
+  }
+
+  static Future<void> markSeen(Set<Tip> seen) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setStringList(_seenKey, [for (final tip in seen) tip.name]);
+  }
+
+  /// Every tip shows again. The first-run stamp stays, so the held-back tips
+  /// come back straight away rather than after another wait.
+  static Future<void> reset() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_seenKey);
   }
 }
 

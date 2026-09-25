@@ -6,7 +6,12 @@ import 'package:tally_engine/tally_engine.dart';
 import '../theme/tally_theme_data.dart';
 import '../widgets/balance_strip.dart';
 
-/// The four steps.
+/// The steps: three swipeable cards for the loop, then the setup.
+///
+/// **The cards show the loop and nothing else.** Everything past it - widgets,
+/// blocking, stats, goals - is taught where it lives, the first time that
+/// screen opens, and all of it is listed under Settings. A first run that
+/// explains every feature is one people swipe through without reading.
 ///
 /// **Ordered access-before-picking, which differs from the plan's list.** The
 /// plan says "pick watched apps, grant usage access". The picker's whole value
@@ -15,7 +20,13 @@ import '../widgets/balance_strip.dart';
 /// mean presenting a bare list of names and then asking again. Access comes
 /// first, and the reason for it is the step before that.
 enum OnboardingStep {
-  /// What the app does, in one screen.
+  /// The loop, first card: a day is one list.
+  plan,
+
+  /// Second card: doing things earns minutes.
+  earn,
+
+  /// Third card: the watched apps spend them.
   what,
 
   /// Why usage access is needed, then the ask.
@@ -48,6 +59,7 @@ class OnboardingScreen extends StatelessWidget {
     this.notificationsGranted = false,
     this.onNext,
     this.onSkip,
+    this.onBack,
     this.onGrantUsage,
     this.onGrantNotifications,
     this.onToggleApp,
@@ -61,6 +73,10 @@ class OnboardingScreen extends StatelessWidget {
 
   final VoidCallback? onNext;
   final VoidCallback? onSkip;
+
+  /// A swipe back on the cards. The setup steps do not swipe: a stray swipe
+  /// past a permission ask would skip the reason for it.
+  final VoidCallback? onBack;
   final VoidCallback? onGrantUsage;
   final VoidCallback? onGrantNotifications;
   final void Function(String packageName, bool watching)? onToggleApp;
@@ -76,21 +92,28 @@ class OnboardingScreen extends StatelessWidget {
           children: [
             _Progress(step: step),
             Expanded(
-              child: switch (step) {
-                OnboardingStep.what => _WhatItDoes(),
-                OnboardingStep.usageAccess => _UsageAccess(
+              child: _Swipe(
+                enabled: step.isIntro,
+                onNext: onNext,
+                onBack: onBack,
+                child: switch (step) {
+                  OnboardingStep.plan => const _PlanCard(),
+                  OnboardingStep.earn => const _EarnCard(),
+                  OnboardingStep.what => _WhatItDoes(),
+                  OnboardingStep.usageAccess => _UsageAccess(
                     access: access,
                     onGrant: onGrantUsage,
                   ),
-                OnboardingStep.pickApps => _PickApps(
+                  OnboardingStep.pickApps => _PickApps(
                     apps: apps,
                     onToggle: onToggleApp,
                   ),
-                OnboardingStep.notifications => _Notifications(
+                  OnboardingStep.notifications => _Notifications(
                     granted: notificationsGranted,
                     onGrant: onGrantNotifications,
                   ),
-              },
+                },
+              ),
             ),
             _Actions(
               step: step,
@@ -103,6 +126,161 @@ class OnboardingScreen extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+extension OnboardingStepIntro on OnboardingStep {
+  /// The cards that explain, as opposed to the steps that ask.
+  bool get isIntro =>
+      this == OnboardingStep.plan ||
+      this == OnboardingStep.earn ||
+      this == OnboardingStep.what;
+}
+
+/// Turns a horizontal fling into next or back.
+///
+/// A fling rather than a drag distance, so scrolling a card vertically never
+/// turns the page by accident.
+class _Swipe extends StatelessWidget {
+  const _Swipe({
+    required this.enabled,
+    required this.child,
+    this.onNext,
+    this.onBack,
+  });
+
+  final bool enabled;
+  final Widget child;
+  final VoidCallback? onNext;
+  final VoidCallback? onBack;
+
+  @override
+  Widget build(BuildContext context) {
+    if (!enabled) return child;
+    return GestureDetector(
+      behavior: HitTestBehavior.translucent,
+      onHorizontalDragEnd: (details) {
+        final v = details.primaryVelocity ?? 0;
+        if (v < -250) onNext?.call();
+        if (v > 250) onBack?.call();
+      },
+      child: child,
+    );
+  }
+}
+
+/// A row as the Today list draws it, for the cards. Not a real [TaskRow]:
+/// that needs a plan entry and a task behind it, and these are pictures.
+class _SampleRow extends StatelessWidget {
+  const _SampleRow({
+    required this.title,
+    required this.trailing,
+    this.done = false,
+    this.note,
+  });
+
+  final String title;
+  final String trailing;
+  final bool done;
+  final String? note;
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.tokens;
+    final text = Theme.of(context).textTheme;
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      decoration: BoxDecoration(
+        color: tokens.surface,
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Row(
+        children: [
+          Text(
+            done ? '●' : '○',
+            style: text.bodyLarge?.copyWith(color: tokens.states.solvent),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: text.bodyLarge?.copyWith(
+                    color: done ? tokens.inkFaint : tokens.ink,
+                  ),
+                ),
+                if (note != null) Text(note!, style: text.labelMedium),
+              ],
+            ),
+          ),
+          Text(
+            trailing,
+            style: text.bodyMedium?.copyWith(
+              color: done ? tokens.states.solvent : tokens.inkMuted,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _PlanCard extends StatelessWidget {
+  const _PlanCard();
+
+  @override
+  Widget build(BuildContext context) {
+    final text = Theme.of(context).textTheme;
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(24, 20, 24, 20),
+      children: [
+        Text('A day is\none list.', style: text.headlineMedium),
+        const SizedBox(height: 14),
+        Text(
+          'Write tasks down once and put them on a day when you mean to do '
+          'them. Habits and repeating tasks add themselves on the days they '
+          'are due.',
+          style: text.bodyMedium,
+        ),
+        const SizedBox(height: 28),
+        const _SampleRow(title: 'Piano', trailing: '20 min', note: 'habit'),
+        const _SampleRow(title: 'Reply to the landlord', trailing: '10 min'),
+        const _SampleRow(title: 'Tax return', trailing: '45 min'),
+      ],
+    );
+  }
+}
+
+class _EarnCard extends StatelessWidget {
+  const _EarnCard();
+
+  @override
+  Widget build(BuildContext context) {
+    final text = Theme.of(context).textTheme;
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(24, 20, 24, 20),
+      children: [
+        Text('Doing it\nearns minutes.', style: text.headlineMedium),
+        const SizedBox(height: 14),
+        Text(
+          'Tick a task and it pays its estimate. Or press play and focus on '
+          'it: the clock runs with the screen off, and an alarm says when the '
+          'block is over.',
+          style: text.bodyMedium,
+        ),
+        const SizedBox(height: 28),
+        const _SampleRow(title: 'Piano', trailing: '+20', done: true),
+        const _SampleRow(
+          title: 'Reply to the landlord',
+          trailing: '+10',
+          done: true,
+        ),
+        const _SampleRow(title: 'Tax return', trailing: '45 min'),
+      ],
     );
   }
 }
@@ -170,11 +348,14 @@ class _WhatItDoes extends StatelessWidget {
     return ListView(
       padding: const EdgeInsets.fromLTRB(24, 20, 24, 20),
       children: [
-        Text('Scrolling costs\nminutes you earned.', style: text.headlineMedium),
+        Text(
+          'Scrolling costs\nminutes you earned.',
+          style: text.headlineMedium,
+        ),
         const SizedBox(height: 14),
         Text(
-          'Focus on something and you earn minutes. Time in the apps you pick '
-          'spends them. Go past zero and you are borrowing.',
+          'Time in the apps you pick spends the minutes you earned. Go past '
+          'zero and you are borrowing.',
           style: text.bodyMedium,
         ),
         const SizedBox(height: 28),
@@ -228,18 +409,20 @@ class _UsageAccess extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(24, 20, 24, 20),
       children: [
         Text(
-          granted ? 'Usage access is on.' : 'LockIn needs to see\nwhat you use.',
+          granted
+              ? 'Usage access is on.'
+              : 'LockIn needs to see\nwhat you use.',
           style: text.headlineMedium,
         ),
         const SizedBox(height: 14),
         Text(
           granted
               ? 'That is the only permission LockIn asks for that it cannot do '
-                  'without.'
+                    'without.'
               : 'Android keeps app usage behind a permission you grant in '
-                  'Settings rather than in the app. Without it LockIn cannot '
-                  'tell when you are scrolling, so the balance would never '
-                  'move.',
+                    'Settings rather than in the app. Without it LockIn cannot '
+                    'tell when you are scrolling, so the balance would never '
+                    'move.',
           style: text.bodyMedium,
         ),
         const SizedBox(height: 20),
@@ -331,10 +514,10 @@ class _PickApps extends StatelessWidget {
         Text(
           apps.isEmpty
               ? 'Nothing to show yet. You can pick apps any time from '
-                  'Settings.'
+                    'Settings.'
               : 'Sorted by how long you spent in each last week. Pick the ones '
-                  'you would rather spend less time in. You can change this '
-                  'any day.',
+                    'you would rather spend less time in. You can change this '
+                    'any day.',
           style: text.bodyMedium,
         ),
         const SizedBox(height: 18),
@@ -412,17 +595,19 @@ class _Notifications extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(24, 20, 24, 20),
       children: [
         Text(
-          granted ? 'That is everything.' : 'One notice, at\nthe moment it\nmatters.',
+          granted
+              ? 'That is everything.'
+              : 'One notice, at\nthe moment it\nmatters.',
           style: text.headlineMedium,
         ),
         const SizedBox(height: 14),
         Text(
           granted
               ? 'LockIn is ready. Plan a day, focus on something, and watch what '
-                  'it costs when you scroll.'
+                    'it costs when you scroll.'
               : 'LockIn can tell you the moment your balance hits zero, so you '
-                  'get five free minutes of warning before you start '
-                  'borrowing.',
+                    'get five free minutes of warning before you start '
+                    'borrowing.',
           style: text.bodyMedium,
         ),
         if (!granted) ...[
@@ -472,19 +657,20 @@ class _Actions extends StatelessWidget {
     final text = Theme.of(context).textTheme;
 
     final (primary, skip) = switch (step) {
+      OnboardingStep.plan || OnboardingStep.earn => ('Next', 'Skip to setup'),
       OnboardingStep.what => ('Next', null),
       OnboardingStep.usageAccess => (
-          access == UsageAccess.granted ? 'Next' : 'Continue without it',
-          null,
-        ),
+        access == UsageAccess.granted ? 'Next' : 'Continue without it',
+        null,
+      ),
       OnboardingStep.pickApps => (
-          pickedCount == 0 ? 'Skip for now' : 'Next',
-          null,
-        ),
+        pickedCount == 0 ? 'Skip for now' : 'Next',
+        null,
+      ),
       OnboardingStep.notifications => (
-          notificationsGranted ? 'Start' : 'Start without notifications',
-          null,
-        ),
+        notificationsGranted ? 'Start' : 'Start without notifications',
+        null,
+      ),
     };
 
     return Padding(
@@ -523,9 +709,7 @@ class _Actions extends StatelessWidget {
               behavior: HitTestBehavior.opaque,
               child: SizedBox(
                 height: 44,
-                child: Center(
-                  child: Text(skip, style: text.bodyMedium),
-                ),
+                child: Center(child: Text(skip, style: text.bodyMedium)),
               ),
             ),
           ],
@@ -562,10 +746,10 @@ class _Primary extends StatelessWidget {
           child: Text(
             label,
             style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                  color: tokens.states.solvent,
-                  fontSize: 15,
-                  fontWeight: FontWeight.w700,
-                ),
+              color: tokens.states.solvent,
+              fontSize: 15,
+              fontWeight: FontWeight.w700,
+            ),
           ),
         ),
       ),

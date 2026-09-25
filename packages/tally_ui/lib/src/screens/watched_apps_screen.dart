@@ -74,6 +74,7 @@ class WatchedAppsScreen extends StatelessWidget {
     this.themeMode,
     this.onTheme,
     this.onOpenGoals,
+    this.onOpenTour,
     this.onCheckNumbers,
     this.onExportCsv,
     this.onOpenBackup,
@@ -99,6 +100,9 @@ class WatchedAppsScreen extends StatelessWidget {
   final ThemeMode? themeMode;
   final void Function(TallyTheme, ThemeMode)? onTheme;
   final VoidCallback? onOpenGoals;
+
+  /// Everything the app can do, listed. See [TourScreen].
+  final VoidCallback? onOpenTour;
 
   /// Opens the comparison against the phone's own counter.
   final VoidCallback? onCheckNumbers;
@@ -366,6 +370,13 @@ class WatchedAppsScreen extends StatelessWidget {
                     title: 'ELSEWHERE',
                     summary: 'goals, backup, export',
                     children: [
+                  if (onOpenTour != null)
+                    _LinkRow(
+                      label: 'What LockIn can do',
+                      detail: 'Every feature on one page, and where to find '
+                          'it.',
+                      onTap: onOpenTour!,
+                    ),
                   if (onCheckNumbers != null)
                     _LinkRow(
                       label: 'Check the numbers',
