@@ -90,24 +90,7 @@ class MainActivity : FlutterActivity() {
                             call.argument<Boolean>("usageVisible") ?: false,
                         validUntil =
                             call.argument<Long>("validUntilMillis") ?: 0L,
-                        next = call.argument<Long>("nextValidUntilMillis")
-                            ?.let { until ->
-                                TodayWidgetStore.Next(
-                                    dateLabel = call.argument<String>(
-                                        "nextDateLabel",
-                                    ) ?: "",
-                                    rowsJson = call.argument<String>(
-                                        "nextRows",
-                                    ) ?: "[]",
-                                    done = call.argument<Int>(
-                                        "nextDoneCount",
-                                    ) ?: 0,
-                                    total = call.argument<Int>(
-                                        "nextTotalCount",
-                                    ) ?: 0,
-                                    validUntil = until,
-                                )
-                            },
+                        upcomingJson = call.argument<String>("upcoming"),
                     )
                     TodayWidgetStore.refresh(applicationContext)
                     result.success(null)

@@ -89,46 +89,57 @@ void main() {
     expect(rows[1]['done'], isFalse);
   });
 
-  test('sends tomorrow ahead, so the widget is not blank at the boundary',
+  test('sends the days ahead, so the widget is not blank at the boundary',
       () async {
-    // The day rolls over while the app is closed. Without the next day in
-    // hand the widget could only ask to be opened until it was.
+    // The day rolls over while the app is closed, often more than once.
+    // Without the days ahead in hand the widget could only ask to be opened
+    // until it was.
     await const AndroidHomeWidget().push(
       view: viewOf([task('Dishes')]),
       dateLabel: 'Fri 14 August',
       spendableSeconds: 900,
       usageVisible: true,
       validUntil: DateTime.utc(2026, 8, 15, 4),
-      next: viewOf([task('Gym', sticker: 'gym'), task('Read')]),
-      nextDateLabel: 'Sat 15 August',
-      nextValidUntil: DateTime.utc(2026, 8, 16, 4),
+      upcoming: [
+        WidgetDay(
+          view: viewOf([task('Gym', sticker: 'gym'), task('Read')]),
+          dateLabel: 'Sat 15 August',
+          validUntil: DateTime.utc(2026, 8, 16, 4),
+        ),
+        WidgetDay(
+          view: viewOf([task('Read')]),
+          dateLabel: 'Sun 16 August',
+          validUntil: DateTime.utc(2026, 8, 17, 4),
+        ),
+      ],
     );
 
     final args = calls.single.arguments as Map;
-    expect(args['nextDateLabel'], 'Sat 15 August');
-    expect(args['nextTotalCount'], 2);
-    expect(args['nextDoneCount'], 0);
-    expect(args['nextValidUntilMillis'],
+    final days = jsonDecode(args['upcoming'] as String) as List;
+    expect(days.map((d) => d['dateLabel']),
+        ['Sat 15 August', 'Sun 16 August']);
+    expect(days[0]['totalCount'], 2);
+    expect(days[0]['doneCount'], 0);
+    // Each day carries its own end: an open-ended one would be drawn forever.
+    expect(days[0]['validUntilMillis'],
         DateTime.utc(2026, 8, 16, 4).millisecondsSinceEpoch);
-    final rows = jsonDecode(args['nextRows'] as String) as List;
+    expect(days[1]['validUntilMillis'],
+        DateTime.utc(2026, 8, 17, 4).millisecondsSinceEpoch);
+    final rows = days[0]['rows'] as List;
     expect(rows.map((r) => r['title']), ['Gym', 'Read']);
     expect(rows[0]['glyph'], stickerGlyphs['gym']);
   });
 
-  test('sends no next day without its end', () async {
-    // An open-ended tomorrow would be drawn forever.
+  test('sends no days ahead when there are none', () async {
     await const AndroidHomeWidget().push(
       view: viewOf([task('Dishes')]),
       dateLabel: 'Fri 14 August',
       spendableSeconds: 0,
       usageVisible: false,
       validUntil: DateTime.utc(2026, 8, 15, 4),
-      next: viewOf([task('Gym')]),
     );
 
-    final args = calls.single.arguments as Map;
-    expect(args.containsKey('nextRows'), isFalse);
-    expect(args.containsKey('nextValidUntilMillis'), isFalse);
+    expect((calls.single.arguments as Map).containsKey('upcoming'), isFalse);
   });
 
   test('says nothing about minutes without usage access', () async {

@@ -19,45 +19,74 @@ class TodayWidgetStore(context: Context) {
     private val prefs =
         context.getSharedPreferences("tally.widget", Context.MODE_PRIVATE)
 
+    /** One day Dart sent ahead of the written one. */
+    private data class Day(
+        val dateLabel: String,
+        val rows: JSONArray,
+        val done: Int,
+        val total: Int,
+        val validUntil: Long,
+    )
+
     /**
-     * True between the end of the written day and the end of the one after,
-     * when the widget draws the next day's plan Dart sent ahead of time.
+     * The days after the written one, in order, each ending where the next
+     * begins.
      *
      * The day rolls over while the app is closed - that is the usual case,
      * not an edge - and a widget that goes blank every morning until the app
-     * is opened is the bug this exists for. Every getter below reads the
-     * next-day keys while this holds, so the provider and the list adapter
-     * cannot disagree about which day they are drawing.
+     * is opened is the bug this exists for. Dart sends two weeks, so the
+     * recurring tasks keep showing through a stretch of days the app is never
+     * opened on.
      */
-    val showingNext: Boolean
+    private val upcoming: List<Day> by lazy {
+        val raw = prefs.getString(KEY_UPCOMING, null) ?: return@lazy emptyList()
+        try {
+            val array = JSONArray(raw)
+            (0 until array.length()).map { i ->
+                val item = array.getJSONObject(i)
+                Day(
+                    dateLabel = item.optString("dateLabel"),
+                    rows = item.optJSONArray("rows") ?: JSONArray(),
+                    done = item.optInt("doneCount"),
+                    total = item.optInt("totalCount"),
+                    validUntil = item.optLong("validUntilMillis"),
+                )
+            }
+        } catch (e: Exception) {
+            emptyList()
+        }
+    }
+
+    /**
+     * The sent-ahead day that is today, or null while the written day still
+     * holds and once every sent day has passed.
+     *
+     * Every getter below reads from this while it is set, so the provider and
+     * the list adapter cannot disagree about which day they are drawing.
+     */
+    private val ahead: Day?
         get() {
             val now = System.currentTimeMillis()
-            val nextUntil = prefs.getLong(KEY_NEXT_VALID_UNTIL, 0L)
-            return validUntilMillis != 0L && now >= validUntilMillis &&
-                nextUntil != 0L && now < nextUntil
+            if (validUntilMillis == 0L || now < validUntilMillis) return null
+            return upcoming.firstOrNull { now < it.validUntil }
         }
 
     val dateLabel: String
-        get() = prefs.getString(
-            if (showingNext) KEY_NEXT_DATE else KEY_DATE,
-            "",
-        ) ?: ""
+        get() = ahead?.dateLabel ?: prefs.getString(KEY_DATE, "") ?: ""
 
-    val doneCount: Int
-        get() = prefs.getInt(if (showingNext) KEY_NEXT_DONE else KEY_DONE, 0)
+    val doneCount: Int get() = ahead?.done ?: prefs.getInt(KEY_DONE, 0)
 
-    val totalCount: Int
-        get() = prefs.getInt(if (showingNext) KEY_NEXT_TOTAL else KEY_TOTAL, 0)
+    val totalCount: Int get() = ahead?.total ?: prefs.getInt(KEY_TOTAL, 0)
 
     val spendableSeconds: Int get() = prefs.getInt(KEY_SPENDABLE, 0)
 
     /**
-     * False when usage access was never granted, and on the next day: its
+     * False when usage access was never granted, and on a later day: its
      * balance depends on how yesterday closed, which only the app can work
      * out, so the widget says nothing rather than carrying the old figure.
      */
     val usageVisible: Boolean
-        get() = !showingNext && prefs.getBoolean(KEY_USAGE, false)
+        get() = ahead == null && prefs.getBoolean(KEY_USAGE, false)
 
     /** True once Dart has written anything, so a fresh widget can say so. */
     val hasData: Boolean get() = prefs.contains(KEY_DATE)
@@ -73,11 +102,11 @@ class TodayWidgetStore(context: Context) {
      */
     val validUntilMillis: Long get() = prefs.getLong(KEY_VALID_UNTIL, 0L)
 
-    /** Past both the written day and the next one Dart sent. */
+    /** Past the written day and every day Dart sent ahead. */
     val isStale: Boolean
         get() = validUntilMillis != 0L &&
             System.currentTimeMillis() >= validUntilMillis &&
-            !showingNext
+            ahead == null
 
     /**
      * The next instant the widget's day changes, or 0 when none is ahead.
@@ -87,22 +116,17 @@ class TodayWidgetStore(context: Context) {
     val nextBoundaryMillis: Long
         get() {
             val now = System.currentTimeMillis()
-            return listOf(
-                validUntilMillis,
-                prefs.getLong(KEY_NEXT_VALID_UNTIL, 0L),
-            ).firstOrNull { it > now } ?: 0L
+            return (listOf(validUntilMillis) + upcoming.map { it.validUntil })
+                .firstOrNull { it > now } ?: 0L
         }
 
     data class Row(val title: String, val done: Boolean, val glyph: String)
 
     val rows: List<Row>
         get() {
-            val raw = prefs.getString(
-                if (showingNext) KEY_NEXT_ROWS else KEY_ROWS,
-                null,
-            ) ?: return emptyList()
             return try {
-                val array = JSONArray(raw)
+                val array = ahead?.rows
+                    ?: JSONArray(prefs.getString(KEY_ROWS, null) ?: return emptyList())
                 (0 until array.length()).map { i ->
                     val item = array.getJSONObject(i)
                     Row(
@@ -127,9 +151,9 @@ class TodayWidgetStore(context: Context) {
         spendable: Int,
         usageVisible: Boolean,
         validUntil: Long,
-        next: Next?,
+        upcomingJson: String?,
     ) {
-        val edit = prefs.edit()
+        prefs.edit()
             .putString(KEY_DATE, dateLabel)
             .putString(KEY_ROWS, rowsJson)
             .putInt(KEY_DONE, done)
@@ -137,28 +161,11 @@ class TodayWidgetStore(context: Context) {
             .putInt(KEY_SPENDABLE, spendable)
             .putBoolean(KEY_USAGE, usageVisible)
             .putLong(KEY_VALID_UNTIL, validUntil)
-        if (next == null) {
-            // An older write's tomorrow must not outlive the day it belonged
-            // after.
-            edit.remove(KEY_NEXT_VALID_UNTIL)
-        } else {
-            edit.putString(KEY_NEXT_DATE, next.dateLabel)
-                .putString(KEY_NEXT_ROWS, next.rowsJson)
-                .putInt(KEY_NEXT_DONE, next.done)
-                .putInt(KEY_NEXT_TOTAL, next.total)
-                .putLong(KEY_NEXT_VALID_UNTIL, next.validUntil)
-        }
-        edit.apply()
+            // Replaced whole, or removed: an older write's days must not
+            // outlive the day they followed.
+            .putString(KEY_UPCOMING, upcomingJson)
+            .apply()
     }
-
-    /** The day after the written one, sent ahead by Dart. */
-    data class Next(
-        val dateLabel: String,
-        val rowsJson: String,
-        val done: Int,
-        val total: Int,
-        val validUntil: Long,
-    )
 
     companion object {
         private const val KEY_DATE = "dateLabel"
@@ -168,11 +175,7 @@ class TodayWidgetStore(context: Context) {
         private const val KEY_SPENDABLE = "spendableSeconds"
         private const val KEY_USAGE = "usageVisible"
         private const val KEY_VALID_UNTIL = "validUntilMillis"
-        private const val KEY_NEXT_DATE = "nextDateLabel"
-        private const val KEY_NEXT_ROWS = "nextRows"
-        private const val KEY_NEXT_DONE = "nextDoneCount"
-        private const val KEY_NEXT_TOTAL = "nextTotalCount"
-        private const val KEY_NEXT_VALID_UNTIL = "nextValidUntilMillis"
+        private const val KEY_UPCOMING = "upcoming"
 
         /**
          * Redraws every placed instance.

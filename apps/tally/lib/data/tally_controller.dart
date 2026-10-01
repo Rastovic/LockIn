@@ -442,7 +442,6 @@ class TallyController extends ChangeNotifier {
   Future<void> _pushWidget() async {
     final widget = _homeWidget;
     if (widget == null) return;
-    final tomorrow = addDays(dayKey, 1);
     await widget.push(
       view: today.view,
       dateLabel: _formatDate(now),
@@ -450,12 +449,25 @@ class TallyController extends ChangeNotifier {
       // A confident zero would be a claim the app cannot make without usage
       // access, so the widget simply says nothing about minutes instead.
       usageVisible: usageAccess == UsageAccess.granted,
-      validUntil: _ledger.engine.dayStart(tomorrow),
-      next: await _previewDay(tomorrow),
-      nextDateLabel: _formatDate(_ledger.engine.dayStart(tomorrow)),
-      nextValidUntil: _ledger.engine.dayStart(addDays(tomorrow, 1)),
+      validUntil: _ledger.engine.dayStart(addDays(dayKey, 1)),
+      upcoming: [
+        for (var ahead = 1; ahead <= _widgetDaysAhead; ahead++)
+          WidgetDay(
+            view: await _previewDay(addDays(dayKey, ahead)),
+            dateLabel:
+                _formatDate(_ledger.engine.dayStart(addDays(dayKey, ahead))),
+            validUntil: _ledger.engine.dayStart(addDays(dayKey, ahead + 1)),
+          ),
+      ],
     );
   }
+
+  /// How many days past today the widget is sent.
+  ///
+  /// The widget cannot build a day itself, so this is how long it keeps
+  /// showing the recurring tasks without the app being opened. Two weeks
+  /// outlasts a holiday; past it the widget asks to be opened instead.
+  static const _widgetDaysAhead = 14;
 
   /// [dayKey]'s plan as the next load will build it, without saving it.
   ///

@@ -93,9 +93,9 @@ class TodayWidgetProvider : AppWidgetProvider() {
             val store = TodayWidgetStore(context)
             if (ids.isNotEmpty()) scheduleRollover(context, store)
 
-            // Past the day boundary and past the next day Dart sent ahead too,
-            // which takes two days without opening the app. Until then the
-            // store hands over the next day's plan on its own; after it the
+            // Past the day boundary and past every day Dart sent ahead too,
+            // which takes two weeks without opening the app. Until then the
+            // store hands over each day's plan on its own; after it the
             // old list is hidden rather than relabelled: a widget that is
             // confidently wrong is worse than one that admits it needs opening.
             val stale = store.isStale

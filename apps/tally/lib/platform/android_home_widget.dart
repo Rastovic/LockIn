@@ -107,9 +107,7 @@ final class AndroidHomeWidget {
     required int spendableSeconds,
     required bool usageVisible,
     required DateTime validUntil,
-    TodayView? next,
-    String nextDateLabel = '',
-    DateTime? nextValidUntil,
+    List<WidgetDay> upcoming = const [],
   }) async {
     try {
       await channel.invokeMethod<void>('updateTodayWidget', {
@@ -126,18 +124,21 @@ final class AndroidHomeWidget {
         // timezone. Sending the answer keeps the day rule in one place and
         // leaves Kotlin with a single comparison.
         'validUntilMillis': validUntil.millisecondsSinceEpoch,
-        // Tomorrow's plan, drawn once [validUntil] passes and until
-        // [nextValidUntil]. The day boundary arrives while the app is closed,
-        // and without this the widget could only say "open the app" until it
-        // was. Only sent together with its end, so Kotlin never shows it
-        // open-ended.
-        if (next != null && nextValidUntil != null) ...{
-          'nextDateLabel': nextDateLabel,
-          'nextRows': jsonEncode(_rows(next)),
-          'nextDoneCount': next.doneCount,
-          'nextTotalCount': next.rows.length,
-          'nextValidUntilMillis': nextValidUntil.millisecondsSinceEpoch,
-        },
+        // The days after this one, each drawn once the one before it ends.
+        // The day boundary arrives while the app is closed, and without these
+        // the widget could only say "open the app" until it was. Every day
+        // carries its own end, so Kotlin never shows one open-ended.
+        if (upcoming.isNotEmpty)
+          'upcoming': jsonEncode([
+            for (final day in upcoming)
+              {
+                'dateLabel': day.dateLabel,
+                'rows': _rows(day.view),
+                'doneCount': day.view.doneCount,
+                'totalCount': day.view.rows.length,
+                'validUntilMillis': day.validUntil.millisecondsSinceEpoch,
+              },
+          ]),
       });
     } on MissingPluginException {
       // Any platform that is not Android, including the web preview.
@@ -156,4 +157,19 @@ final class AndroidHomeWidget {
             'glyph': stickerGlyphs[row.task.stickerId] ?? '',
           },
       ];
+}
+
+/// A day sent to the widget ahead of time, drawn once the day before it ends.
+final class WidgetDay {
+  const WidgetDay({
+    required this.view,
+    required this.dateLabel,
+    required this.validUntil,
+  });
+
+  final TodayView view;
+  final String dateLabel;
+
+  /// When this day stops being today.
+  final DateTime validUntil;
 }
