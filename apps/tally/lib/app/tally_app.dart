@@ -5,14 +5,12 @@ import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:share_plus/share_plus.dart';
-import 'package:vitals_ads/vitals_ads.dart';
 import 'package:vitals_archive/vitals_archive.dart';
 import 'package:tally_engine/tally_engine.dart';
 import 'package:tally_ui/tally_ui.dart';
 
 import '../data/app_database.dart';
 import '../data/tally_controller.dart';
-import 'ads.dart';
 import '../platform/android_links.dart';
 import '../platform/android_usage_source.dart';
 
@@ -32,7 +30,6 @@ class TallyApp extends StatefulWidget {
     required this.theme,
     required this.themeMode,
     required this.onTheme,
-    required this.ads,
     super.key,
   });
 
@@ -40,7 +37,6 @@ class TallyApp extends StatefulWidget {
   final TallyTheme theme;
   final ThemeMode themeMode;
   final void Function(TallyTheme, ThemeMode) onTheme;
-  final AdsController ads;
 
   @override
   State<TallyApp> createState() => _TallyAppState();
@@ -72,10 +68,6 @@ class _TallyAppState extends State<TallyApp> with WidgetsBindingObserver {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     c.addListener(_onChanged);
-    // Hung off the controller rather than off FocusScreen's ticker: a block
-    // usually ends with the phone face down and the app not running, and that
-    // route never touches the screen at all.
-    c.onFocusCompleted = () => unawaited(widget.ads.markCoreAction());
     c.load();
     unawaited(_loadTips());
   }
@@ -200,12 +192,6 @@ class _TallyAppState extends State<TallyApp> with WidgetsBindingObserver {
       );
     }
 
-    // Stats and Settings are read, not worked in. Today and Tasks are where
-    // the user is ticking things off, and `MONETIZATION.md` rule 4 keeps a
-    // banner off any screen being acted on - Focus and Balance never reach
-    // here at all, they return above.
-    final bannerTab = _tab == 2 || _tab == 3;
-
     return Scaffold(
       body: switch (_tab) {
         0 => _buildToday(),
@@ -217,14 +203,8 @@ class _TallyAppState extends State<TallyApp> with WidgetsBindingObserver {
         mainAxisSize: MainAxisSize.min,
         children: [
           ?_tipCard(_tabSurface),
-          AdSlot(
-            gateway: widget.ads.gateway,
-            allowed: bannerTab && widget.ads.bannerAllowed(),
-          ),
           NavigationBar(
         selectedIndex: _tab,
-        // Banners only. The full-screen ad on leaving Stats was removed at
-        // the user's request (2026-09-17): it covered the whole app.
         onDestinationSelected: (i) => setState(() => _tab = i),
         destinations: const [
           NavigationDestination(
@@ -657,14 +637,6 @@ class _TallyAppState extends State<TallyApp> with WidgetsBindingObserver {
         onPrivacyPolicy: () => unawaited(
           const AndroidLinks().open(AndroidLinks.privacyPolicyUrl),
         ),
-        // Read at build: consent resolves on launch, before Settings is ever
-        // reached, and the answer only changes through this same form.
-        onPrivacyChoices: widget.ads.gateway.privacyOptionsRequired
-            ? () async {
-                await widget.ads.gateway.showPrivacyOptions();
-                if (mounted) setState(() {});
-              }
-            : null,
         onCheckNumbers: () => setState(() => _showAccuracy = true),
         onExportCsv: _exportCsv,
         onOpenBackup: _openBackup,

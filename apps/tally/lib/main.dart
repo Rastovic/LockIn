@@ -4,10 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:tally_data/tally_data.dart';
 import 'package:tally_engine/tally_engine.dart';
 import 'package:tally_ui/tally_ui.dart';
-import 'package:vitals_ads/vitals_ads.dart';
 import 'package:vitals_notify/vitals_notify.dart';
 
-import 'app/ads.dart';
 import 'app/onboarding_flow.dart';
 import 'app/tally_app.dart';
 import 'data/app_database.dart';
@@ -26,11 +24,9 @@ Future<void> main() async {
   final onboarded = await OnboardingState.isDone();
   final (theme, mode) = await ThemePreference.load();
 
-  // Started, not awaited: consent and the SDK take a network round trip, and
-  // the first frame must not wait on an ad. Everything the ads layer is asked
-  // before it finishes answers "no ad", which is the correct answer anyway.
-  final ads = AdsController(gateway: AdMobGateway());
-  unawaited(ads.start());
+  // No ads in this version (decided 2026-10-12): no ad SDK, no consent form.
+  // packages/vitals_ads stays in the workspace for later; the app does not
+  // depend on it, so none of it ships.
 
   runApp(
     TallyRoot(
@@ -40,7 +36,6 @@ Future<void> main() async {
       onboarded: onboarded,
       theme: theme,
       themeMode: mode,
-      ads: ads,
     ),
   );
 }
@@ -59,7 +54,6 @@ class TallyRoot extends StatefulWidget {
     required this.onboarded,
     required this.theme,
     required this.themeMode,
-    required this.ads,
     super.key,
   });
 
@@ -69,7 +63,6 @@ class TallyRoot extends StatefulWidget {
   final bool onboarded;
   final TallyTheme theme;
   final ThemeMode themeMode;
-  final AdsController ads;
 
   @override
   State<TallyRoot> createState() => _TallyRootState();
@@ -136,7 +129,6 @@ class _TallyRootState extends State<TallyRoot> {
                 theme: _theme,
                 themeMode: _mode,
                 onTheme: _setTheme,
-                ads: widget.ads,
               )
             : OnboardingFlow(
                 controller: _controller,

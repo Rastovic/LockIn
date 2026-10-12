@@ -431,8 +431,8 @@ class WatchedAppsScreen extends StatelessWidget {
                     _LinkRow(
                       label: 'Privacy policy',
                       // The honest summary first, the full text one tap away.
-                      detail: 'Your data stays on this phone. Ads are the one '
-                          'part that is not LockIn\'s.',
+                      detail: 'Your data stays on this phone. No account, '
+                          'no cloud, no ads.',
                       onTap: onPrivacyPolicy!,
                     ),
                     ],

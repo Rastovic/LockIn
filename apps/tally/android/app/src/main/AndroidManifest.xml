@@ -76,17 +76,6 @@
             android:name="flutterEmbedding"
             android:value="2" />
 
-        <!-- AdMob refuses to initialise without this and crashes the app on
-             start, so it is here rather than added with the real account.
-             **This is Google's test application id**: it serves real ads that
-             bill nobody, and it is swapped for the real one when the AdMob
-             account exists. Shipping the test id earns nothing; shipping the
-             real id before the account is verified risks an invalid-traffic
-             flag, which is the worse of the two. -->
-        <meta-data
-            android:name="com.google.android.gms.ads.APPLICATION_ID"
-            android:value="ca-app-pub-3940256099942544~3347511713" />
-
         <!-- Today's plan on the home screen. Read only: it opens the app
              rather than ticking anything, so there is never a second writer
              to the ledger. -->
